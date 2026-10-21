@@ -20,6 +20,9 @@ import { RARITY_LABEL } from "../sim/loot";
 import { rarityIndex } from "../sim/config";
 import { trackMission } from "../game/missionStore";
 
+/** Khoá lưu danh sách map đã qua (khai báo trước store vì store đọc ngay lúc khởi tạo) */
+const CLEARED_KEY = "cyberhood.levels.cleared.v1";
+
 /** Thưởng CRED: cơ bản khi qua màn + mỗi địch hạ */
 export const LEVEL_REWARD = { clear: 60, perKill: 3 };
 
@@ -207,7 +210,6 @@ function describe(d: LootDrop): [string, string] {
 
 const RARITY_HEX = { common: "#c9d0d8", rare: "#5ab4ff", epic: "#c27dff", legendary: "#ffc23d", mythic: "#ff4a64" } as const;
 
-const CLEARED_KEY = "cyberhood.levels.cleared.v1";
 
 function loadCleared(): string[] {
   try {

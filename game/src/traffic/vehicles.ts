@@ -125,7 +125,7 @@ export class VehicleSim {
   }
 
   /** Duyệt các điểm mẫu phía trước trên route, trả về false để dừng sớm */
-  private walkRoute(veh: Vehicle, maxAhead: number, cb: (x: number, z: number, ahead: number, tx: number, tz: number) => boolean | void) {
+  private walkRoute(veh: Vehicle, maxAhead: number, cb: (x: number, z: number, ahead: number, tx: number, tz: number, len: number) => boolean | void) {
     let path = this.path(veh.path);
     let base = -veh.s;
     let k = 0;
@@ -133,14 +133,14 @@ export class VehicleSim {
       const cum = path.cum;
       for (let i = 0; i < cum.length - 1; i++) {
         const ahead = base + cum[i];
-        if (ahead < 0) continue;
+        if (base + cum[i + 1] < 0) continue;
         if (ahead > maxAhead) return;
         const x = path.pts[i * 2];
         const z = path.pts[i * 2 + 1];
         const tx = path.pts[i * 2 + 2] - x;
         const tz = path.pts[i * 2 + 3] - z;
         const tl = Math.hypot(tx, tz) || 1;
-        if (cb(x, z, ahead, tx / tl, tz / tl) === false) return;
+        if (cb(x, z, ahead, tx / tl, tz / tl, tl) === false) return;
       }
       base += path.length;
       if (k >= veh.route.length) return;
@@ -225,12 +225,14 @@ export class VehicleSim {
         near.push({ o, yaw: (o as { yaw?: number }).yaw, id: (o as { id?: number }).id, best: Infinity, ahead: 0, tx: 0, tz: 0 });
       }
       if (near.length) {
-        this.walkRoute(veh, look, (x, z, ahead, tx, tz) => {
+        this.walkRoute(veh, look, (x, z, ahead, tx, tz, len) => {
           for (const n of near) {
-            const d = Math.hypot(n.o.x - x, n.o.z - z);
+            // Chiếu vật cản lên đoạn [điểm mẫu, điểm mẫu kế] để đo khoảng cách chính xác (không bị bậc theo điểm mẫu)
+            const t = Math.max(0, Math.min(len, (n.o.x - x) * tx + (n.o.z - z) * tz));
+            const d = Math.hypot(n.o.x - (x + tx * t), n.o.z - (z + tz * t));
             if (d < n.best) {
               n.best = d;
-              n.ahead = ahead;
+              n.ahead = ahead + t;
               n.tx = tx;
               n.tz = tz;
             }
@@ -251,11 +253,16 @@ export class VehicleSim {
       }
 
       acc = Math.max(-V.maxDecel, Math.min(V.maxAccel, acc));
+      // Giới hạn độ giật: gia tốc đổi dần (phanh gấp được đổi nhanh hơn), xe không giật cục
+      const jerk = acc < veh.a ? V.jerkBrake : V.jerk;
+      acc = veh.a + Math.max(-jerk * dt, Math.min(jerk * dt, acc - veh.a));
       veh.a = acc;
       veh.reason = acc < -0.05 || veh.v < 0.2 ? reason : "";
       veh.v = Math.max(0, veh.v + acc * dt);
       veh.s += veh.v * dt;
-      veh.braking = acc < V.brakeLightDecel || (veh.v < 0.3 && reason !== "");
+      // Đèn phanh có vùng trễ: bật khi phanh rõ, chỉ tắt khi đã nhả hẳn, nên không chớp tắt liên tục
+      const stopped = veh.v < 0.3 && reason !== "";
+      veh.braking = veh.braking ? acc < V.brakeLightDecel * 0.3 || stopped : acc < V.brakeLightDecel || stopped;
       veh.wheel += (veh.v * dt) / V.wheelRadius;
       veh.stuck = veh.v < 0.3 && reason !== "red" && reason !== "yellow" ? veh.stuck + dt : 0;
 

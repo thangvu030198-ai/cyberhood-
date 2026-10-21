@@ -214,6 +214,34 @@ describe("xe tự lái", () => {
   });
 });
 
+describe("độ mượt của xe", () => {
+  it("không giật: gia tốc đổi dần, hướng xe đổi trơn, đèn phanh không chớp tắt liên tục", () => {
+    const sim = new VehicleSim(net, [4.4, 4.8, 5.2, 9], 16, seeded(42));
+    const dt = 1 / 60;
+    let maxJerk = 0;
+    let maxYawRate = 0;
+    let toggles = 0;
+    const prev = sim.vehicles.map((v) => ({ a: v.a, yaw: v.yaw, b: v.braking }));
+    for (let s = 0; s < 60 * 120; s++) {
+      sim.update(dt, s * dt, []);
+      sim.vehicles.forEach((v, i) => {
+        const p = prev[i];
+        maxJerk = Math.max(maxJerk, Math.abs(v.a - p.a) / dt);
+        maxYawRate = Math.max(maxYawRate, Math.abs(Math.atan2(Math.sin(v.yaw - p.yaw), Math.cos(v.yaw - p.yaw))) / dt);
+        if (v.braking !== p.b) toggles++;
+        p.a = v.a;
+        p.yaw = v.yaw;
+        p.b = v.braking;
+      });
+    }
+    expect(maxJerk).toBeLessThanOrEqual(TUNING.vehicles.jerkBrake + 1e-6);
+    // Dưới 90°/s: rẽ ở tốc độ vào cua mà không xoay giật
+    expect((maxYawRate * 180) / Math.PI).toBeLessThan(90);
+    // Đèn phanh: trung bình dưới 10 lần bật/tắt mỗi xe mỗi phút
+    expect(toggles / 16 / 2).toBeLessThan(10);
+  });
+});
+
 describe("người đi bộ", () => {
   const graph = buildPedGraph(net);
 

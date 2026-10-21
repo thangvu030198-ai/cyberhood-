@@ -1,25 +1,32 @@
 import * as THREE from "three";
 import type { Part } from "./mergeParts";
 
+export type WheelSpot = {
+  /** Tâm trục bánh trong toạ độ xe (đầu xe +Z, đáy y = 0) */
+  center: THREE.Vector3;
+  radius: number;
+  width: number;
+  front: boolean;
+};
+
 export type WheelSet = {
-  /** Thân xe đã bỏ phần bánh */
+  /** Thân xe đã khoét bỏ bánh liền khối của model */
   body: Part[];
-  /** Bánh xe, mỗi bánh dời về tâm trục của nó để quay quanh trục X */
-  wheels: { geometry: THREE.BufferGeometry; material: THREE.Material; center: THREE.Vector3 }[];
-  /** Kích thước thân để đặt đèn phanh */
+  /** Vị trí bánh để gắn bánh dựng sẵn (tròn đều, quay không lắc) */
+  wheels: WheelSpot[];
+  /** Kích thước thân để đặt đèn */
   size: THREE.Vector3;
 };
 
 /**
- * Model xe Meshy là một khối liền: tự tách bánh xe ra bằng hình học.
- * Xe đã được chuẩn hoá: đầu xe hướng +Z, đáy ở y = 0, tâm XZ ở gốc.
- * 1) Lấy các đỉnh sát mặt đất (dưới 12% chiều cao): đó là chỗ lốp chạm đất, tạo thành 2 cụm theo trục Z (trước/sau).
- * 2) Từ độ rộng cụm (dây cung) suy ra bán kính bánh, tâm trục nằm ở độ cao bằng bán kính.
- * 3) Tam giác nằm trọn trong hình tròn bánh (mặt phẳng YZ) và ở phía ngoài thân (|x| lớn) là bánh.
- * Không tìm được 2 cụm rõ ràng thì trả về nguyên xe, không có bánh quay.
+ * Model xe Meshy là một khối liền: bánh xe nằm sẵn trong lưới và không tròn đều, quay lên sẽ méo/lắc.
+ * Ở đây tìm vị trí bánh bằng hình học rồi khoét bỏ phần lưới đó, để gắn bánh dựng sẵn vào đúng chỗ:
+ * 1) Các đỉnh sát mặt đất (dưới 6% chiều cao, phía ngoài thân) là chỗ lốp chạm đất, tạo 2 cụm theo trục Z.
+ * 2) Tâm cụm là vị trí trục; bán kính suy từ dây cung, giới hạn theo cỡ bánh xe thật.
+ * 3) Tam giác nằm trọn trong hình tròn bánh (mặt phẳng YZ) ở phía ngoài thân bị khoét.
+ * Không tìm được 2 cụm rõ ràng thì giữ nguyên xe, không gắn bánh.
  */
 export function splitWheels(parts: Part[]): WheelSet {
-  // Gom đỉnh (toạ độ đã nhân ma trận) để đo
   const geos = parts.map((p) => {
     const g = p.geometry.clone();
     g.applyMatrix4(p.matrix);
@@ -34,6 +41,8 @@ export function splitWheels(parts: Part[]): WheelSet {
   const H = size.y;
   const W = size.x;
   const L = size.z;
+  const fail = (): WheelSet => ({ body: parts, wheels: [], size });
+
   // Dải sát đất 6% chiều cao: chỉ còn chỗ lốp chạm đất (cản và thân xe nằm cao hơn)
   const band = H * 0.06;
   const N = 48;
@@ -46,8 +55,6 @@ export function splitWheels(parts: Part[]): WheelSet {
       }
     }
   }
-  const fail = (): WheelSet => ({ body: parts, wheels: [], size });
-  // Mỗi nửa xe tìm một cụm quanh đỉnh histogram
   const cluster = (lo: number, hi: number) => {
     let peak = lo;
     for (let k = lo; k < hi; k++) if (bins[k] > bins[peak]) peak = k;
@@ -60,66 +67,107 @@ export function splitWheels(parts: Part[]): WheelSet {
     const chord = ((r - l + 1) / N) * L;
     return { z: box.min.z + ((l + r + 1) / 2 / N) * L, r: (chord * chord) / 4 / (2 * band) + band / 2 };
   };
-  const b = cluster(0, N / 2);
-  const f = cluster(N / 2, N);
-  if (!b || !f) return fail();
-  // Bán kính đo từ dây cung còn nhiễu: giới hạn theo cỡ bánh xe thật (xe dài thì bánh to)
+  const rear = cluster(0, N / 2);
+  const front = cluster(N / 2, N);
+  if (!rear || !front) return fail();
   const long = L > 6.5;
-  const r = THREE.MathUtils.clamp((f.r + b.r) / 2, long ? 0.45 : 0.3, long ? 0.62 : 0.46);
-  const axles = [f.z, b.z];
+  const r = THREE.MathUtils.clamp((front.r + rear.r) / 2, long ? 0.45 : 0.3, long ? 0.62 : 0.46);
+  const axles = [front.z, rear.z];
+  const cy = box.min.y + r;
 
+  // Khoét bánh liền khối: hình tròn rộng hơn bán kính một chút để không sót viền lốp
+  const cut = r * 1.08;
+  const lateral = [
+    [Infinity, -Infinity],
+    [Infinity, -Infinity],
+  ];
   const body: Part[] = [];
-  const wheelTris = new Map<string, { mat: THREE.Material; idx: number[]; geo: THREE.BufferGeometry; center: THREE.Vector3 }>();
-  parts.forEach((p, pi) => {
-    const g = geos[pi].index ? geos[pi] : geos[pi];
+  const v = new THREE.Vector3();
+  geos.forEach((g, pi) => {
     const pos = g.attributes.position;
     const index = g.index ? Array.from(g.index.array) : Array.from({ length: pos.count }, (_, i) => i);
-    const keep: number[] = [];
-    const v = new THREE.Vector3();
     const inWheel = (i: number) => {
       v.fromBufferAttribute(pos, i);
-      if (Math.abs(v.x) < W * 0.2) return -1;
-      for (let a = 0; a < 2; a++) {
-        const dz = v.z - axles[a];
-        const dy = v.y - (box.min.y + r);
-        if (dz * dz + dy * dy < r * r * 1.06) return a * 2 + (v.x > 0 ? 0 : 1);
+      if (Math.abs(v.x) < W * 0.22) return false;
+      for (const az of axles) {
+        const dz = v.z - az;
+        const dy = v.y - cy;
+        if (dz * dz + dy * dy < cut * cut) return true;
       }
-      return -1;
+      return false;
     };
+    const keep: number[] = [];
     for (let t = 0; t < index.length; t += 3) {
-      const w0 = inWheel(index[t]);
-      const w1 = inWheel(index[t + 1]);
-      const w2 = inWheel(index[t + 2]);
-      if (w0 >= 0 && w0 === w1 && w1 === w2) {
-        const key = `${pi}:${w0}`;
-        let entry = wheelTris.get(key);
-        if (!entry) {
-          const side = w0 % 2 === 0 ? 1 : -1;
-          entry = { mat: p.material, idx: [], geo: g, center: new THREE.Vector3(side * W * 0.42, box.min.y + r, axles[w0 >> 1]) };
-          wheelTris.set(key, entry);
+      if (inWheel(index[t]) && inWheel(index[t + 1]) && inWheel(index[t + 2])) {
+        for (let k = 0; k < 3; k++) {
+          v.fromBufferAttribute(pos, index[t + k]);
+          const side = v.x > 0 ? 0 : 1;
+          lateral[side][0] = Math.min(lateral[side][0], Math.abs(v.x));
+          lateral[side][1] = Math.max(lateral[side][1], Math.abs(v.x));
         }
-        entry.idx.push(index[t], index[t + 1], index[t + 2]);
       } else keep.push(index[t], index[t + 1], index[t + 2]);
     }
     const bodyGeo = g.clone();
     bodyGeo.setIndex(keep);
-    body.push({ geometry: bodyGeo, material: p.material, matrix: new THREE.Matrix4() });
+    body.push({ geometry: bodyGeo, material: parts[pi].material, matrix: new THREE.Matrix4() });
   });
 
-  const wheels: WheelSet["wheels"] = [];
-  for (const { mat, idx, geo, center } of wheelTris.values()) {
-    if (idx.length < 30) continue;
-    const wg = geo.clone();
-    wg.setIndex(idx);
-    // Tâm thật của bánh: trung bình các đỉnh của bánh theo X, theo YZ dùng tâm trục
-    const pos = wg.attributes.position;
-    let sx = 0;
-    for (const i of idx) sx += pos.getX(i);
-    center.x = sx / idx.length;
-    wg.translate(-center.x, -center.y, -center.z);
-    wheels.push({ geometry: wg, material: mat, center });
+  // Bề rộng lốp và vị trí ngang lấy từ phần vừa khoét (mỗi bên), có giới hạn hợp lý
+  const wheels: WheelSpot[] = [];
+  for (const [ai, az] of axles.entries()) {
+    for (const side of [0, 1]) {
+      const [lo, hi] = lateral[side];
+      const ok = Number.isFinite(lo) && hi > lo;
+      const width = THREE.MathUtils.clamp(ok ? hi - lo : 0.28, 0.22, long ? 0.45 : 0.36);
+      const x = ok ? Math.min(hi - width / 2, W / 2 - width / 2) : W / 2 - width / 2;
+      wheels.push({ center: new THREE.Vector3(side === 0 ? x : -x, cy, az), radius: r, width, front: ai === 0 });
+    }
   }
-  // Tách được ít nhất 3 bánh mới dùng, không thì trả nguyên xe
-  if (wheels.length < 3) return fail();
   return { body, wheels, size };
+}
+
+/** Bánh xe dựng sẵn bán kính 1, rộng 1 (trục theo X): lốp hở hai mặt, mâm lõm có 5 nan, vành neon. Thu phóng theo từng xe. */
+export function wheelGeometries() {
+  // Lốp: mặt gai (ống hở) + hai mặt hông hình vành khăn, chừa lỗ để thấy mâm bên trong
+  const tread = new THREE.CylinderGeometry(1, 1, 1, 28, 1, true);
+  tread.rotateZ(Math.PI / 2);
+  const side = new THREE.RingGeometry(0.64, 1, 28, 1);
+  const sideL = side.clone().rotateY(Math.PI / 2).translate(0.5, 0, 0);
+  const sideR = side.clone().rotateY(-Math.PI / 2).translate(-0.5, 0, 0);
+  const tire = mergeAll([tread, sideL, sideR]);
+  // Mâm: đĩa lõm giữa + 5 nan ló ra hai mặt, nhìn rõ bánh đang quay
+  const parts: THREE.BufferGeometry[] = [];
+  const disc = new THREE.CylinderGeometry(0.64, 0.64, 0.5, 20);
+  disc.rotateZ(Math.PI / 2);
+  parts.push(disc);
+  for (let k = 0; k < 5; k++) {
+    const spoke = new THREE.BoxGeometry(0.96, 1.22, 0.14);
+    spoke.rotateX((k / 5) * Math.PI);
+    parts.push(spoke);
+  }
+  const hub = mergeAll(parts);
+  const ring = new THREE.TorusGeometry(0.66, 0.045, 6, 28);
+  ring.rotateY(Math.PI / 2);
+  const neon = mergeAll([ring.clone().translate(0.5, 0, 0), ring.clone().translate(-0.5, 0, 0)]);
+  return { tire, hub, neon };
+}
+
+function mergeAll(list: THREE.BufferGeometry[]) {
+  const nonIndexed = list.map((g) => (g.index ? g.toNonIndexed() : g));
+  for (const g of nonIndexed) {
+    g.deleteAttribute("uv");
+  }
+  const total = nonIndexed.reduce((a, g) => a + g.attributes.position.count, 0);
+  const pos = new Float32Array(total * 3);
+  const nor = new Float32Array(total * 3);
+  let o = 0;
+  for (const g of nonIndexed) {
+    pos.set(g.attributes.position.array as Float32Array, o * 3);
+    nor.set(g.attributes.normal.array as Float32Array, o * 3);
+    o += g.attributes.position.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  out.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
+  return out;
 }

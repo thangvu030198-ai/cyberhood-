@@ -276,6 +276,17 @@ function setFromSeg(p: Path, k: number, f: number, out: PathPoint) {
   const z1 = p.pts[k * 2 + 3];
   out.x = x0 + (x1 - x0) * f;
   out.z = z0 + (z1 - z0) * f;
-  out.yaw = Math.atan2(x1 - x0, z1 - z0);
+  // Hướng trơn: nội suy giữa tiếp tuyến tại hai điểm mẫu (trung bình hai đoạn kề), tránh xe đổi hướng giật theo từng đoạn
+  const a = tangentAt(p, k);
+  const b = tangentAt(p, k + 1);
+  out.yaw = a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * f;
   return out;
+}
+
+/** Tiếp tuyến tại điểm mẫu i: hướng trung bình của đoạn trước và đoạn sau */
+function tangentAt(p: Path, i: number) {
+  const n = p.pts.length / 2;
+  const i0 = Math.max(0, i - 1);
+  const i1 = Math.min(n - 1, i + 1);
+  return Math.atan2(p.pts[i1 * 2] - p.pts[i0 * 2], p.pts[i1 * 2 + 1] - p.pts[i0 * 2 + 1]);
 }

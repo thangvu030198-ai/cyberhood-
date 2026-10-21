@@ -42,6 +42,9 @@ export const TUNING = {
     maxAccel: 2.2,
     comfortDecel: 3.2,
     maxDecel: 9,
+    /** Độ giật tối đa (m/s³): tăng tốc / nhả phanh đổi dần; phanh gấp được phép đổi nhanh hơn */
+    jerk: 4,
+    jerkBrake: 14,
     minGap: 2.6,
     headway: 1.3,
     /** Tốc độ tối đa trong đường cong rẽ */

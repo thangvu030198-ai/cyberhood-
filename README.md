@@ -39,6 +39,7 @@ npm run build    # bản production trong game/dist
 - `game/src/game/Vault.tsx`: Server Vault (model hành lang, va chạm, terminal, hologram GHOST_0) và cửa vào
 - `game/src/game/Visuals.tsx`: môi trường phản chiếu neon, quảng cáo hologram, máy bán hàng, hơi nước
 - `game/src/game/pointer.ts`: khoá chuột kiểu game PC
+- `game/src/game/Kit.tsx`: dựng phố bằng bộ model Polygonal Mind (mặt tiền, biển neon, đèn đường, máy bán hàng, tàu bay), tất cả dùng instancing
 - `game/src/ui/`: HUD, minimap, chợ đen, tạo nhân vật, hội thoại, túi đồ, tracker nhiệm vụ
 - `game/src/game/refs.ts`: handle vật lý của nhân vật và xe, đọc mỗi frame
 - `game/src/game/config.ts`: thông số thế giới và bảng màu
@@ -51,7 +52,16 @@ Chi tiết trong `game/src/assets/LICENSES.md`. Tóm tắt:
 - Drone, súng, âm thanh: Kenney Starter Kit FPS, CC0.
 - Server Vault: "Space Ship Hallway" của yeeyeeman, **CC-BY 4.0, bắt buộc ghi công** (đã ghi trong màn tạo nhân vật và túi đồ).
   File đã được nén lượng tử hoá (KHR_mesh_quantization) bằng gltf-transform.
-- Thành phố, xe, biển hiệu, mưa, hologram: sinh bằng code.
+- Mặt tiền phố Nhật, biển neon, đèn đường, máy bán hàng, tàu bay, cổng vault: Polygonal Mind, CC0
+  (github.com/ToxSam/cc0-models-Polygonal-Mind). 50 model gộp vào `pm-kit.glb`, nén từ 330 MB còn 2,1 MB.
+- Khối nhà, xe, mưa, hologram: sinh bằng code.
+
+### Cách thêm model mới vào kit
+
+1. Tải các file `.glb` (CC0 hoặc CC-BY) vào một thư mục.
+2. Gộp và nén: `gltf-transform merge *.glb m.glb && gltf-transform prune m.glb p.glb && gltf-transform resize p.glb r.glb --width 1024 --height 1024 && gltf-transform webp r.glb w.glb && gltf-transform quantize w.glb pm-kit.glb`
+3. Dùng trong code: `<KitInstances name="TênModel" matrices={...} />` (xem `Kit.tsx`).
+4. Ghi nguồn và giấy phép vào `game/src/assets/LICENSES.md`.
 
 ## Lộ trình
 

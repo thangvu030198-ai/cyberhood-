@@ -1,9 +1,9 @@
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import { BUILDINGS } from "./City";
-import { BLOCK_CENTERS, CITY, CITY_PITCH, PALETTE, mulberry32 } from "./config";
+import { CITY, CITY_PITCH, PALETTE, mulberry32 } from "./config";
 import { makeAdTexture } from "./textures";
 import { useGame } from "./store";
 
@@ -100,83 +100,6 @@ export function HoloAds() {
           <planeGeometry args={[a.w, a.h]} />
         </mesh>
       ))}
-    </>
-  );
-}
-
-type Prop = { x: number; z: number; rot: number };
-
-/** Vị trí đạo cụ dọc mép vỉa hè, tránh chân toà nhà */
-function sidewalkSpots(seed: number, count: number, inset: number): Prop[] {
-  const rand = mulberry32(seed);
-  const spots: Prop[] = [];
-  const edge = CITY.BLOCK / 2 - inset;
-  let guard = 0;
-  while (spots.length < count && guard++ < count * 20) {
-    const bx = BLOCK_CENTERS[Math.floor(rand() * BLOCK_CENTERS.length)];
-    const bz = BLOCK_CENTERS[Math.floor(rand() * BLOCK_CENTERS.length)];
-    const side = Math.floor(rand() * 4);
-    const t = (rand() - 0.5) * CITY.BLOCK * 0.8;
-    const [x, z, rot] =
-      side === 0
-        ? [bx + t, bz + edge, 0]
-        : side === 1
-          ? [bx + t, bz - edge, Math.PI]
-          : side === 2
-            ? [bx + edge, bz + t, Math.PI / 2]
-            : [bx - edge, bz + t, -Math.PI / 2];
-    const blocked = BUILDINGS.some(
-      (b) => Math.abs(b.x - x) < b.w / 2 + 0.8 && Math.abs(b.z - z) < b.d / 2 + 0.8,
-    );
-    if (!blocked) spots.push({ x, z, rot });
-  }
-  return spots;
-}
-
-function InstancedProps({ spots, size, y, color, emissive }: {
-  spots: Prop[];
-  size: [number, number, number];
-  y: number;
-  color: string;
-  emissive?: string;
-}) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  useLayoutEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    spots.forEach((s, i) => {
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.rot);
-      mesh.setMatrixAt(i, m.compose(new THREE.Vector3(s.x, y, s.z), q, new THREE.Vector3(...size)));
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere();
-  }, [spots, size, y]);
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, spots.length]}>
-      <boxGeometry />
-      {emissive ? (
-        <meshBasicMaterial color={new THREE.Color(emissive).multiplyScalar(2.2)} toneMapped={false} />
-      ) : (
-        <meshStandardMaterial color={color} metalness={0.7} roughness={0.35} />
-      )}
-    </instancedMesh>
-  );
-}
-
-/** Máy bán hàng tự động: thân tối, mặt trước phát sáng */
-export function VendingMachines() {
-  const spots = useMemo(() => sidewalkSpots(808, 26, 1.2), []);
-  // Mặt kính phát sáng lệch ra phía đường 0.36m
-  const fronts = useMemo(
-    () => spots.map((s) => ({ x: s.x + Math.sin(s.rot) * 0.36, z: s.z + Math.cos(s.rot) * 0.36, rot: s.rot })),
-    [spots],
-  );
-  return (
-    <>
-      <InstancedProps spots={spots} size={[1.1, 2, 0.7]} y={CITY.SIDEWALK_HEIGHT + 1} color="#14101f" />
-      <InstancedProps spots={fronts} size={[0.9, 1.4, 0.02]} y={CITY.SIDEWALK_HEIGHT + 1.15} color="" emissive={PALETTE.cyan} />
     </>
   );
 }

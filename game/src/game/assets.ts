@@ -6,6 +6,7 @@ import blasterUrl from "../assets/kenney/blaster.glb?inline";
 import repeaterUrl from "../assets/kenney/blaster-repeater.glb?inline";
 import colormapUrl from "../assets/kenney/colormap.png?inline";
 import vaultUrl from "../assets/vault-hallway.glb?inline";
+import kitUrl from "../assets/pm-kit.glb?inline";
 import sfxBlaster from "../assets/sounds/blaster.ogg?inline";
 import sfxRepeater from "../assets/sounds/blaster_repeater.ogg?inline";
 import sfxEnemyAttack from "../assets/sounds/enemy_attack.ogg?inline";
@@ -39,6 +40,8 @@ export const models = {
   blaster: parseGlb(blasterUrl),
   repeater: parseGlb(repeaterUrl),
   vault: parseGlb(vaultUrl),
+  /** Bộ đạo cụ Polygonal Mind (CC0): mỗi model là một scene, tên gốc trùng tên model */
+  kit: parseGlb(kitUrl),
 };
 
 // ---------------------------------------------------------------------------

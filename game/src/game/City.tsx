@@ -15,7 +15,7 @@ import {
   mulberry32,
 } from "./config";
 import { NPCS, VAULT_DOOR } from "./story";
-import { SIGN_COUNT, makeLaneTexture, makeRoadTexture, makeSignTexture, makeWindowTexture } from "./textures";
+import { SIGN_COUNT, makeLaneTexture, makeRoadTexture, makeFacadeTextures, makeSignTexture } from "./textures";
 
 export type Building = {
   x: number;
@@ -124,7 +124,7 @@ function buildingGeometry(w: number, h: number, d: number) {
       if (faceWidths[face] === 0) {
         uv.setXY(i, 0.99, 0.99); // mái: rơi vào ô tối
       } else {
-        uv.setXY(i, uv.getX(i) * (faceWidths[face] / 8), uv.getY(i) * (h / 32));
+        uv.setXY(i, uv.getX(i) * (faceWidths[face] / 12), uv.getY(i) * (h / 24));
       }
     }
   }
@@ -137,14 +137,16 @@ function useWindowMaterials() {
   return useMemo(
     () =>
       Array.from({ length: WINDOW_VARIANTS }, (_, i) => {
-        const map = makeWindowTexture(100 + i);
+        const { map, emissive } = makeFacadeTextures(100 + i);
+        // Kính và tường phản chiếu môi trường neon; cửa sổ sáng đèn qua emissiveMap
         return new THREE.MeshStandardMaterial({
-          color: "#0f0c18",
-          roughness: 0.55,
-          metalness: 0.4,
+          map,
+          color: "#ffffff",
+          roughness: 0.32,
+          metalness: 0.55,
           emissive: "#ffffff",
-          emissiveMap: map,
-          emissiveIntensity: 1.25,
+          emissiveMap: emissive,
+          emissiveIntensity: 1.35,
         });
       }),
     [],
@@ -378,39 +380,6 @@ function Ground() {
   );
 }
 
-/** Đèn đường dọc mép vỉa hè; phần đầu đèn phát sáng để bloom bắt. */
-function StreetLights() {
-  const { poles, heads } = useMemo(() => {
-    const poles: THREE.Matrix4[] = [];
-    const heads: THREE.Matrix4[] = [];
-    const q = new THREE.Quaternion();
-    const edge = CITY.BLOCK / 2 - 0.6;
-    for (const bx of BLOCK_CENTERS) {
-      for (const bz of BLOCK_CENTERS) {
-        for (const t of [-0.75, -0.25, 0.25, 0.75]) {
-          for (const [px, pz] of [
-            [bx + t * CITY.BLOCK, bz + edge],
-            [bx + t * CITY.BLOCK, bz - edge],
-            [bx + edge, bz + t * CITY.BLOCK],
-            [bx - edge, bz + t * CITY.BLOCK],
-          ]) {
-            poles.push(new THREE.Matrix4().compose(new THREE.Vector3(px, 3, pz), q, new THREE.Vector3(0.12, 6, 0.12)));
-            heads.push(
-              new THREE.Matrix4().compose(new THREE.Vector3(px, 6.05, pz), q, new THREE.Vector3(0.5, 0.12, 0.5)),
-            );
-          }
-        }
-      }
-    }
-    return { poles, heads };
-  }, []);
-  return (
-    <>
-      <InstancedBoxes color="#2a2536" intensity={1} matrices={poles} />
-      <InstancedBoxes color={PALETTE.cyan} intensity={3} matrices={heads} />
-    </>
-  );
-}
 
 /** Toà nhà trong khu chơi được, dùng chung cho va chạm, tầm nhìn của drone và minimap. */
 export const BUILDINGS = generateBuildings();
@@ -426,7 +395,6 @@ export function City() {
       <NeonTrim list={buildings} />
       <NeonTrim list={skyline} />
       <Signs list={buildings} />
-      <StreetLights />
     </>
   );
 }

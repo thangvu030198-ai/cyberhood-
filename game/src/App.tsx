@@ -15,7 +15,8 @@ import { Shop } from "./game/Shop";
 import { GameRules } from "./game/GameRules";
 import { Npcs } from "./game/Npcs";
 import { Vault, VaultDoor } from "./game/Vault";
-import { HoloAds, NeonEnvironment, SteamVents, VendingMachines } from "./game/Visuals";
+import { HoloAds, NeonEnvironment, SteamVents } from "./game/Visuals";
+import { KitDressing } from "./game/Kit";
 import { handles } from "./game/refs";
 import { useGame } from "./game/store";
 import { questProgress } from "./game/quests";
@@ -104,11 +105,11 @@ export default function App() {
               <Shop />
               <Npcs />
               <Vault />
+              <KitDressing />
             </Physics>
             <VaultDoor />
             <NeonEnvironment />
             <HoloAds />
-            <VendingMachines />
             <SteamVents />
             <Enemies />
             <PlayerCombat />
@@ -116,7 +117,7 @@ export default function App() {
             <GameRules />
             <CameraRig />
             <Interaction />
-            <SkyTraffic />
+            <SkyTraffic count={30} />
             <Rain />
             <DebugHook />
             {!NO_FX && (

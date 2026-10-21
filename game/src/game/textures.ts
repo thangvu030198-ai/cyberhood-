@@ -12,29 +12,70 @@ function canvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2
   return tex;
 }
 
-/** Cửa sổ toà nhà: phần lớn tối, một số sáng màu ấm/lạnh. Dùng làm emissiveMap. */
-export function makeWindowTexture(seed: number) {
+/**
+ * Mặt tiền cao ốc: một ô texture phủ 12m x 24m (8 cột cửa sổ 1,5m, 8 tầng 3m).
+ * `map` là tường và kính tối, `emissive` chỉ chứa các ô cửa đang sáng đèn.
+ */
+export function makeFacadeTextures(seed: number) {
   const rand = mulberry32(seed);
-  const tex = canvasTexture(128, 256, (ctx) => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, 128, 256);
-    const cols = 8;
-    const rows = 16;
+  const S = 512;
+  const cols = 8;
+  const rows = 8;
+  const cw = S / cols;
+  const ch = S / rows;
+  const lit: [number, number, string][] = [];
+  const map = canvasTexture(S, S, (ctx) => {
+    ctx.fillStyle = "#0b0a12";
+    ctx.fillRect(0, 0, S, S);
     for (let y = 0; y < rows; y++) {
+      // Dải sàn giữa các tầng
+      ctx.fillStyle = "#16141f";
+      ctx.fillRect(0, y * ch, S, 6);
       for (let x = 0; x < cols; x++) {
+        const wx = x * cw + 6;
+        const wy = y * ch + 12;
+        const ww = cw - 12;
+        const wh = ch - 20;
+        // Kính tắt đèn: xanh đen, sáng dần lên phía trên ô như phản chiếu trời
+        const g = ctx.createLinearGradient(0, wy, 0, wy + wh);
+        g.addColorStop(0, "#1d2a44");
+        g.addColorStop(1, "#0a0f1c");
+        ctx.fillStyle = g;
+        ctx.fillRect(wx, wy, ww, wh);
+        // Khung và thanh chia ô
+        ctx.fillStyle = "#24222e";
+        ctx.fillRect(wx + ww / 2 - 1, wy, 2, wh);
+        ctx.fillRect(wx, wy + wh * 0.35, ww, 2);
         const r = rand();
-        if (r > 0.42) continue;
-        const warm = r < 0.12;
-        const hue = warm ? 35 + rand() * 15 : 185 + rand() * 80;
-        const light = 35 + rand() * 35;
-        ctx.fillStyle = `hsl(${hue} 90% ${light}%)`;
-        ctx.fillRect(x * 16 + 3, y * 16 + 4, 10, 9);
+        if (r < 0.3) {
+          const tone = r < 0.17 ? `hsl(${32 + rand() * 14} 85% ${62 + rand() * 18}%)` : `hsl(${180 + rand() * 40} 70% ${55 + rand() * 20}%)`;
+          lit.push([x, y, tone]);
+        }
       }
     }
   });
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.magFilter = THREE.NearestFilter;
-  return tex;
+  const emissive = canvasTexture(S, S, (ctx) => {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, S, S);
+    for (const [x, y, tone] of lit) {
+      const wx = x * cw + 6;
+      const wy = y * ch + 12;
+      const ww = cw - 12;
+      const wh = ch - 20;
+      ctx.fillStyle = tone;
+      ctx.fillRect(wx, wy, ww, wh);
+      // Rèm che một phần, bóng người/đồ đạc tối
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      if (rand() < 0.5) ctx.fillRect(wx, wy, ww, wh * (0.2 + rand() * 0.4));
+      ctx.fillStyle = "#000";
+      ctx.fillRect(wx + ww / 2 - 1, wy, 2, wh);
+    }
+  });
+  for (const t of [map, emissive]) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 8;
+  }
+  return { map, emissive };
 }
 
 /** Mặt đường nhựa: vạch kẻ đứt đoạn ở giữa, viền vàng hai bên. */

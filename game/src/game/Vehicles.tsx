@@ -117,6 +117,40 @@ function mergeWheel(pivot: THREE.Group) {
     g.traverse((o) => (o as THREE.Mesh).isMesh && ((o as THREE.Mesh).material = mat));
     out.add(...mergeByMaterial(g).children);
   }
+  // Model gốc dựng bánh trước đang đánh lái chéo: quay quanh trục X sẽ lắc như đĩa đảo.
+  // Tìm góc lệch làm bánh mỏng nhất theo trục X rồi xoay thẳng lại.
+  const meshes = out.children as THREE.Mesh[];
+  const widthAt = (a: number) => {
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    let min = Infinity;
+    let max = -Infinity;
+    for (const m of meshes) {
+      const p = m.geometry.getAttribute("position");
+      for (let i = 0; i < p.count; i += 3) {
+        const x = p.getX(i) * c + p.getZ(i) * s;
+        if (x < min) min = x;
+        if (x > max) max = x;
+      }
+    }
+    return max - min;
+  };
+  let best = 0;
+  let bestW = widthAt(0);
+  for (let deg = -45; deg <= 45; deg += 0.5) {
+    const w = widthAt(THREE.MathUtils.degToRad(deg));
+    if (w < bestW - 1e-4) {
+      bestW = w;
+      best = THREE.MathUtils.degToRad(deg);
+    }
+  }
+  if (best !== 0) {
+    // x' = x·cos + z·sin chính là phép quay quanh Y một góc best
+    for (const m of meshes) {
+      m.geometry.rotateY(best);
+      m.geometry.computeBoundingSphere();
+    }
+  }
   return out;
 }
 
@@ -179,14 +213,40 @@ function useCarModel(paint: string) {
   }, [gltf, paint]);
 }
 
+let _glowTexture: THREE.CanvasTexture | null = null;
+/** Vệt sáng gầm xe mờ dần ra mép thay vì một tấm chữ nhật màu đặc */
+function glowTexture() {
+  if (_glowTexture) return _glowTexture;
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.45, "rgba(255,255,255,0.55)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  _glowTexture = new THREE.CanvasTexture(c);
+  _glowTexture.colorSpace = THREE.SRGBColorSpace;
+  return _glowTexture;
+}
+
 function CarBody({ body, glow, active }: { body: THREE.Object3D; glow: string; active: boolean }) {
   return (
     <group>
       <primitive object={body} position={[0, MODEL_Y, MODEL_Z]} />
       {/* underglow hắt xuống mặt đường */}
       <mesh position={[0, MODEL_Y + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[2.8, 5]} />
-        <meshBasicMaterial color={glow} transparent opacity={0.3} depthWrite={false} toneMapped={false} />
+        <planeGeometry args={[3.2, 5.6]} />
+        <meshBasicMaterial
+          color={glow}
+          map={glowTexture()}
+          transparent
+          opacity={0.55}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
       </mesh>
       {active && (
         <>

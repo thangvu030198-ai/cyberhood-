@@ -136,7 +136,7 @@ export function PlayerCombat() {
     };
   }, [dom]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime;
     const s = useGame.getState();
     const player = handles.player;
@@ -144,8 +144,20 @@ export function PlayerCombat() {
     const canFire = s.mode === "foot" && s.flatlinedAt === null && !s.shopOpen;
     const touchFire = !!useButtonStore.getState().buttons.fire;
 
-    // Nhân vật quay theo hướng camera khi ngắm hoặc vừa bắn
-    player.setLockForward(canFire && (s.aiming || t < faceUntil.current));
+    // Đã khoá chuột thì nhân vật luôn quay theo hướng camera (kiểu bắn góc nhìn thứ 3);
+    // trên cảm ứng chỉ quay theo khi ngắm hoặc vừa bắn
+    player.setLockForward(canFire && (s.pointerLocked || s.aiming || t < faceUntil.current));
+    if (canFire && s.pointerLocked && player.body) {
+      // Lực xoay của ecctrl khá chậm: bám thẳng theo hướng camera để rê chuột tới đâu người quay tới đó
+      camera.getWorldDirection(_flat);
+      const aimYaw = Math.atan2(_flat.x, _flat.z);
+      const q = player.body.rotation();
+      const bodyYaw = 2 * Math.atan2(q.y, q.w);
+      const diff = ((((aimYaw - bodyYaw) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      const yaw = bodyYaw + diff * (1 - Math.exp(-18 * Math.min(dt, 0.1)));
+      player.body.setRotation({ x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) }, true);
+      player.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    }
 
     const wantsFire = pendingShot.current || triggerHeld.current || touchFire;
     pendingShot.current = false;
@@ -159,6 +171,22 @@ export function PlayerCombat() {
     const damage = weapon.damage * (s.upgrades.overclock ? 1.5 : 1);
     _chest.copy(player.currPos).setY(player.currPos.y + 0.5);
     camera.getWorldDirection(_dir);
+
+    // Bắn khi đang quay lưng với tâm ngắm: xoay người ngay về hướng bắn, không chờ quay từ từ
+    _flat.copy(_dir).setY(0).normalize();
+    const body = player.body;
+    let snapped = false;
+    if (body && !touchFire) {
+      const q = body.rotation();
+      const bodyYaw = 2 * Math.atan2(q.y, q.w);
+      const aimYaw = Math.atan2(_flat.x, _flat.z);
+      const diff = Math.abs(((((aimYaw - bodyYaw) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      if (diff > 0.5) {
+        body.setRotation({ x: 0, y: Math.sin(aimYaw / 2), z: 0, w: Math.cos(aimYaw / 2) }, true);
+        body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        snapped = true;
+      }
+    }
 
     if (touchFire) {
       // Tự ngắm: nhắm drone gần nhất phía trước camera
@@ -188,7 +216,8 @@ export function PlayerCombat() {
     combatDebug.last = { origin: _origin.toArray(), dir: _dir.toArray(), wall, drone: droneHit?.t ?? null };
 
     muzzle.getWorldPosition(_muzzle);
-    if (_muzzle.distanceTo(_chest) > 2) _muzzle.copy(_chest);
+    // Vừa xoay người thì súng chưa kịp cập nhật vị trí: cho tia laser xuất phát trước ngực
+    if (snapped || _muzzle.distanceTo(_chest) > 2) _muzzle.copy(_chest).addScaledVector(_flat, 0.6);
     fx.tracer(_muzzle, _end, PALETTE.cyan);
     playSfx(weapon.sfx, 0.55);
   });

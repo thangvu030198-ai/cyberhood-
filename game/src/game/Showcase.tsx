@@ -126,11 +126,13 @@ export function HubProps() {
 // ---------------------------------------------------------------------------
 // Đội xe bay: xe nâng chở hàng, phi thuyền, UFO bay theo làn trên cao (thay các khối hộp phát sáng cũ)
 
-type FleetKind = "forklift" | "spaceship" | "ufo";
+type FleetKind = "forklift" | "spaceship" | "ufo" | "mx_police_hovercar";
 const FLEET: { kind: FleetKind; size: number; share: number }[] = [
-  { kind: "forklift", size: 7, share: 0.45 },
-  { kind: "spaceship", size: 9, share: 0.35 },
-  { kind: "ufo", size: 6, share: 0.2 },
+  { kind: "forklift", size: 7, share: 0.35 },
+  { kind: "spaceship", size: 9, share: 0.25 },
+  { kind: "ufo", size: 6, share: 0.15 },
+  // Xe cảnh sát bay (Meshy) tuần tra ở tầng thấp hơn
+  { kind: "mx_police_hovercar", size: 5.5, share: 0.25 },
 ];
 
 /** Gộp mọi lưới của model thành danh sách (geometry, material, ma trận) để vẽ bằng InstancedMesh */
@@ -195,7 +197,7 @@ function SkyFleet({ count = 26 }: { count?: number }) {
       const ships: Ship[] = Array.from({ length: n }, (_, i) => ({
         axis: (i + fi) % 2,
         lane: (rand() - 0.5) * CITY_HALF * 1.8,
-        height: 26 + Math.floor(rand() * 4) * 8,
+        height: f.kind === "mx_police_hovercar" ? 16 + Math.floor(rand() * 3) * 4 : 26 + Math.floor(rand() * 4) * 8,
         offset: rand() * CITY_HALF * 4,
         speed: (rand() < 0.5 ? -1 : 1) * (f.kind === "forklift" ? 9 + rand() * 6 : 14 + rand() * 14),
       }));

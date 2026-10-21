@@ -1,9 +1,9 @@
-import { use, useMemo, useRef } from "react";
+import { Suspense, use, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
-import { models } from "./assets";
+import { extraModel, models } from "./assets";
 import { fitCharacter } from "./Player";
 import { PALETTE } from "./config";
 import { VAULT_EXIT, VAULT_TERMINAL } from "./quests";
@@ -88,6 +88,45 @@ function Hologram() {
   );
 }
 
+/** GHOST_0 dựng bằng Meshy: thân giáp sứ hiện thành hologram cyan trong suốt, lơ lửng và chập chờn */
+function GhostMeshy() {
+  const gltf = use(extraModel("mx_npc_ghost_walk"));
+  const ref = useRef<THREE.Group>(null);
+  const { scene, material } = useMemo(() => {
+    const s = cloneSkinned(gltf.scene);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(PALETTE.cyan).multiplyScalar(1.4),
+      transparent: true,
+      opacity: 0.55,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    s.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mat.map = (mesh.material as THREE.MeshStandardMaterial).map ?? null;
+      mesh.material = mat;
+      mesh.frustumCulled = false;
+    });
+    fitCharacter(s, 2.1, 0);
+    return { scene: s, material: mat };
+  }, [gltf]);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    material.opacity = 0.5 + Math.sin(t * 9) * 0.05 + (Math.random() < 0.04 ? -0.3 : 0);
+    if (ref.current) {
+      ref.current.rotation.y = Math.sin(t * 0.6) * 0.3;
+      ref.current.position.y = 0.25 + Math.sin(t * 1.3) * 0.08;
+    }
+  });
+  return (
+    <group ref={ref} position={[0, 0.25, -1.4]}>
+      <primitive object={scene} />
+    </group>
+  );
+}
+
 function Terminal() {
   const screen = useMemo(() => makeLabelTexture("GHOST_0", "ROOT PROTOCOL // STANDBY", PALETTE.cyan), []);
   return (
@@ -105,7 +144,9 @@ function Terminal() {
         <cylinderGeometry args={[0.7, 0.8, 0.12, 24]} />
         <meshBasicMaterial color={new THREE.Color(PALETTE.cyan).multiplyScalar(2)} toneMapped={false} />
       </mesh>
-      <Hologram />
+      <Suspense fallback={<Hologram />}>
+        <GhostMeshy />
+      </Suspense>
       <pointLight position={[0, 2.4, -1]} color={PALETTE.cyan} intensity={40} distance={12} decay={2} />
     </group>
   );

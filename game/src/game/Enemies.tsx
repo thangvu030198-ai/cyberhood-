@@ -106,17 +106,19 @@ export const drones: Drone[] = (() => {
       ? new THREE.Vector3(along, TROOPER_CENTER, street + lane)
       : new THREE.Vector3(street + lane, TROOPER_CENTER, along);
     if (Math.hypot(home.x - PLAYER.spawn[0], home.z - PLAYER.spawn[2]) < 40) continue;
+    // Cứ 4 lính có 1 lính hạng nặng: to hơn, trâu hơn
+    const heavy = (list.length - DRONE_COUNT) % 4 === 0;
     list.push({
       id: list.length,
       kind: "trooper",
-      maxHp: TROOPER_HP,
-      size: 1,
+      maxHp: heavy ? TROOPER_HP * 2.5 : TROOPER_HP,
+      size: heavy ? 1.2 : 1,
       home,
       pos: home.clone(),
       vel: new THREE.Vector3(),
       wander: home.clone(),
       nextWander: 0,
-      hp: TROOPER_HP,
+      hp: heavy ? TROOPER_HP * 2.5 : TROOPER_HP,
       state: "patrol",
       nextShot: 0,
       deadAt: 0,
@@ -366,12 +368,13 @@ function DroneBody({ index, scene, materials }: { index: number; scene: THREE.Ob
 
 /** Lính Legion đi bộ (model Meshy, đã gắn xương): đi khi tuần tra, chạy khi truy đuổi */
 function TrooperModel({ index }: { index: number }) {
-  const walkGltf = use(extraModel("mx_legion_trooper_walk"));
-  const runGltf = use(extraModel("mx_legion_trooper_run"));
+  const heavy = drones[index].size > 1;
+  const walkGltf = use(extraModel(heavy ? "mx_legion_heavy_walk" : "mx_legion_trooper_walk"));
+  const runGltf = use(extraModel(heavy ? "mx_legion_heavy_run" : "mx_legion_trooper_run"));
   const ref = useRef<THREE.Group>(null);
   const { scene, mixer, walk, run, mats } = useMemo(() => {
     const s = cloneSkinned(walkGltf.scene);
-    fitCharacter(s, 1.85, -TROOPER_CENTER);
+    fitCharacter(s, heavy ? 2.25 : 1.85, -TROOPER_CENTER);
     const mats: { mat: THREE.MeshStandardMaterial; base: THREE.Color }[] = [];
     s.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -394,7 +397,7 @@ function TrooperModel({ index }: { index: number }) {
     run?.play();
     if (run) run.weight = 0;
     return { scene: s, mixer, walk, run, mats };
-  }, [walkGltf, runGltf]);
+  }, [walkGltf, runGltf, heavy]);
   useFrame(({ camera }, dt) => {
     const d = drones[index];
     const g = ref.current;

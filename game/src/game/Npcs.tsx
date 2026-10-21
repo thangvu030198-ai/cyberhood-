@@ -1,9 +1,9 @@
-import { use, useEffect, useMemo, useRef } from "react";
+import { Suspense, use, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { models } from "./assets";
+import { extraModel, models, type ExtraModel } from "./assets";
 import { fitCharacter } from "./Player";
 import { PALETTE } from "./config";
 import { fx } from "./Effects";
@@ -71,6 +71,84 @@ function NpcBot({ id }: { id: NpcId }) {
     const target = dx * dx + dz * dz < 64 ? Math.atan2(dx, dz) : npc.yaw;
     const diff = ((((target - g.rotation.y) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     g.rotation.y += diff * Math.min(1, dt * 4);
+  });
+
+  return (
+    <group ref={group} position={npc.pos} rotation={[0, npc.yaw, 0]}>
+      <primitive object={scene} />
+      <sprite position={[0, 2.45, 0]} scale={[1.9, 0.6, 1]}>
+        <spriteMaterial map={label} toneMapped={false} depthWrite={false} />
+      </sprite>
+    </group>
+  );
+}
+
+const MESHY_NPC: Partial<Record<NpcId, ExtraModel>> = {
+  rook: "mx_npc_rook_walk",
+  vex: "mx_npc_vex_walk",
+  echo: "mx_npc_echo_walk",
+};
+const PACE = 1.6;
+
+/**
+ * NPC dựng bằng Meshy (đã gắn xương, chỉ có clip đi bộ): đi qua đi lại quanh chỗ đứng;
+ * khi người chơi lại gần thì dừng lại và quay mặt về phía người chơi.
+ */
+function NpcMeshy({ id, model }: { id: NpcId; model: ExtraModel }) {
+  const npc = NPCS[id];
+  const gltf = use(extraModel(model));
+  const group = useRef<THREE.Group>(null);
+  const { scene, mixer, action } = useMemo(() => {
+    const s = cloneSkinned(gltf.scene);
+    fitCharacter(s, id === "vex" ? 1.7 : 1.8, 0);
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = m.material as THREE.MeshStandardMaterial;
+      // Chút tự sáng theo texture để nhân vật nổi bật dưới đèn neon
+      if (mat.map && !mat.emissiveMap) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#ffffff");
+        mat.emissiveIntensity = 0.22;
+      }
+    });
+    const mixer = new THREE.AnimationMixer(s);
+    const action = gltf.animations[0] ? mixer.clipAction(gltf.animations[0]) : null;
+    action?.play();
+    return { scene: s, mixer, action };
+  }, [gltf, id]);
+
+  const quest = useGame((s) => s.quest);
+  const marker = useMemo(() => npcMarker(id), [id, quest]);
+  const label = useMemo(() => makeLabelTexture(npc.name, npc.role.toUpperCase(), npc.glow, marker ?? undefined), [npc, marker]);
+  const t = useRef(Math.random() * 10);
+
+  useFrame((_, dt) => {
+    const g = group.current;
+    if (!g) return;
+    const step = Math.min(dt, 0.1);
+    const p = handles.player?.currPos;
+    const near = !!p && Math.hypot(p.x - npc.pos[0], p.z - npc.pos[2]) < 7;
+    const side = [Math.cos(npc.yaw), -Math.sin(npc.yaw)];
+    let targetYaw: number;
+    if (near && p) {
+      // Đứng lại, quay về phía người chơi
+      targetYaw = Math.atan2(p.x - g.position.x, p.z - g.position.z);
+      if (action) action.timeScale = THREE.MathUtils.damp(action.timeScale, 0, 8, step);
+    } else {
+      t.current += step;
+      const phase = (t.current * 0.45) % 2;
+      const dir = phase < 1 ? 1 : -1;
+      const k = phase < 1 ? phase : 2 - phase;
+      const off = (k * 2 - 1) * PACE;
+      g.position.set(npc.pos[0] + side[0] * off, npc.pos[1], npc.pos[2] + side[1] * off);
+      targetYaw = Math.atan2(side[0] * dir, side[1] * dir);
+      if (action) action.timeScale = THREE.MathUtils.damp(action.timeScale, 0.8, 6, step);
+    }
+    const diff = ((((targetYaw - g.rotation.y) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    g.rotation.y += diff * Math.min(1, step * 6);
+    mixer.update(step);
   });
 
   return (
@@ -243,9 +321,16 @@ export function Npcs() {
       </RigidBody>
       {(Object.keys(NPCS) as NpcId[])
         .filter((id) => !NPCS[id].inVault)
-        .map((id) => (
-          <NpcBot key={id} id={id} />
-        ))}
+        .map((id) => {
+          const model = MESHY_NPC[id];
+          return model ? (
+            <Suspense key={id} fallback={<NpcBot id={id} />}>
+              <NpcMeshy id={id} model={model} />
+            </Suspense>
+          ) : (
+            <NpcBot key={id} id={id} />
+          );
+        })}
       <Shards />
       <Beacon />
       <InteractionScanner />

@@ -228,12 +228,39 @@ function PartFloat({ slot }: { slot: MechSlot }) {
   );
 }
 
+function Placed({ name, size, by = "longest", position, rotationY, selfLit = 0.3, collider }: {
+  name: ExtraModel;
+  size: number;
+  by?: "height" | "longest";
+  position: [number, number, number];
+  rotationY: number;
+  selfLit?: number;
+  collider: [number, number, number];
+}) {
+  const { root } = useFitted(name, size, by, selfLit);
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <primitive object={root} />
+      <RigidBody type="fixed" colliders={false}>
+        <CuboidCollider args={collider} position={[0, collider[1], 0]} />
+      </RigidBody>
+    </group>
+  );
+}
+
 /** Phần có va chạm (đặt trong <Physics>) */
 export function MeshyStatic() {
   return (
     <>
       <Suspense fallback={null}>
         <VelocityShowcase />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Placed name="mx_cyber_bike" size={2.2} position={[-6.6, 0, -5]} rotationY={0.3} collider={[0.4, 0.6, 1.1]} />
+        <Placed name="mx_cyber_bike" size={2.2} position={[-6.6, 0, -8]} rotationY={-0.2} collider={[0.4, 0.6, 1.1]} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Placed name="mx_noodle_stall" size={3.2} position={[11.4, Y, 30]} rotationY={-Math.PI / 2} collider={[1.4, 1.3, 0.9]} />
       </Suspense>
       <ItemShelf />
     </>

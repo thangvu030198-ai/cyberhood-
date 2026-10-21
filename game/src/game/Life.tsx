@@ -48,6 +48,8 @@ const KEEP_CLEAR: [number, number, number][] = [
   [11.5, 6, 13], // lò ion, cây holo, cánh tay robot
   [-11.5, -8.5, 4], // kệ vật phẩm đặc biệt
   [6.3, -4, 5], // bệ xoay xe Velocity
+  [-6.6, -6.5, 3], // mô tô
+  [11.4, 30, 3.5], // quầy mì
 ];
 const clear = (x: number, z: number) => KEEP_CLEAR.every(([cx, cz, r]) => Math.hypot(x - cx, z - cz) > r);
 
@@ -154,6 +156,62 @@ function Crowd({ count }: { count: number }) {
     </>
   );
 }
+
+/** Dân thường dựng bằng Meshy (đã gắn xương, có clip đi bộ riêng), đi trên vỉa hè như đám đông */
+function MeshyWalker({ model, seed }: { model: ExtraModel; seed: number }) {
+  const gltf = use(extraModel(model));
+  const ped = useMemo(() => {
+    const rand = mulberry32(seed);
+    const s = cloneSkinned(gltf.scene);
+    fitCharacter(s, 1.7 + rand() * 0.1, 0);
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = m.material as THREE.MeshStandardMaterial;
+      if (mat.map && !mat.emissiveMap) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#ffffff");
+        mat.emissiveIntensity = 0.2;
+      }
+    });
+    const root = new THREE.Group();
+    root.name = "pedestrian";
+    root.add(s);
+    const mixer = new THREE.AnimationMixer(s);
+    const clip = gltf.animations[0];
+    if (clip) {
+      const act = mixer.clipAction(clip);
+      act.time = rand() * clip.duration;
+      act.play();
+    }
+    const near = BLOCK_CENTERS.filter((c) => Math.abs(c) < CITY_PITCH * 1.5);
+    return {
+      root,
+      mixer,
+      bx: near[Math.floor(rand() * near.length)],
+      bz: near[Math.floor(rand() * near.length)],
+      s: rand() * PERIM,
+      speed: (rand() < 0.5 ? -1 : 1) * (1.1 + rand() * 0.3),
+    };
+  }, [gltf, seed]);
+  useFrame(({ camera }, dt) => {
+    const step = Math.min(dt, 0.1);
+    const player = handles.player?.currPos;
+    ringPoint(ped.bx, ped.bz, WALK_RING, ped.s, _pp);
+    const blocked = !!player && Math.hypot(player.x - _pp.x, player.z - _pp.z) < 1.3;
+    if (!blocked) ped.s += ped.speed * step;
+    const side = ringPoint(ped.bx, ped.bz, WALK_RING, ped.s, _pp);
+    ped.root.position.set(_pp.x, SIDEWALK, _pp.z);
+    ped.root.rotation.y = SIDE_YAW[side] + (ped.speed < 0 ? Math.PI : 0);
+    const d = camera.position.distanceTo(ped.root.position);
+    ped.root.visible = d < PED_DRAW;
+    if (d < PED_ANIMATE && !blocked) ped.mixer.update(step);
+  });
+  return <primitive object={ped.root} />;
+}
+
+const CIVILIANS: ExtraModel[] = ["mx_civ_vendor_walk", "mx_civ_punk_walk", "mx_civ_salaryman_walk"];
 
 /** Robot RobotExpressive đi dạo quanh các khối gần Hub, thỉnh thoảng vẫy tay */
 function Robots({ count }: { count: number }) {
@@ -566,6 +624,13 @@ export function LifeDynamic({ quality }: { quality: "high" | "low" }) {
       <Suspense fallback={null}>
         <Robots count={high ? 5 : 2} />
       </Suspense>
+      {CIVILIANS.flatMap((m, i) =>
+        Array.from({ length: high ? 2 : 1 }, (_, k) => (
+          <Suspense key={`${m}${k}`} fallback={null}>
+            <MeshyWalker model={m} seed={100 + i * 10 + k} />
+          </Suspense>
+        )),
+      )}
       <Suspense fallback={null}>
         <Traffic count={high ? 10 : 5} />
       </Suspense>

@@ -77,7 +77,7 @@ export const LEVELS: LevelEntry[] = [
     blurb: "Tháp khách sạn ma. Sương ma dâng từ dưới lên: leo thật nhanh lên sân thượng.",
     view: "ps2",
     howTo: "Leo ngược lên tháp kiểu Ice Climber. Nhảy xuyên bậc từ dưới lên, chậm là bị sương nuốt.",
-    looks: { trooper: TROOPER, zombie: { base: "mx_hh_ghost", clips: { walk: "walk", run: "run", attack: "mx_zmb_nurse_attack", death: "mx_zmb_nurse_death", hit: "mx_zmb_nurse_stagger" }, height: 1.75 }, boss: monster("mx_mon_mutant", 3.4) },
+    looks: { trooper: TROOPER, zombie: zombieLook("mx_hh_ghost", 1.75), boss: monster("mx_mon_mutant", 3.4) },
     bossName: "Quái Đột Biến",
     backBuildings: ["mx_bld_hotel", "mx_bld_nightclub", "mx_bld_capsule_hotel"],
     props: [
@@ -111,7 +111,7 @@ export const LEVELS: LevelEntry[] = [
     view: "snes",
     howTo: "Bay bắn tự cuộn kiểu Gradius 16-bit. W/A/S/D bay bốn hướng, K tăng tốc, J bắn.",
     looks: {
-      trooper: { base: "mx_wz_heavy", clips: { walk: "walk", idle: "walk", shoot: "mx_legion_android_walkshoot", death: "mx_legion_android_death" }, height: 1.95 },
+      trooper: { base: "mx_wz_heavy", clips: { walk: "walk", idle: "walk", shoot: "walkshoot", death: "death" }, height: 1.95 },
       zombie: zombieLook("mx_zmb_soldier"),
       boss: monster("mx_mon_cyborg_hound_rider", 3.4),
     },
@@ -142,7 +142,7 @@ export const LEVELS: LevelEntry[] = [
     view: "cinema",
     howTo: "Đột kích pháo đài kiểu Shinobi: camera điện ảnh, trận trùm có khung hình rộng.",
     looks: {
-      trooper: { base: "mx_ct_guard", clips: { walk: "walk", idle: "walk", shoot: "mx_legion_officer_walkshoot", death: "mx_legion_officer_death" }, height: 1.95 },
+      trooper: { base: "mx_ct_guard", clips: { walk: "walk", idle: "walk", shoot: "attack", death: "death" }, height: 1.95 },
       zombie: zombieLook("mx_zmb_cyborg"),
       boss: { base: "mx_vane_human", clips: { walk: "walk", run: "run", attack: "walkshoot", death: "death", scream: "talk", hit: "hit" }, height: 3.6 },
     },

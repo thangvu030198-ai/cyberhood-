@@ -108,6 +108,7 @@ function Crowd({ count }: { count: number }) {
         if (m.isMesh) m.frustumCulled = false;
       });
       const root = new THREE.Group();
+      root.name = "pedestrian";
       root.add(model);
       const mixer = new THREE.AnimationMixer(model);
       if (walk) {

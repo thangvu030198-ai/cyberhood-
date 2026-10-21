@@ -382,7 +382,7 @@ function TrooperModel({ index }: { index: number }) {
       if (mat.map && !mat.emissiveMap) {
         mat.emissiveMap = mat.map;
         mat.emissive.set("#ffffff");
-        mat.emissiveIntensity = 0.18;
+        mat.emissiveIntensity = 0.5;
       }
       m.material = mat;
       mats.push({ mat, base: mat.emissive.clone() });

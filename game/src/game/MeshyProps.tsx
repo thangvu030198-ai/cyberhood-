@@ -75,7 +75,7 @@ function Statue({ name, size, position, rotationY, selfLit, drawWithin }: {
 
 /** Xe Velocity trưng bày trên bệ xoay phát sáng cạnh điểm xuất phát */
 function VelocityShowcase() {
-  const { root } = useFitted("mx_velocity_car", 4.6, "longest", 0.15);
+  const { root } = useFitted("mx_velocity_car", 4.6, "longest", 0.55);
   const spin = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
     if (spin.current) spin.current.rotation.y += Math.min(dt, 0.1) * 0.35;

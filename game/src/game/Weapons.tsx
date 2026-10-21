@@ -9,6 +9,7 @@ import { fx } from "./Effects";
 import { handles } from "./refs";
 import { useGame } from "./store";
 import { rayBuildings, rayGround } from "./world";
+import { isLocked, pointer, requestLock } from "./pointer";
 
 const RANGE = 90;
 const WEAPONS = {
@@ -70,7 +71,7 @@ const _muzzle = new THREE.Vector3();
 const _chest = new THREE.Vector3();
 const _flat = new THREE.Vector3();
 
-/** Điều khiển bắn: chuột trái bắn, giữ chuột phải để ngắm; nút FIRE trên điện thoại có tự ngắm. */
+/** Điều khiển bắn: khoá chuột rồi nhấp trái để bắn, giữ phải để ngắm; nút FIRE trên điện thoại có tự ngắm. */
 export function PlayerCombat() {
   const camera = useThree((s) => s.camera);
   const dom = useThree((s) => s.gl.domElement);
@@ -80,30 +81,44 @@ export function PlayerCombat() {
   const pendingShot = useRef(false);
 
   useEffect(() => {
+    // Chỉ dùng khi không khoá được chuột: kéo để xoay camera, nhấp nhanh để bắn
     let downX = 0;
     let downY = 0;
     let downAt = 0;
     const onDown = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
-      if (e.button === 2) useGame.getState().setAiming(true);
+      const s = useGame.getState();
+      if (!isLocked(dom)) {
+        // Cú nhấp đầu tiên chỉ để khoá chuột vào game, chưa bắn
+        if (pointer.supported && e.button === 0 && !s.shopOpen) {
+          requestLock(dom);
+          return;
+        }
+        if (e.button === 2) s.setAiming(true);
+        if (e.button === 0) {
+          downX = e.clientX;
+          downY = e.clientY;
+          downAt = performance.now();
+          if (s.aiming) triggerHeld.current = true;
+        }
+        return;
+      }
+      // Đã khoá chuột: trái bắn (giữ để bắn liên tục), phải ngắm
+      if (e.button === 2) s.setAiming(true);
       if (e.button === 0) {
-        downX = e.clientX;
-        downY = e.clientY;
-        downAt = performance.now();
-        // Đang ngắm thì giữ chuột trái là bắn liên tục
-        if (useGame.getState().aiming) triggerHeld.current = true;
+        pendingShot.current = true;
+        triggerHeld.current = true;
       }
     };
     const onUp = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
       if (e.button === 2) useGame.getState().setAiming(false);
-      if (e.button === 0) {
-        const wasHeld = triggerHeld.current;
-        triggerHeld.current = false;
-        // Không ngắm: chỉ bắn khi là cú nhấp, không phải kéo xoay camera
-        const click = Math.hypot(e.clientX - downX, e.clientY - downY) < 6 && performance.now() - downAt < 350;
-        if (!wasHeld && click) pendingShot.current = true;
-      }
+      if (e.button !== 0) return;
+      const wasHeld = triggerHeld.current;
+      triggerHeld.current = false;
+      if (isLocked(dom)) return;
+      const click = Math.hypot(e.clientX - downX, e.clientY - downY) < 6 && performance.now() - downAt < 350;
+      if (!wasHeld && click) pendingShot.current = true;
     };
     const noMenu = (e: Event) => e.preventDefault();
     dom.addEventListener("pointerdown", onDown);

@@ -4,6 +4,7 @@ import { Joystick, VirtualButton } from "ecctrl/input";
 import { CARS } from "../game/Vehicles";
 import { MAX_WANTED, SHOP_ITEMS, districtAt, gridRef, useGame, type Emote, type ShopItemId } from "../game/store";
 import { Minimap } from "./Minimap";
+import { pointer } from "../game/pointer";
 
 const EMOTE_KEYS: Record<string, Emote> = { Digit1: "wave", Digit2: "dance", Digit3: "thumbsUp" };
 
@@ -204,12 +205,14 @@ function Help({ mode }: { mode: "foot" | "drive" }) {
         <dl>
           <dt>W A S D</dt>
           <dd>Di chuyển · Shift chạy · Space nhảy</dd>
+          <dt>Rê chuột</dt>
+          <dd>Xoay camera · đẩy lên để ngửa nhìn toà nhà</dd>
           <dt>Chuột trái</dt>
-          <dd>Bắn</dd>
+          <dd>Bắn (giữ để bắn liên tục)</dd>
           <dt>Giữ chuột phải</dt>
-          <dd>Ngắm qua vai (giữ trái để bắn liên tục)</dd>
-          <dt>Kéo chuột</dt>
-          <dd>Xoay camera · kéo lên để ngửa nhìn toà nhà</dd>
+          <dd>Ngắm qua vai</dd>
+          <dt>Esc</dt>
+          <dd>Thả chuột ra khỏi game</dd>
           <dt>F / E</dt>
           <dd>Lên xe / Mở chợ đen</dd>
           <dt>1 2 3</dt>
@@ -249,6 +252,7 @@ export function Hud() {
   const shopOpen = useGame((s) => s.shopOpen);
   const speed = useGame((s) => s.speed);
   const kills = useGame((s) => s.kills);
+  const pointerLocked = useGame((s) => s.pointerLocked);
   const [help, setHelp] = useState(true);
   const touch = isTouchDevice();
 
@@ -291,6 +295,9 @@ export function Hud() {
       </header>
 
       <Crosshair />
+      {!touch && !pointerLocked && !shopOpen && pointer.supported && (
+        <div className="lock-hint">Nhấp vào màn hình để điều khiển bằng chuột</div>
+      )}
       <Vitals />
 
       {mode === "foot" && !shopOpen && (nearCarId !== null || nearShop) && (

@@ -90,6 +90,8 @@ type GameState = {
   lastLoot: { amount: number; at: number } | null;
   flatlinedAt: number | null;
   aiming: boolean;
+  /** Chuột đang bị khoá vào game (rê để xoay camera) */
+  pointerLocked: boolean;
   nearShop: boolean;
   shopOpen: boolean;
 
@@ -109,6 +111,7 @@ type GameState = {
   markHit: () => void;
   respawn: () => void;
   setAiming: (aiming: boolean) => void;
+  setPointerLocked: (locked: boolean) => void;
   setNearShop: (near: boolean) => void;
   setShopOpen: (open: boolean) => void;
   buy: (id: ShopItemId) => "ok" | "poor" | "owned" | "full";
@@ -138,6 +141,7 @@ export const useGame = create<GameState>((set, get) => ({
   lastLoot: null,
   flatlinedAt: null,
   aiming: false,
+  pointerLocked: false,
   nearShop: false,
   shopOpen: false,
 
@@ -167,6 +171,7 @@ export const useGame = create<GameState>((set, get) => ({
   markHit: () => set({ lastHitAt: now() }),
   respawn: () => set((s) => ({ hp: s.maxHp, flatlinedAt: null, mode: "foot", carId: null, speed: 0 })),
   setAiming: (aiming) => set({ aiming }),
+  setPointerLocked: (pointerLocked) => set(pointerLocked ? { pointerLocked } : { pointerLocked, aiming: false }),
   setNearShop: (nearShop) => set({ nearShop }),
   setShopOpen: (shopOpen) => set({ shopOpen }),
   buy: (id) => {

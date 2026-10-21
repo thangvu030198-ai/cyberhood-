@@ -8,11 +8,14 @@ import { PLAYER } from "./config";
 import { handles } from "./refs";
 import { useGame } from "./store";
 import { flipCarUpright } from "./Vehicles";
+import { releaseLock } from "./pointer";
 
 const FOOT_DISTANCE = 6;
 const CAR_DISTANCE = 9.5;
 /** Khi ngắm: camera áp sát và lệch qua vai phải */
 const AIM_DISTANCE = 3.2;
+/** Độ nhạy chuột khi đã khoá (rad mỗi pixel) */
+const MOUSE_SENSITIVITY = 0.0028;
 /** Sau bao lâu không kéo chuột thì camera tự quay về sau đuôi xe (giây) */
 const AUTO_FOLLOW_DELAY = 1.2;
 
@@ -24,6 +27,7 @@ function shortestAngle(from: number, to: number) {
 export function CameraRig() {
   const cc = useRef<EcctrlCameraControlsHandle>(null);
   const scene = useThree((s) => s.scene);
+  const dom = useThree((s) => s.gl.domElement);
   const mode = useGame((s) => s.mode);
   const lastUserInput = useRef(-Infinity);
 
@@ -45,15 +49,30 @@ export function CameraRig() {
     // Chuột phải dành cho ngắm bắn, không dùng để kéo dịch camera
     controls.mouseButtons.right = CameraControlsImpl.ACTION.NONE;
 
+    // Khoá chuột: tự xử lý rê chuột để xoay camera, tắt kéo-xoay của CameraControls
+    const onMove = (e: MouseEvent) => {
+      if (document.pointerLockElement !== dom) return;
+      const aimScale = useGame.getState().aiming ? 0.6 : 1;
+      controls.rotate(-e.movementX * MOUSE_SENSITIVITY * aimScale, -e.movementY * MOUSE_SENSITIVITY * aimScale, false);
+      lastUserInput.current = performance.now() / 1000;
+    };
+    const unsubscribe = useGame.subscribe((s, prev) => {
+      if (s.pointerLocked === prev.pointerLocked) return;
+      controls.mouseButtons.left = s.pointerLocked ? CameraControlsImpl.ACTION.NONE : CameraControlsImpl.ACTION.ROTATE;
+    });
+    document.addEventListener("mousemove", onMove);
+
     const onStart = () => (lastUserInput.current = Infinity);
     const onEnd = () => (lastUserInput.current = performance.now() / 1000);
     controls.addEventListener("controlstart", onStart);
     controls.addEventListener("controlend", onEnd);
     return () => {
+      document.removeEventListener("mousemove", onMove);
+      unsubscribe();
       controls.removeEventListener("controlstart", onStart);
       controls.removeEventListener("controlend", onEnd);
     };
-  }, [scene]);
+  }, [scene, dom]);
 
   const aiming = useGame((s) => s.aiming && s.mode === "foot");
   const firstMode = useRef(true);
@@ -150,5 +169,9 @@ function toggleShop() {
   const { nearShop, shopOpen, setShopOpen, flatlinedAt } = useGame.getState();
   if (flatlinedAt !== null) return;
   if (shopOpen) setShopOpen(false);
-  else if (nearShop) setShopOpen(true);
+  else if (nearShop) {
+    // Thả chuột để bấm được nút trong chợ
+    releaseLock();
+    setShopOpen(true);
+  }
 }

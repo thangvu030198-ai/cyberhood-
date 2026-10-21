@@ -1,25 +1,18 @@
 import { use, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useAnimations, useKeyboardControls } from "@react-three/drei";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { Ecctrl, type EcctrlHandle } from "ecctrl";
 import { EcctrlAnimationStateController, useEcctrlAnimationStore } from "ecctrl/animation";
 import { useButtonStore, useJoystickStore } from "ecctrl/input";
-import robotDataUrl from "../assets/robot.glb?inline";
+import { models } from "./assets";
 import { PLAYER } from "./config";
 import { handles } from "./refs";
 import { useGame, type Emote } from "./store";
+import { Gun } from "./Weapons";
 
 const CAR_REACH = 3.6;
-
-// Model được nhúng sẵn trong bundle và parse trực tiếp, không cần fetch file ngoài.
-const robotPromise: Promise<GLTF> = (() => {
-  const base64 = robotDataUrl.slice(robotDataUrl.indexOf(",") + 1);
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  return new GLTFLoader().parseAsync(bytes.buffer, "");
-})();
 
 const CLIP_FOR_STATE: Record<string, string> = {
   IDLE: "Idle",
@@ -37,10 +30,15 @@ const CLIP_FOR_EMOTE: Record<Emote, string> = {
   thumbsUp: "ThumbsUp",
 };
 
+const _aimDir = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+const _worldQ = new THREE.Quaternion();
+const _parentQ = new THREE.Quaternion();
+
 const FEET_Y = -(PLAYER.capsuleHalfHeight + PLAYER.capsuleRadius + PLAYER.floatHeight);
 
 function RobotModel() {
-  const gltf = use(robotPromise);
+  const gltf = use(models.robot);
   const group = useRef<THREE.Group>(null);
   const scene = useMemo(() => {
     const s = cloneSkinned(gltf.scene);
@@ -77,16 +75,30 @@ function RobotModel() {
     });
     return s;
   }, [gltf]);
+  // Robot không có xương bàn tay: gắn súng vào cẳng tay phải, ở vị trí cổ tay (gốc xương ngón).
+  const arm = useMemo(() => {
+    const bones: Record<string, THREE.Bone> = {};
+    scene.traverse((o) => {
+      if ((o as THREE.Bone).isBone) bones[o.name] = o as THREE.Bone;
+    });
+    const { UpperArmR: upper, LowerArmR: lower, Palm2R: palm } = bones;
+    return upper && lower && palm ? { upper, lower, wrist: palm.position.clone() } : null;
+  }, [scene]);
 
   const { actions } = useAnimations(gltf.animations, group);
   const animationState = useEcctrlAnimationStore((s) => s.animationState);
   const emote = useGame((s) => s.emote);
   const setEmote = useGame((s) => s.setEmote);
+  const flatlined = useGame((s) => s.flatlinedAt !== null);
   const current = useRef<string | null>(null);
   const setReady = useGame((s) => s.setReady);
   useEffect(setReady, [setReady]);
 
-  const clip = emote && animationState === "IDLE" ? CLIP_FOR_EMOTE[emote] : CLIP_FOR_STATE[animationState] ?? "Idle";
+  const clip = flatlined
+    ? "Death"
+    : emote && animationState === "IDLE"
+      ? CLIP_FOR_EMOTE[emote]
+      : (CLIP_FOR_STATE[animationState] ?? "Idle");
 
   // Bắt đầu di chuyển thì huỷ biểu cảm.
   useEffect(() => {
@@ -98,7 +110,7 @@ function RobotModel() {
     const next = actions[clip];
     if (!next) return;
     const prev = current.current ? actions[current.current] : null;
-    const once = clip === "Jump" || Object.values(CLIP_FOR_EMOTE).includes(clip);
+    const once = clip === "Jump" || clip === "Death" || Object.values(CLIP_FOR_EMOTE).includes(clip);
     next.reset();
     next.setLoop(once && clip !== "Dance" ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
     next.clampWhenFinished = true;
@@ -107,9 +119,26 @@ function RobotModel() {
     current.current = clip;
   }, [actions, clip]);
 
+  // Tư thế ngắm dựng bằng code: chạy sau mixer, ghi đè xoay cánh tay phải để chĩa súng theo camera.
+  const camera = useThree((s) => s.camera);
+  useFrame(() => {
+    if (!arm || !handles.player || flatlined) return;
+    const aimingNow = useGame.getState().aiming || handles.player.lockForward;
+    if (!aimingNow || useGame.getState().mode !== "foot") return;
+    camera.getWorldDirection(_aimDir);
+    _aimDir.y = THREE.MathUtils.clamp(_aimDir.y + 0.08, -0.6, 0.8);
+    _aimDir.normalize();
+    // Xương hướng theo trục +Y của nó: quay +Y về hướng ngắm trong không gian thế giới
+    _worldQ.setFromUnitVectors(_up, _aimDir);
+    arm.upper.parent!.getWorldQuaternion(_parentQ);
+    arm.upper.quaternion.copy(_parentQ.invert().multiply(_worldQ));
+    arm.lower.quaternion.identity();
+  });
+
   return (
     <group ref={group}>
       <primitive object={scene} />
+      {arm && <Gun hand={arm.lower} offset={arm.wrist} />}
     </group>
   );
 }
@@ -120,6 +149,11 @@ function useDriveInput(ecctrl: React.RefObject<EcctrlHandle | null>) {
   useFrame(() => {
     const ctrl = ecctrl.current;
     if (!ctrl) return;
+    const { shopOpen, flatlinedAt } = useGame.getState();
+    if (shopOpen || flatlinedAt !== null) {
+      ctrl.setMovement({ forward: false, backward: false, leftward: false, rightward: false, run: false, jump: false, joystick: { x: 0, y: 0 } });
+      return;
+    }
     const keys = getKeys() as Record<string, boolean>;
     const joysticks = useJoystickStore.getState().joysticks;
     const stick = Object.values(joysticks).find((j) => j.active);

@@ -6,6 +6,8 @@
   --cyan: #05d9e8;
   --text: #e9e6f5;
   --muted: #8f86ad;
+  --red: #ff1f3d;
+  --amber: #ffb000;
   --font-display: "Chakra Petch", ui-monospace, monospace;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: dark;
@@ -99,7 +101,7 @@ canvas {
 .help {
   position: absolute;
   left: max(16px, env(safe-area-inset-left, 0px));
-  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 86px);
   padding: 12px 14px;
   background: var(--ink-2);
   border: 1px solid rgba(5, 217, 232, 0.25);
@@ -138,18 +140,6 @@ canvas {
   align-items: flex-end;
   gap: 12px;
   pointer-events: auto;
-}
-
-.emote-btn {
-  position: absolute;
-  right: max(20px, env(safe-area-inset-right, 0px));
-  top: 96px;
-  pointer-events: auto;
-  font: 700 12px var(--font-mono);
-  color: var(--text);
-  background: var(--ink-2);
-  border: 1px solid var(--pink);
-  padding: 8px 12px;
 }
 
 /* Màn hình tải và lỗi */
@@ -297,6 +287,395 @@ canvas {
 
   .speedo {
     bottom: auto;
-    top: 96px;
+    top: 200px;
+    padding: 6px 12px;
   }
+
+  .speedo__value {
+    font-size: 30px;
+  }
+}
+
+/* Cột phải: District và minimap */
+.hud__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.minimap {
+  display: block;
+  border-radius: 50%;
+}
+
+/* Truy nã */
+.wanted {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  background: var(--ink-2);
+  border-bottom: 2px solid var(--red);
+}
+
+.wanted__label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--red);
+}
+
+.wanted__stars {
+  display: flex;
+  gap: 6px;
+  font-size: 16px;
+}
+
+.star {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.star--on {
+  color: var(--red);
+  text-shadow: 0 0 8px var(--red);
+  animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0.55; }
+}
+
+/* Máu và CRED */
+.vitals {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  min-width: min(260px, 70vw);
+  background: var(--ink-2);
+  border-left: 2px solid var(--pink);
+}
+
+.vitals__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vitals__label {
+  width: 4ch;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.vitals__num {
+  min-width: 3ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.hpbar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  transform: skewX(-18deg);
+}
+
+.hpbar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pink), var(--cyan));
+  transition: width 0.15s linear;
+}
+
+.hpbar--low .hpbar__fill {
+  background: var(--red);
+  animation: blink 0.6s steps(2) infinite;
+}
+
+.cred {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(255, 176, 0, 0.45);
+}
+
+.loot {
+  font-weight: 700;
+  color: var(--amber);
+  animation: rise 1.6s ease-out forwards;
+}
+
+@keyframes rise {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-14px); opacity: 0; }
+}
+
+/* Tâm ngắm */
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+}
+
+.crosshair--aim {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  background: transparent;
+  border: 2px solid var(--cyan);
+}
+
+.crosshair--hit {
+  border-color: var(--pink);
+  background: var(--pink);
+  box-shadow: 0 0 10px var(--pink);
+}
+
+.crosshair--aim.crosshair--hit {
+  background: transparent;
+}
+
+/* Bị bắn: viền đỏ */
+.damage {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 31, 61, 0.65) 100%);
+  pointer-events: none;
+}
+
+.flatline {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(13, 2, 33, 0.72);
+  text-align: center;
+  padding-inline: 16px;
+}
+
+.flatline__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(36px, 10vw, 84px);
+  letter-spacing: 0.2em;
+  color: var(--red);
+  text-shadow: 0 0 24px var(--red);
+}
+
+.flatline__body {
+  margin: 0;
+  color: var(--text);
+}
+
+/* Chợ đen */
+.shop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  pointer-events: auto;
+  background: rgba(13, 2, 33, 0.94);
+  border: 1px solid rgba(255, 176, 0, 0.55);
+  box-shadow: 0 0 40px rgba(255, 176, 0, 0.15);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.shop__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shop__eyebrow {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--amber);
+}
+
+.shop__title {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  text-wrap: balance;
+}
+
+.shop__wallet {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+}
+
+.shop__wallet span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.shop__list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+
+.shop__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+}
+
+.shop__item + .shop__item {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.shop__info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.shop__name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.shop__desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.shop__buy,
+.shop__close {
+  flex-shrink: 0;
+  font: 700 12px var(--font-mono);
+  padding: 8px 12px;
+  color: var(--ink);
+  background: var(--amber);
+  border: 0;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop__buy:disabled {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: not-allowed;
+}
+
+.shop__buy:focus-visible,
+.shop__close:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.shop__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shop__note {
+  font-size: 12px;
+  color: var(--cyan);
+}
+
+.shop__close {
+  color: var(--text);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+@media (pointer: coarse) {
+  .hud__top {
+    flex-wrap: nowrap;
+  }
+
+  .brand__name {
+    font-size: 16px;
+  }
+
+  .brand__build {
+    display: none;
+  }
+
+  .loc {
+    padding: 6px 10px;
+  }
+
+  .loc__value {
+    font-size: 13px;
+  }
+
+  .wanted {
+    position: absolute;
+    top: max(170px, calc(env(safe-area-inset-top, 0px) + 170px));
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .vitals {
+    bottom: auto;
+    top: max(44px, calc(env(safe-area-inset-top, 0px) + 44px));
+    min-width: 0;
+    width: min(200px, 50vw);
+    padding: 8px 10px;
+  }
+
+  .cred {
+    font-size: 16px;
+  }
+
+  .touch-buttons {
+    bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.help-chip {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 86px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.help-chip kbd {
+  font: 700 11px var(--font-mono);
+  padding: 1px 6px;
+  color: var(--ink);
+  background: var(--muted);
 }

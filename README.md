@@ -25,20 +25,31 @@ npm run build    # bản production trong game/dist
 - `game/src/game/Player.tsx`: nhân vật, animation, input, lên/xuống xe
 - `game/src/game/Vehicles.tsx`: xe (thân xe, bánh, đèn), danh sách xe đậu, lật xe
 - `game/src/game/CameraRig.tsx`: camera góc nhìn thứ 3, tự bám đuôi xe, phím F/R
-- `game/src/game/store.ts`: trạng thái game (vị trí, District, biểu cảm, đang lái xe nào)
+- `game/src/game/store.ts`: trạng thái game (vị trí, xe, máu, CRED, truy nã, nâng cấp, lưu tiến trình)
+- `game/src/game/assets.ts`: nạp model và âm thanh nhúng trong bundle
+- `game/src/game/Enemies.tsx`: drone OMNI-DYNE (tuần tra, truy đuổi, bắn), sát thương, hồi sinh
+- `game/src/game/Weapons.tsx`: súng gắn tay robot, bắn/ngắm, trợ ngắm, tự ngắm trên điện thoại
+- `game/src/game/Effects.tsx`: vệt laser, vụ nổ, chip CRED rơi ra và nhặt
+- `game/src/game/Shop.tsx`: quầy chợ đen Neon Bazaar và người bán
+- `game/src/game/GameRules.tsx`: hồi máu, hạ sao truy nã, flatline và hồi sinh
+- `game/src/game/world.ts`: truy vấn hình học nhanh (tia/hộp toà nhà, tầm nhìn)
+- `game/src/ui/`: HUD, minimap, bảng chợ đen
 - `game/src/game/refs.ts`: handle vật lý của nhân vật và xe, đọc mỗi frame
 - `game/src/game/config.ts`: thông số thế giới và bảng màu
 
 ## Asset và giấy phép
 
-- Nhân vật: RobotExpressive của Tomás Laulhé (Quaternius), chỉnh sửa bởi Don McCurdy, CC0 1.0.
-- Mọi thứ khác (nhà, biển hiệu, mưa) được sinh bằng code.
+Chi tiết trong `game/src/assets/LICENSES.md`. Tóm tắt:
+
+- Nhân vật: RobotExpressive của Quaternius, CC0.
+- Drone, súng, âm thanh: Kenney Starter Kit FPS, CC0.
+- Thành phố, xe, biển hiệu, mưa: sinh bằng code.
 
 ## Lộ trình
 
 - [x] Giai đoạn 0: khu phố neon, nhân vật đi/chạy/nhảy, camera góc nhìn thứ 3, deploy web
 - [x] Giai đoạn 1: lên xuống xe, lái xe, camera ngửa lên, cảm ứng trên điện thoại
-- [ ] Giai đoạn 2: chiến đấu, kẻ địch OMNI-DYNE, $CRED off-chain, shop, truy nã
+- [x] Giai đoạn 2: chiến đấu, drone OMNI-DYNE, $CRED off-chain, chợ đen, truy nã, minimap
 - [ ] Giai đoạn 3: tạo nhân vật, túi đồ, NPC, nhiệm vụ
 - [ ] Giai đoạn 4: multiplayer
 - [ ] Giai đoạn 5: token và NFT
@@ -53,3 +64,5 @@ npm run build    # bản production trong game/dist
   Nếu không, frame đầu ecctrl chia cho 0 và sinh NaN làm Rapier panic.
 - Thêm `?debug` vào URL để lộ `window.__game`, `window.__handles`, `window.__r3f` khi kiểm thử;
   `?nofx` tắt hậu kỳ, `?nocars` bỏ xe.
+- Tiến trình (CRED, nâng cấp, số lần hạ gục) lưu trong `localStorage` của trình duyệt, key `cyberhood.save.v1`.
+  Đây là bản off-chain; giai đoạn 5 sẽ chuyển CRED lên blockchain với server ký phiếu thưởng.

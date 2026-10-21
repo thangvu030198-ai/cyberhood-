@@ -6,4 +6,6 @@ import type { EcctrlVehicleHandle } from "ecctrl/vehicle";
 export const handles = {
   player: null as EcctrlHandle | null,
   cars: new Map<number, EcctrlVehicleHandle>(),
+  /** Góc azimuth của camera (rad), minimap xoay theo */
+  camYaw: 0,
 };

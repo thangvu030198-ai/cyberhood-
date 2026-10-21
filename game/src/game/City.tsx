@@ -12,7 +12,7 @@ import {
 } from "./config";
 import { SIGN_COUNT, makeLaneTexture, makeRoadTexture, makeSignTexture, makeWindowTexture } from "./textures";
 
-type Building = {
+export type Building = {
   x: number;
   z: number;
   w: number;
@@ -366,8 +366,11 @@ function StreetLights() {
   );
 }
 
+/** Toà nhà trong khu chơi được, dùng chung cho va chạm, tầm nhìn của drone và minimap. */
+export const BUILDINGS = generateBuildings();
+
 export function City() {
-  const buildings = useMemo(generateBuildings, []);
+  const buildings = BUILDINGS;
   const skyline = useMemo(generateSkyline, []);
   return (
     <>

@@ -494,9 +494,14 @@ export function Player() {
         capsuleHalfHeight={PLAYER.capsuleHalfHeight}
         capsuleRadius={PLAYER.capsuleRadius}
         floatHeight={PLAYER.floatHeight}
-        maxWalkVel={3.2 * speedMul}
-        maxRunVel={7.5 * speedMul}
-        jumpVel={5}
+        maxWalkVel={TUNING.player.walkSpeed * speedMul}
+        maxRunVel={TUNING.player.runSpeed * speedMul}
+        jumpVel={TUNING.player.jumpVel}
+        // Nhanh nhạy: tăng tốc / dừng gần như tức thì, đổi hướng được cả khi đang nhảy
+        accDeltaTime={TUNING.player.accelGain}
+        decDeltaTime={TUNING.player.decelGain}
+        airDragFactor={TUNING.player.airControl}
+        fallingGravityScale={TUNING.player.fallingGravityScale}
         // Thế giới phẳng: khoá nghiêng để nhân vật không ngã khi FPS thấp.
         enabledRotations={[false, true, false]}
       >

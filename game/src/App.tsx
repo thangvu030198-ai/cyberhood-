@@ -62,7 +62,8 @@ class Crash extends Component<{ children: ReactNode }, { error: Error | null }> 
 }
 
 /** Bước vật lý không vượt quá 1/30 giây; FPS thấp thì game chậm lại thay vì nổ vật lý. */
-const MAX_PHYSICS_DT = 1 / 30;
+/** Bước vật lý dài nhất: FPS tụt thì mô phỏng chậm lại chứ không bước dài, để hệ treo xe không nảy */
+const MAX_PHYSICS_DT = 1 / 40;
 
 /**
  * ecctrl cộng lực mỗi frame theo world.timestep, nên mỗi frame phải đúng một bước vật lý.

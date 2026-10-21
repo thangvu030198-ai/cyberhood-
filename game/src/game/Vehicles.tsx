@@ -12,6 +12,7 @@ import { handles } from "./refs";
 import { useGame } from "./store";
 import type { ParkingBay } from "../traffic/road";
 import { TUNING } from "../traffic/tuning";
+const VEHICLE = TUNING.playerCar;
 import { claimBay, nearestFreeBay, releaseBays, ROAD } from "./trafficWorld";
 
 export type CarSpec = {
@@ -407,6 +408,9 @@ function Car({ spec }: { spec: CarSpec }) {
           steerWheel={front}
           brakeWheel
           tireGripFactor={front ? 1.6 : 1.5}
+          // Hệ treo: cứng vừa, giảm chấn mạnh hơn mặc định (180/16) để xe không nảy tưng tưng
+          springK={VEHICLE.springK}
+          dampingC={VEHICLE.dampingC}
         >
           <primitive object={wheels[key]} />
         </ShapeCastWheel>

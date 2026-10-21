@@ -106,7 +106,7 @@ export const TUNING = {
     /** Thời gian chuyển clip một lần (vẫy tay, đánh, ngã) */
     overlayFade: 0.2,
     /** Người chơi chạy nhanh hơn người thật: tốc độ tự nhiên của clip Soldier và ngưỡng dáng đi/chạy */
-    player: { walkClipSpeed: 2.0, runClipSpeed: 5.4, gaitWalk: 3.0, gaitRun: 6.8 },
+    player: { walkClipSpeed: 2.4, runClipSpeed: 6.0, gaitWalk: 3.9, gaitRun: 7.8 },
   },
 
   parking: {
@@ -119,6 +119,27 @@ export const TUNING = {
     autoParkPlayerDistance: 10,
     /** Thời gian xe trượt vào ô */
     autoParkTime: 2.2,
+  },
+
+  /** Điều khiển nhân vật (ecctrl): tốc độ, độ nhạy tăng tốc/dừng, điều khiển trên không */
+  player: {
+    walkSpeed: 4.2,
+    runSpeed: 8.5,
+    /** Độ nhạy tăng tốc / phanh (0..1): phần chênh lệch vận tốc được bù mỗi frame. Lớn = nhanh nhạy
+     * (ecctrl gọi là accDeltaTime / decDeltaTime, mặc định 0.2) */
+    accelGain: 0.55,
+    decelGain: 0.6,
+    jumpVel: 6,
+    /** Điều khiển hướng khi đang trên không (0..1, nhân với độ nhạy tăng tốc) */
+    airControl: 0.45,
+    fallingGravityScale: 2.4,
+  },
+
+  /** Xe người chơi lái (ecctrl vehicle) */
+  playerCar: {
+    /** Độ cứng lò xo và giảm chấn hệ treo mỗi bánh */
+    springK: 170,
+    dampingC: 28,
   },
 
   objective: {

@@ -18,7 +18,7 @@ import type { Enemy, PlatformerSim } from "./platformer";
 
 /** Bề sâu khối nền (trục z), nhân vật đứng ở z = 0 */
 const DEPTH = 4;
-const CAM = { distance: 23, height: 2.6, fov: 40, lookAhead: 2.2, damp: 5, minY: 6.5, maxY: 11 };
+const CAM = { distance: 18.5, height: 2.4, fov: 40, lookAhead: 2.2, damp: 5, minY: 5.4, maxY: 12 };
 
 export function LevelCanvas() {
   const sim = useLevel((s) => s.sim);
@@ -32,7 +32,7 @@ export function LevelCanvas() {
       camera={{ fov: CAM.fov, near: 0.5, far: 600, position: [sim.player.x, CAM.minY, CAM.distance] }}
     >
       <color attach="background" args={["#1a0f2e"]} />
-      <fog attach="fog" args={["#2a1640", 40, 170]} />
+      <fog attach="fog" args={["#2a1640", 28, 120]} />
       <SimDriver sim={sim} />
       <LevelCamera sim={sim} />
       <hemisphereLight args={["#9a7cff", "#1b0d22", 1.1]} />
@@ -199,6 +199,8 @@ function Tiles({ sim }: { sim: PlatformerSim }) {
     };
     place(refs.solid.current, data.solid, 0.5);
     place(refs.edges.current, data.edges, 0.97);
+    // Viền sáng chỉ chạy dọc mép trước của mặt đứng
+    refs.edges.current?.position.set(0, 0, DEPTH / 2);
     place(refs.ledges.current, data.ledges, 0.88);
     place(refs.spikes.current, data.spikes, 0.3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,11 +209,11 @@ function Tiles({ sim }: { sim: PlatformerSim }) {
     <group>
       <instancedMesh ref={refs.solid} args={[undefined, undefined, data.solid.length]} frustumCulled={false}>
         <boxGeometry args={[1, 1, DEPTH]} />
-        <meshStandardMaterial map={tex} roughness={0.7} metalness={0.35} />
+        <meshStandardMaterial map={tex} color="#9aa3c8" roughness={0.75} metalness={0.3} />
       </instancedMesh>
       <instancedMesh ref={refs.edges} args={[undefined, undefined, data.edges.length]} frustumCulled={false}>
-        <boxGeometry args={[1.001, 0.07, DEPTH + 0.02]} />
-        <meshBasicMaterial color={[0.3, 2.4, 2.6]} toneMapped={false} />
+        <boxGeometry args={[1.001, 0.08, 0.08]} />
+        <meshBasicMaterial color={[0.3, 2.2, 2.4]} toneMapped={false} />
       </instancedMesh>
       <instancedMesh ref={refs.ledges} args={[undefined, undefined, data.ledges.length]} frustumCulled={false}>
         <boxGeometry args={[1, 0.22, DEPTH * 0.7]} />
@@ -407,7 +409,7 @@ function Backdrop({ width }: { width: number }) {
     const list: { name: ExtraModel; x: number; h: number; z: number }[] = [];
     let i = 0;
     for (let x = 6; x < width + 30; x += 24) {
-      list.push({ name: BACK_BUILDINGS[i % BACK_BUILDINGS.length], x, h: 26 + ((i * 7) % 4) * 6, z: -40 - (i % 2) * 12 });
+      list.push({ name: BACK_BUILDINGS[i % BACK_BUILDINGS.length], x, h: 30 + ((i * 7) % 4) * 7, z: -62 - (i % 2) * 16 });
       i++;
     }
     return list;
@@ -421,19 +423,19 @@ function Backdrop({ width }: { width: number }) {
       </mesh>
       {back.map((b, i) => (
         <Suspense key={i} fallback={null}>
-          <Prop name={b.name} height={b.h} position={[b.x, 0, b.z]} rotationY={0} selfLit={0.35} />
+          <Prop name={b.name} height={b.h} position={[b.x, 0, b.z]} rotationY={0} selfLit={0.12} />
         </Suspense>
       ))}
       {/* Lớp giữa: dấu tích vùng cách ly */}
       <Suspense fallback={null}>
-        <Prop name="mx_map_watchtower" height={11} position={[24, 0, -9]} rotationY={0.3} />
-        <Prop name="mx_map_crashed_mech" height={6} position={[46, 0, -10]} rotationY={-0.6} />
-        <Prop name="mx_map_bio_lab" height={12} position={[95, 0, -16]} rotationY={0.2} />
-        <Prop name="mx_map_radio_tower" height={22} position={[125, 0, -18]} rotationY={0} />
-        <Prop name="mx_veh_tank" height={3.2} position={[136, 0, -6]} rotationY={1.2} />
-        <Prop name="mx_car_armored" height={2.4} position={[150, 0, -5]} rotationY={-0.4} />
-        <Prop name="mx_map_watchtower" height={11} position={[160, 0, -9]} rotationY={-0.3} />
-        <Prop name="mx_map_shield_gen" height={14} position={[178, 0, -14]} rotationY={0} selfLit={0.6} />
+        <Prop name="mx_map_watchtower" height={11} position={[24, 0, -18]} rotationY={0.3} />
+        <Prop name="mx_map_crashed_mech" height={6} position={[46, 0, -16]} rotationY={-0.6} />
+        <Prop name="mx_map_bio_lab" height={12} position={[95, 0, -26]} rotationY={0.2} />
+        <Prop name="mx_map_radio_tower" height={22} position={[125, 0, -30]} rotationY={0} />
+        <Prop name="mx_veh_tank" height={3.2} position={[136, 0, -12]} rotationY={1.2} />
+        <Prop name="mx_car_armored" height={2.4} position={[150, 0, -10]} rotationY={-0.4} />
+        <Prop name="mx_map_watchtower" height={11} position={[160, 0, -18]} rotationY={-0.3} />
+        <Prop name="mx_map_shield_gen" height={14} position={[178, 0, -24]} rotationY={0} selfLit={0.6} />
       </Suspense>
       <Suspense fallback={null}>
         <Prop name="mx_prop_trash_pile" height={1.6} position={[9, 2, -1.5]} rotationY={0.4} />
@@ -547,7 +549,7 @@ function Hero({ sim }: { sim: PlatformerSim }) {
         jump: g.jump.animations[0],
         hit: g.hit.animations[0],
         death: g.death.animations[0],
-      }, 1.8),
+      }, 1.8, 0.55),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [walk, ...Object.values(g)],
   );
@@ -619,7 +621,7 @@ function RiggedEnemy({ sim, enemy, spec }: { sim: PlatformerSim; enemy: Enemy; s
   const rig = useMemo(() => {
     const clips: Record<string, THREE.AnimationClip | undefined> = {};
     entries.forEach(([name], i) => (clips[name] = gltfs[i].animations[0]));
-    return buildRig(gltfs[0].scene, clips, spec.height, enemy.kind === "boss" ? 0.35 : 0.2);
+    return buildRig(gltfs[0].scene, clips, spec.height, enemy.kind === "boss" ? 0.45 : 0.35);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, gltfs);
   const group = useRef<THREE.Group>(null);

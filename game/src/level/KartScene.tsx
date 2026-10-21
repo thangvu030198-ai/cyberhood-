@@ -205,17 +205,17 @@ function Road({ sim }: { sim: KartSim }) {
   return (
     <group>
       <mesh geometry={road.geo}>
-        <meshStandardMaterial map={road.map} roughness={0.85} />
+        <meshStandardMaterial map={road.map} roughness={0.85} side={THREE.DoubleSide} />
       </mesh>
       {curbs.map((c, i) => (
         <mesh key={i} geometry={c.geo}>
-          <meshStandardMaterial map={c.map} roughness={0.6} />
+          <meshStandardMaterial map={c.map} roughness={0.6} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {/* Vạch xuất phát ca-rô */}
       <mesh position={[start.x, 0.06, start.z]} rotation={[-Math.PI / 2, 0, -start.yaw]}>
         <planeGeometry args={[(KART.halfWidth + 1.2) * 2, 1.4]} />
-        <meshBasicMaterial color="#f2f2f2" />
+        <meshBasicMaterial color="#f2f2f2" side={THREE.DoubleSide} />
       </mesh>
     </group>
   );

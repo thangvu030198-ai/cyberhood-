@@ -12,6 +12,21 @@ export const PALETTE = {
 
 export const NEON_COLORS = [PALETTE.pink, PALETTE.cyan, PALETTE.purple, PALETTE.amber];
 
+// Mỗi góc phần tư thành phố là một District có bảng màu neon riêng.
+export type DistrictId = "bazaar" | "arena" | "haven" | "undergrid";
+
+export const DISTRICTS: Record<DistrictId, { name: string; neon: string[] }> = {
+  bazaar: { name: "Neon Bazaar", neon: [PALETTE.pink, PALETTE.amber, PALETTE.purple] },
+  arena: { name: "Chrome Arena", neon: [PALETTE.cyan, "#dff6ff", PALETTE.purple] },
+  haven: { name: "Data Haven", neon: ["#39ff88", PALETTE.cyan, "#b6ff3d"] },
+  undergrid: { name: "The Undergrid", neon: ["#ff1f3d", PALETTE.purple, "#ff5e00"] },
+};
+
+export function districtIdAt(x: number, z: number): DistrictId {
+  if (x >= 0) return z >= 0 ? "bazaar" : "arena";
+  return z >= 0 ? "haven" : "undergrid";
+}
+
 // Lưới thành phố: GRID x GRID block, ngăn cách bởi các con đường.
 export const CITY = {
   GRID: 4,

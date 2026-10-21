@@ -5,6 +5,7 @@ import { CARS } from "../game/Vehicles";
 import { MAX_WANTED, SHOP_ITEMS, districtAt, gridRef, useGame, type Emote, type ShopItemId } from "../game/store";
 import { Minimap } from "./Minimap";
 import { pointer } from "../game/pointer";
+import { CharacterCreator, DialoguePanel, InventoryPanel, QuestTracker, Toast, interactLabel } from "./Panels";
 
 const EMOTE_KEYS: Record<string, Emote> = { Digit1: "wave", Digit2: "dance", Digit3: "thumbsUp" };
 
@@ -213,8 +214,12 @@ function Help({ mode }: { mode: "foot" | "drive" }) {
           <dd>Ngắm qua vai</dd>
           <dt>Esc</dt>
           <dd>Thả chuột ra khỏi game</dd>
-          <dt>F / E</dt>
-          <dd>Lên xe / Mở chợ đen</dd>
+          <dt>E</dt>
+          <dd>Nói chuyện · tương tác (mua đồ: nói với Vex)</dd>
+          <dt>F</dt>
+          <dd>Lên/xuống xe</dd>
+          <dt>Q · Tab</dt>
+          <dd>Dùng Stim Pack · Túi đồ, cài đặt đồ hoạ</dd>
           <dt>1 2 3</dt>
           <dd>Vẫy tay · Nhảy múa · Like</dd>
           <dt>H</dt>
@@ -248,7 +253,12 @@ export function Hud() {
   const mode = useGame((s) => s.mode);
   const carId = useGame((s) => s.carId);
   const nearCarId = useGame((s) => s.nearCarId);
-  const nearShop = useGame((s) => s.nearShop);
+  const nearInteract = useGame((s) => s.nearInteract);
+  const dialogue = useGame((s) => s.dialogue);
+  const inventoryOpen = useGame((s) => s.inventoryOpen);
+  const profile = useGame((s) => s.profile);
+  const location = useGame((s) => s.location);
+  const setInventoryOpen = useGame((s) => s.setInventoryOpen);
   const shopOpen = useGame((s) => s.shopOpen);
   const speed = useGame((s) => s.speed);
   const kills = useGame((s) => s.kills);
@@ -274,6 +284,7 @@ export function Hud() {
   }, [setEmote]);
 
   if (!ready) return <LoadingScreen />;
+  const panelOpen = shopOpen || !!dialogue || inventoryOpen || !profile;
 
   return (
     <div className="hud">
@@ -281,30 +292,30 @@ export function Hud() {
       <header className="hud__top">
         <div className="brand">
           <span className="brand__name">CYBERHOOD</span>
-          <span className="brand__build">build 0.2 · giai đoạn 2 · hạ gục {kills}</span>
+          <span className="brand__build">{profile ? `${profile.handle} · ` : ""}build 0.3 · hạ gục {kills}</span>
         </div>
         <Wanted />
         <div className="hud__right">
           <div className="loc">
             <span className="loc__label">DISTRICT</span>
-            <span className="loc__value">{districtAt(x, z)}</span>
-            <span className="loc__grid">{gridRef(x, z)}</span>
+            <span className="loc__value">{location === "vault" ? "Server Vault" : districtAt(x, z)}</span>
+            <span className="loc__grid">{location === "vault" ? "B-0" : gridRef(x, z)}</span>
           </div>
-          <Minimap size={touch ? 104 : 148} />
+          {location === "city" && <Minimap size={touch ? 104 : 148} />}
         </div>
       </header>
 
       <Crosshair />
-      {!touch && !pointerLocked && !shopOpen && pointer.supported && (
+      {!touch && !pointerLocked && !panelOpen && pointer.supported && (
         <div className="lock-hint">Nhấp vào màn hình để điều khiển bằng chuột</div>
       )}
       <Vitals />
 
-      {mode === "foot" && !shopOpen && (nearCarId !== null || nearShop) && (
+      {mode === "foot" && !panelOpen && (nearCarId !== null || nearInteract) && (
         <div className="prompt">
-          {nearShop ? (
+          {nearInteract ? (
             <>
-              <kbd>{touch ? "SHOP" : "E"}</kbd> Chợ đen <strong>Neon Bazaar</strong>
+              <kbd>{touch ? "TALK" : "E"}</kbd> {interactLabel(nearInteract)}
             </>
           ) : (
             <>
@@ -322,9 +333,9 @@ export function Hud() {
         </div>
       )}
 
-      {!touch && !shopOpen && (help ? <Help mode={mode} /> : <div className="help-chip"><kbd>H</kbd> Hướng dẫn</div>)}
+      {!touch && !panelOpen && (help ? <Help mode={mode} /> : <div className="help-chip"><kbd>H</kbd> Hướng dẫn</div>)}
 
-      {touch && !shopOpen && (
+      {touch && !panelOpen && (
         <>
           <Joystick
             className="touch-stick"
@@ -336,8 +347,8 @@ export function Hud() {
             joystickKnobStyle={{ width: "56px", height: "56px", background: "rgba(5, 217, 232, 0.75)" }}
           />
           <div className="touch-buttons">
-            {mode === "foot" && nearShop && (
-              <VirtualButton id="shop" label="SHOP" buttonWrapperStyle={TOUCH_BUTTON} buttonCapStyle={TOUCH_CAP} />
+            {mode === "foot" && nearInteract && (
+              <VirtualButton id="talk" label="TALK" buttonWrapperStyle={TOUCH_BUTTON} buttonCapStyle={TOUCH_CAP} />
             )}
             {(mode === "drive" || nearCarId !== null) && (
               <VirtualButton
@@ -363,7 +374,17 @@ export function Hud() {
         </>
       )}
 
+      {touch && !panelOpen && (
+        <button type="button" className="bag-btn" onClick={() => setInventoryOpen(true)}>
+          Túi đồ
+        </button>
+      )}
+      <QuestTracker />
+      <Toast />
       <ShopPanel />
+      <DialoguePanel />
+      <InventoryPanel />
+      <CharacterCreator />
       <Flatline />
     </div>
   );

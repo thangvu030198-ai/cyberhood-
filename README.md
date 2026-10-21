@@ -33,7 +33,13 @@ npm run build    # bản production trong game/dist
 - `game/src/game/Shop.tsx`: quầy chợ đen Neon Bazaar và người bán
 - `game/src/game/GameRules.tsx`: hồi máu, hạ sao truy nã, flatline và hồi sinh
 - `game/src/game/world.ts`: truy vấn hình học nhanh (tia/hộp toà nhà, tầm nhìn)
-- `game/src/ui/`: HUD, minimap, bảng chợ đen
+- `game/src/game/story.ts`: **nội dung cốt truyện dạng dữ liệu** (NPC, vật phẩm, nhiệm vụ, địa điểm). Viết thêm nhiệm vụ ở đây
+- `game/src/game/quests.ts`: bộ máy nhiệm vụ (nhận việc, tiến độ, thưởng, hội thoại, dịch chuyển vault, mục tiêu)
+- `game/src/game/Npcs.tsx`: NPC, mảnh dữ liệu, cột sáng chỉ đường, quét tương tác phím E
+- `game/src/game/Vault.tsx`: Server Vault (model hành lang, va chạm, terminal, hologram GHOST_0) và cửa vào
+- `game/src/game/Visuals.tsx`: môi trường phản chiếu neon, quảng cáo hologram, máy bán hàng, hơi nước
+- `game/src/game/pointer.ts`: khoá chuột kiểu game PC
+- `game/src/ui/`: HUD, minimap, chợ đen, tạo nhân vật, hội thoại, túi đồ, tracker nhiệm vụ
 - `game/src/game/refs.ts`: handle vật lý của nhân vật và xe, đọc mỗi frame
 - `game/src/game/config.ts`: thông số thế giới và bảng màu
 
@@ -43,14 +49,16 @@ Chi tiết trong `game/src/assets/LICENSES.md`. Tóm tắt:
 
 - Nhân vật: RobotExpressive của Quaternius, CC0.
 - Drone, súng, âm thanh: Kenney Starter Kit FPS, CC0.
-- Thành phố, xe, biển hiệu, mưa: sinh bằng code.
+- Server Vault: "Space Ship Hallway" của yeeyeeman, **CC-BY 4.0, bắt buộc ghi công** (đã ghi trong màn tạo nhân vật và túi đồ).
+  File đã được nén lượng tử hoá (KHR_mesh_quantization) bằng gltf-transform.
+- Thành phố, xe, biển hiệu, mưa, hologram: sinh bằng code.
 
 ## Lộ trình
 
 - [x] Giai đoạn 0: khu phố neon, nhân vật đi/chạy/nhảy, camera góc nhìn thứ 3, deploy web
 - [x] Giai đoạn 1: lên xuống xe, lái xe, camera ngửa lên, cảm ứng trên điện thoại
 - [x] Giai đoạn 2: chiến đấu, drone OMNI-DYNE, $CRED off-chain, chợ đen, truy nã, minimap
-- [ ] Giai đoạn 3: tạo nhân vật, túi đồ, NPC, nhiệm vụ
+- [x] Giai đoạn 3: Netrunner ID, túi đồ, NPC có hội thoại, 5 nhiệm vụ cốt truyện, Server Vault; nâng cấp hình ảnh
 - [ ] Giai đoạn 4: multiplayer
 - [ ] Giai đoạn 5: token và NFT
 - [ ] Giai đoạn 6: Root Protocol Hunt

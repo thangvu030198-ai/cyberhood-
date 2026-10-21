@@ -5,6 +5,7 @@ import { fx } from "../game/Effects";
 import { handles } from "../game/refs";
 import { SHOP_POS } from "../game/Shop";
 import { useGame } from "../game/store";
+import { objectiveTarget } from "../game/quests";
 
 const RANGE = 70; // mét từ tâm tới mép bản đồ
 const FPS = 12;
@@ -71,6 +72,26 @@ export function Minimap({ size }: { size: number }) {
         ctx.strokeStyle = "#ffb000";
         ctx.lineWidth = 2;
         ctx.strokeRect(x - 4, y - 4, 8, 8);
+      }
+
+      // Mục tiêu nhiệm vụ: hình thoi vàng; nằm ngoài tầm radar thì ghim ở mép theo đúng hướng
+      const target = objectiveTarget();
+      if (target && target.z < 1000) {
+        let [tx, ty] = map(target.x, target.z);
+        const r = Math.hypot(tx, ty);
+        const edge = size / 2 - 8;
+        if (r > edge) {
+          tx = (tx / r) * edge;
+          ty = (ty / r) * edge;
+        }
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(Math.PI / 4 - handles.camYaw);
+        ctx.fillStyle = "#ffb000";
+        ctx.shadowColor = "#ffb000";
+        ctx.shadowBlur = 8;
+        ctx.fillRect(-4.5, -4.5, 9, 9);
+        ctx.restore();
       }
 
       for (const d of drones) {

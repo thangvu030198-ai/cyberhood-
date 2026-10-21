@@ -6,6 +6,7 @@ import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, mulberry32 } from "./conf
 import { fx } from "./Effects";
 import { handles } from "./refs";
 import { useGame } from "./store";
+import { questProgress } from "./quests";
 import { lineOfSight, pushOutOfBuildings, raySphere } from "./world";
 
 // Drone an ninh của OMNI-DYNE: tuần tra quanh điểm gốc, phát hiện thì bay vòng quanh người chơi và bắn laser.
@@ -121,6 +122,7 @@ export function damageDrone(d: Drone, amount: number) {
   }
   d.state = "dead";
   d.deadAt = clock;
+  questProgress("kill");
   fx.blast(d.pos);
   fx.chip(d.pos, 15 + Math.floor(Math.random() * 20) + game.wanted * 5);
   playSfx("enemyDestroy", 0.9);
@@ -198,7 +200,8 @@ export function Enemies() {
     const game = useGame.getState();
     const car = game.mode === "drive" && game.carId !== null ? handles.cars.get(game.carId) : null;
     const player = handles.player;
-    const alive = game.flatlinedAt === null && !!player;
+    // Trong vault thì drone ngoài phố mất dấu người chơi
+    const alive = game.flatlinedAt === null && !!player && game.location === "city";
     if (car) _target.copy(car.currPos).setY(car.currPos.y + 0.6);
     else if (player) _target.copy(player.currPos).setY(player.currPos.y + 0.5);
     const targetSpeed = car ? car.currLinVel.length() : (player?.currLinVel.length() ?? 0);

@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { CITY_HALF, NEON_COLORS, PALETTE, mulberry32 } from "./config";
+import { useGame } from "./store";
 
 /** Bầu trời: dải màu tím-đen, phía chân trời ửng hồng như ánh đèn thành phố hắt lên mây. */
 export function Sky() {
@@ -61,6 +62,8 @@ export function Rain({ count = 3500, radius = 40 }) {
   useFrame(({ camera }, dt) => {
     const lines = ref.current;
     if (!lines) return;
+    lines.visible = useGame.getState().location === "city";
+    if (!lines.visible) return;
     const step = Math.min(dt, 0.05);
     const attr = lines.geometry.attributes.position as THREE.BufferAttribute;
     const arr = attr.array as Float32Array;

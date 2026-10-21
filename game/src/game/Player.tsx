@@ -9,7 +9,7 @@ import { useButtonStore, useJoystickStore } from "ecctrl/input";
 import { models } from "./assets";
 import { PLAYER } from "./config";
 import { handles } from "./refs";
-import { useGame, type Emote } from "./store";
+import { uiBlocking, useGame, type Emote } from "./store";
 import { Gun } from "./Weapons";
 
 const CAR_REACH = 3.6;
@@ -40,6 +40,7 @@ const FEET_Y = -(PLAYER.capsuleHalfHeight + PLAYER.capsuleRadius + PLAYER.floatH
 function RobotModel() {
   const gltf = use(models.robot);
   const group = useRef<THREE.Group>(null);
+  const bodyMaterials = useMemo<THREE.MeshStandardMaterial[]>(() => [], []);
   const scene = useMemo(() => {
     const s = cloneSkinned(gltf.scene);
     // Chuẩn hoá chiều cao model về ~1.8m, chân chạm đáy capsule.
@@ -66,6 +67,7 @@ function RobotModel() {
         m.color.set("#3a1a4a");
         m.emissive.set("#ff2a6d");
         m.emissiveIntensity = 0.35;
+        bodyMaterials.push(m);
       } else if (mat.name === "Grey") {
         mesh.material = mat.clone();
         (mesh.material as THREE.MeshStandardMaterial).color.set("#6f7a8c");
@@ -74,7 +76,16 @@ function RobotModel() {
       }
     });
     return s;
-  }, [gltf]);
+  }, [gltf, bodyMaterials]);
+
+  // Màu theo Netrunner ID người chơi chọn
+  const profile = useGame((s) => s.profile);
+  useEffect(() => {
+    for (const m of bodyMaterials) {
+      m.color.set(profile?.body ?? "#3a1a4a");
+      m.emissive.set(profile?.glow ?? "#ff2a6d");
+    }
+  }, [profile, bodyMaterials]);
   // Robot không có xương bàn tay: gắn súng vào cẳng tay phải, ở vị trí cổ tay (gốc xương ngón).
   const arm = useMemo(() => {
     const bones: Record<string, THREE.Bone> = {};
@@ -149,8 +160,8 @@ function useDriveInput(ecctrl: React.RefObject<EcctrlHandle | null>) {
   useFrame(() => {
     const ctrl = ecctrl.current;
     if (!ctrl) return;
-    const { shopOpen, flatlinedAt } = useGame.getState();
-    if (shopOpen || flatlinedAt !== null) {
+    const state = useGame.getState();
+    if (uiBlocking(state) || state.flatlinedAt !== null) {
       ctrl.setMovement({ forward: false, backward: false, leftward: false, rightward: false, run: false, jump: false, joystick: { x: 0, y: 0 } });
       return;
     }

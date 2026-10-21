@@ -1,15 +1,20 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
+import { MeshReflectorMaterial } from "@react-three/drei";
+import { useGame } from "./store";
 import {
   BLOCK_CENTERS,
   CITY,
   CITY_HALF,
   CITY_PITCH,
+  DISTRICTS,
   NEON_COLORS,
+  districtIdAt,
   PALETTE,
   mulberry32,
 } from "./config";
+import { NPCS, VAULT_DOOR } from "./story";
 import { SIGN_COUNT, makeLaneTexture, makeRoadTexture, makeSignTexture, makeWindowTexture } from "./textures";
 
 export type Building = {
@@ -26,6 +31,15 @@ export type Building = {
 };
 
 const WINDOW_VARIANTS = 4;
+
+/** Vùng không được xây: [x, z, bán kính] */
+const RESERVED: [number, number, number][] = [
+  [10.2, 13, 3.2], // quầy Neon Bazaar
+  ...Object.values(NPCS)
+    .filter((n) => !n.inVault)
+    .map((n) => [n.pos[0], n.pos[2], 2.5] as [number, number, number]),
+  [VAULT_DOOR[0], VAULT_DOOR[2], 4],
+];
 
 function generateBuildings(): Building[] {
   const rand = mulberry32(2077);
@@ -44,18 +58,30 @@ function generateBuildings(): Building[] {
         const central = Math.hypot(bx, bz) < CITY_PITCH;
         const h = central ? 30 + rand() * 70 : 12 + rand() * 45;
         // Lùi vào trong lô một chút, chừa vỉa hè
-        const x = bx + ox * (lot / 2) + ox * (lot - w) * 0.25 * rand();
-        const z = bz + oz * (lot / 2) + oz * (lot - d) * 0.25 * rand();
+        let x = bx + ox * (lot / 2) + ox * (lot - w) * 0.25 * rand();
+        let z = bz + oz * (lot / 2) + oz * (lot - d) * 0.25 * rand();
         const faceX = rand() < 0.5;
+        // Toà nhà lấn vào chỗ dành cho NPC, quầy hàng, cửa vault thì co lại và lùi về tâm block
+        let bw = w;
+        let bd = d;
+        for (const [rx, rz, rr] of RESERVED) {
+          for (let k = 0; k < 14 && Math.abs(rx - x) < bw / 2 + rr && Math.abs(rz - z) < bd / 2 + rr; k++) {
+            bw -= 1;
+            bd -= 1;
+            x += (bx - x) * 0.1;
+            z += (bz - z) * 0.1;
+          }
+        }
+        const palette = DISTRICTS[districtIdAt(bx, bz)].neon;
         list.push({
           x,
           z,
-          w,
-          d,
+          w: bw,
+          d: bd,
           h,
           variant: Math.floor(rand() * WINDOW_VARIANTS),
           face: faceX ? [ox, 0] : [0, oz],
-          neon: rand() < 0.7 ? NEON_COLORS[Math.floor(rand() * NEON_COLORS.length)] : null,
+          neon: rand() < 0.7 ? palette[Math.floor(rand() * palette.length)] : null,
           sign: rand() < 0.65 ? Math.floor(rand() * SIGN_COUNT * 4) : null,
         });
       }
@@ -259,6 +285,7 @@ function Signs({ list }: { list: Building[] }) {
 
 function Ground() {
   const size = CITY_HALF * 2 + 600;
+  const quality = useGame((s) => s.quality);
   const road = useMemo(() => {
     const t = makeRoadTexture();
     t.repeat.set(size / 12, size / 12);
@@ -304,7 +331,26 @@ function Ground() {
 
       <mesh rotation-x={-Math.PI / 2} userData={{ cameraCollider: true }}>
         <planeGeometry args={[size, size]} />
-        <meshStandardMaterial map={road} color="#9a93b0" roughness={0.28} metalness={0.65} />
+        {quality === "high" ? (
+          // Mặt đường ướt: phản chiếu neon thật bằng planar reflection, có làm mờ theo độ nhám
+          <MeshReflectorMaterial
+            map={road}
+            color="#8f88a8"
+            roughness={0.42}
+            metalness={0.5}
+            resolution={512}
+            blur={[280, 90]}
+            mixBlur={1}
+            mixStrength={7}
+            mixContrast={1.05}
+            depthScale={0.8}
+            minDepthThreshold={0.3}
+            maxDepthThreshold={1.3}
+            mirror={0.65}
+          />
+        ) : (
+          <meshStandardMaterial map={road} color="#9a93b0" roughness={0.28} metalness={0.65} />
+        )}
       </mesh>
 
       {streetCenters.flatMap((c) => [

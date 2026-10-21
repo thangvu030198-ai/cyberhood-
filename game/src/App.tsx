@@ -13,8 +13,12 @@ import { Effects } from "./game/Effects";
 import { PlayerCombat, combatDebug } from "./game/Weapons";
 import { Shop } from "./game/Shop";
 import { GameRules } from "./game/GameRules";
+import { Npcs } from "./game/Npcs";
+import { Vault, VaultDoor } from "./game/Vault";
+import { HoloAds, NeonEnvironment, SteamVents, VendingMachines } from "./game/Visuals";
 import { handles } from "./game/refs";
 import { useGame } from "./game/store";
+import { questProgress } from "./game/quests";
 import { Hud } from "./ui/Hud";
 
 const KEYMAP = [
@@ -66,18 +70,26 @@ const NO_FX = params.has("nofx");
 function DebugHook() {
   const state = useThree();
   if (params.has("debug")) {
-    Object.assign(window, { __r3f: state, __game: useGame, __handles: handles, __drones: drones, __combat: combatDebug });
+    Object.assign(window, {
+      __r3f: state,
+      __game: useGame,
+      __handles: handles,
+      __drones: drones,
+      __combat: combatDebug,
+      __quests: { questProgress },
+    });
   }
   return null;
 }
 
 export default function App() {
+  const quality = useGame((s) => s.quality);
   return (
     <Crash>
       <KeyboardControls map={KEYMAP}>
         <Canvas
           shadows={false}
-          dpr={[1, 1.5]}
+          dpr={quality === "high" ? [1, 1.5] : 1}
           gl={{ antialias: false, powerPreference: "high-performance" }}
           camera={{ fov: 60, near: 0.1, far: 1200, position: [0, 4, 12] }}
         >
@@ -90,7 +102,14 @@ export default function App() {
               <Player />
               {!NO_CARS && <Vehicles />}
               <Shop />
+              <Npcs />
+              <Vault />
             </Physics>
+            <VaultDoor />
+            <NeonEnvironment />
+            <HoloAds />
+            <VendingMachines />
+            <SteamVents />
             <Enemies />
             <PlayerCombat />
             <Effects />

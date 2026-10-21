@@ -111,3 +111,57 @@ export function makeSignTexture(index: number, vertical: boolean) {
     }
   });
 }
+
+/** Bảng chữ phát sáng hai dòng: tiêu đề và dòng phụ (biển cửa, màn hình terminal, bảng tên NPC) */
+export function makeLabelTexture(title: string, subtitle: string, color: string, marker?: string) {
+  return canvasTexture(512, 160, (ctx) => {
+    ctx.clearRect(0, 0, 512, 160);
+    ctx.fillStyle = "rgba(7, 4, 13, 0.82)";
+    ctx.fillRect(0, 20, 512, 120);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 14;
+    ctx.strokeRect(6, 24, 500, 112);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 46px "Chakra Petch", ui-monospace, monospace`;
+    ctx.fillText(title, 256, 76);
+    ctx.fillStyle = color;
+    ctx.font = `600 22px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.fillText(subtitle, 256, 116);
+    if (marker) {
+      ctx.fillStyle = "#ffb000";
+      ctx.shadowColor = "#ffb000";
+      ctx.font = `700 40px "Chakra Petch", ui-monospace, monospace`;
+      ctx.fillText(marker, 470, 74);
+    }
+  });
+}
+
+/** Ảnh quảng cáo hologram: chữ lớn, dòng phụ, khung và các vạch trang trí */
+export function makeAdTexture(title: string, subtitle: string, color: string) {
+  return canvasTexture(288, 416, (ctx) => {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, 288, 416);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(10, 10, 268, 396);
+    ctx.fillStyle = color;
+    for (let i = 0; i < 9; i++) ctx.fillRect(24, 40 + i * 9, 40 + ((i * 37) % 80), 3);
+    ctx.textAlign = "center";
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = "#fff";
+    const size = Math.min(64, 520 / title.length);
+    ctx.font = `700 ${size}px "Chakra Petch", ui-monospace, monospace`;
+    ctx.fillText(title, 144, 230);
+    ctx.fillStyle = color;
+    ctx.font = `600 22px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.fillText(subtitle, 144, 290);
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc(144, 350, 22, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+}

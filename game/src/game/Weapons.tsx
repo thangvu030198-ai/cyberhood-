@@ -216,7 +216,9 @@ export function PlayerCombat() {
     muzzle.getWorldPosition(_muzzle);
     // Vừa xoay người thì súng chưa kịp cập nhật vị trí: cho tia laser xuất phát trước ngực
     if (snapped || _muzzle.distanceTo(_chest) > 2) _muzzle.copy(_chest).addScaledVector(_flat, 0.6);
+    combatDebug.last.muzzle = _muzzle.toArray();
     fx.tracer(_muzzle, _end, PALETTE.cyan);
+    fx.muzzle(_muzzle, PALETTE.cyan);
     playSfx(weapon.sfx, 0.55);
   });
 

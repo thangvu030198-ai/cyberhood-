@@ -165,7 +165,8 @@ function CharacterModel() {
   });
 
   return (
-    <group ref={group}>
+    // Model Soldier dựng mặt hướng -Z, còn ecctrl coi +Z là phía trước: quay 180° để không chạy giật lùi
+    <group ref={group} rotation-y={Math.PI}>
       <group ref={pose}>
         <primitive object={scene} />
       </group>

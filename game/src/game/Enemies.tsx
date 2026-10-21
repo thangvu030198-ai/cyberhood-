@@ -311,11 +311,17 @@ function BossModel({ index }: { index: number }) {
     return { scene: s, mixer, walk, recoil, glow };
   }, [gltf]);
   const lastFired = useRef(-1);
+  const light = useRef<THREE.PointLight>(null);
   useFrame((_, dt) => {
     const d = drones[index];
     const g = ref.current;
     if (!g) return;
     g.visible = d.state !== "dead";
+    // Đèn nằm ngoài nhóm, chỉ đổi độ sáng (đổi số đèn làm mọi shader biên dịch lại)
+    if (light.current) {
+      light.current.intensity = g.visible ? 60 : 0;
+      light.current.position.set(d.pos.x, d.pos.y + 1, d.pos.z);
+    }
     if (!g.visible) return;
     g.position.copy(d.pos);
     _aim.subVectors(_target, d.pos);
@@ -336,10 +342,12 @@ function BossModel({ index }: { index: number }) {
     mixer.update(Math.min(dt, 0.1));
   });
   return (
-    <group ref={ref} visible={false}>
-      <primitive object={scene} />
-      <pointLight position={[0, 2, 3]} color="#ff3a2a" intensity={60} distance={14} decay={2} />
-    </group>
+    <>
+      <group ref={ref} visible={false}>
+        <primitive object={scene} />
+      </group>
+      <pointLight ref={light} color="#ff3a2a" intensity={0} distance={14} decay={2} />
+    </>
   );
 }
 

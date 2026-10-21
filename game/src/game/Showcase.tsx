@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { extraModel, type ExtraModel } from "./assets";
-import { CITY, CITY_HALF, NEON_COLORS, mulberry32 } from "./config";
+import { CITY, CITY_HALF, mulberry32 } from "./config";
 
 // Model chất lượng cao tải nền (xem src/assets/LICENSES.md): đạo cụ Hub, đội xe bay, công trình điểm nhấn.
 // Mỗi nhóm nằm trong Suspense riêng nên hiện ra ngay khi file của nó tải xong.
@@ -216,33 +216,34 @@ function SkyFleet({ count = 26 }: { count?: number }) {
 // ---------------------------------------------------------------------------
 // Công trình điểm nhấn: khu phố Nhật thu nhỏ có chuyển động ở rìa thành phố, skyline đỏ phía xa
 
+const TOKYO_POS = new THREE.Vector3(-CITY_HALF - 34, 0, -24);
+/** Ngoài khoảng này Tokyo bị sương che gần hết: thôi vẽ cho đỡ nặng */
+const TOKYO_DRAW = 170;
+
 function TokyoLandmark() {
   const { root, animations, scene } = useFitted("tokyo", 46, "longest", 0.5);
   useLoop(scene, animations, undefined, 0.6);
+  const group = useRef<THREE.Group>(null);
+  useFrame(({ camera }) => {
+    if (group.current) group.current.visible = camera.position.distanceTo(TOKYO_POS) < TOKYO_DRAW;
+  });
   return (
-    <group position={[-CITY_HALF - 34, 0, -24]} rotation={[0, Math.PI / 2, 0]}>
+    <group ref={group} position={TOKYO_POS} rotation={[0, Math.PI / 2, 0]}>
       <primitive object={root} />
-      <pointLight position={[0, 18, 10]} color={NEON_COLORS[0]} intensity={300} distance={60} decay={2} />
     </group>
   );
 }
 
 function Skyline() {
   const { root } = useFitted("skyline", 520, "longest");
-  const second = useMemo(() => {
+  useMemo(() => {
     // Skyline ở rất xa: tắt sương mù để thấy bóng thành phố đỏ trên nền trời
     root.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.isMesh) (m.material as THREE.MeshBasicMaterial).fog = false;
     });
-    return root.clone(true);
   }, [root]);
-  return (
-    <>
-      <primitive object={root} position={[0, -6, -470]} />
-      <primitive object={second} position={[470, -6, 0]} rotation={[0, -Math.PI / 2, 0]} />
-    </>
-  );
+  return <primitive object={root} position={[0, -6, -470]} />;
 }
 
 /** Phần trang trí không có va chạm: đội xe bay, công trình điểm nhấn (đặt ngoài <Physics>) */

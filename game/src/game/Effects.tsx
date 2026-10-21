@@ -168,12 +168,13 @@ export function Effects() {
     });
 
     if (light.current) {
+      // Đèn luôn nằm trong cảnh, chỉ đổi độ sáng: bật/tắt visible làm đổi số đèn
+      // và khiến mọi vật liệu biên dịch lại shader (giật cứng mỗi phát bắn)
       const k = (clock - muzzleLight.born) / MUZZLE_LIGHT_LIFE;
-      light.current.visible = k < 1;
+      light.current.intensity = k < 1 ? 30 * (1 - k) : 0;
       if (k < 1) {
         light.current.position.copy(muzzleLight.pos);
         light.current.color.copy(muzzleLight.color);
-        light.current.intensity = 30 * (1 - k);
       }
     }
 
@@ -238,7 +239,7 @@ export function Effects() {
           <meshBasicMaterial transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       ))}
-      <pointLight ref={light} visible={false} distance={8} decay={2} />
+      <pointLight ref={light} intensity={0} distance={8} decay={2} />
       {blasts.map((_, i) => (
         <mesh key={`b${i}`} ref={(m) => void (blastRefs.current[i] = m)} visible={false}>
           <icosahedronGeometry args={[0.5, 1]} />

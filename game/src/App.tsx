@@ -97,7 +97,7 @@ export default function App() {
       <KeyboardControls map={KEYMAP}>
         <Canvas
           shadows={false}
-          dpr={quality === "high" ? [1, 1.5] : 1}
+          dpr={quality === "high" ? [1, 1.25] : 1}
           gl={{ antialias: false, powerPreference: "high-performance" }}
           camera={{ fov: 60, near: 0.1, far: 1200, position: [0, 4, 12] }}
         >

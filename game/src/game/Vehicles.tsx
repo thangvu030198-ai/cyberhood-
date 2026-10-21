@@ -231,7 +231,7 @@ function glowTexture() {
   return _glowTexture;
 }
 
-function CarBody({ body, glow, active }: { body: THREE.Object3D; glow: string; active: boolean }) {
+function CarBody({ body, glow }: { body: THREE.Object3D; glow: string }) {
   return (
     <group>
       <primitive object={body} position={[0, MODEL_Y, MODEL_Z]} />
@@ -248,35 +248,47 @@ function CarBody({ body, glow, active }: { body: THREE.Object3D; glow: string; a
           toneMapped={false}
         />
       </mesh>
-      {active && (
-        <>
-          <pointLight position={[0, MODEL_Y + 0.2, 0]} color={glow} intensity={25} distance={7} decay={2} />
-          <Headlight />
-        </>
-      )}
     </group>
   );
 }
 
-function Headlight() {
-  const light = useRef<THREE.SpotLight>(null);
+const _fwd = new THREE.Vector3();
+const _glowColor = new THREE.Color();
+
+/**
+ * Đèn gầm và đèn pha của xe đang lái: một bộ đèn dùng chung luôn nằm trong cảnh, bám theo xe.
+ * Gắn đèn riêng cho từng xe rồi bật/tắt khi lên xe sẽ làm đổi số đèn, mọi shader biên dịch lại và game giật.
+ */
+function DriveLights() {
+  const under = useRef<THREE.PointLight>(null);
+  const head = useRef<THREE.SpotLight>(null);
   const target = useRef<THREE.Object3D>(null);
   useEffect(() => {
-    if (light.current && target.current) light.current.target = target.current;
+    if (head.current && target.current) head.current.target = target.current;
   }, []);
+  useFrame(() => {
+    const s = useGame.getState();
+    const car = s.mode === "drive" && s.carId !== null ? handles.cars.get(s.carId) : null;
+    const u = under.current;
+    const h = head.current;
+    const t = target.current;
+    if (!u || !h || !t) return;
+    u.intensity = car ? 25 : 0;
+    h.intensity = car ? 180 : 0;
+    if (!car) return;
+    const p = car.currPos;
+    _fwd.copy(car.bodyZAxis).setY(0).normalize();
+    u.position.set(p.x, p.y + MODEL_Y + 0.2, p.z);
+    u.color.copy(_glowColor.set(CARS.find((c) => c.id === s.carId)?.glow ?? "#ffffff"));
+    h.position.set(p.x + _fwd.x * 2.3, p.y + 0.3, p.z + _fwd.z * 2.3);
+    t.position.set(p.x + _fwd.x * 16, p.y - 1, p.z + _fwd.z * 16);
+    t.updateMatrixWorld();
+  });
   return (
     <>
-      <spotLight
-        ref={light}
-        position={[0, 0.3, 2.3]}
-        color="#e6f4ff"
-        intensity={180}
-        distance={45}
-        angle={0.5}
-        penumbra={0.6}
-        decay={1.6}
-      />
-      <object3D ref={target} position={[0, -1, 14]} />
+      <pointLight ref={under} intensity={0} distance={7} decay={2} />
+      <spotLight ref={head} color="#e6f4ff" intensity={0} distance={45} angle={0.5} penumbra={0.6} decay={1.6} />
+      <object3D ref={target} />
     </>
   );
 }
@@ -358,7 +370,7 @@ function Car({ spec }: { spec: CarSpec }) {
       {/* Khối lượng dồn vào thân dưới, cabin gần như không nặng: trọng tâm thấp, xe không bốc đầu */}
       <CuboidCollider args={[1.1, 0.3, 2.1]} position={[0, 0.02, 0]} density={1.0} />
       <CuboidCollider args={[0.85, 0.22, 1.1]} position={[0, 0.5, -0.2]} density={0.05} />
-      <CarBody body={body} glow={spec.glow} active={active} />
+      <CarBody body={body} glow={spec.glow} />
       {wheelsOn &&
         (
         [
@@ -391,6 +403,7 @@ export function Vehicles() {
       {CARS.map((c) => (
         <Car key={c.id} spec={c} />
       ))}
+      <DriveLights />
     </>
   );
 }

@@ -78,6 +78,7 @@ function Pins() {
   const beams = useRef<(THREE.Mesh | null)[]>([]);
   const rings = useRef<(THREE.Mesh | null)[]>([]);
   const crate = useRef<THREE.Group>(null);
+  const crateLight = useRef<THREE.PointLight>(null);
   useFrame(({ clock }) => {
     const pins = contractPins();
     const t = clock.elapsedTime;
@@ -105,6 +106,11 @@ function Pins() {
         crate.current.rotation.y = t * 0.6;
       }
     }
+    // Đèn để ngoài nhóm và chỉ đổi độ sáng, tránh biên dịch lại shader khi thùng xuất hiện
+    if (crateLight.current) {
+      crateLight.current.intensity = runtime.crate ? 20 : 0;
+      if (runtime.crate) crateLight.current.position.set(runtime.crate.x, 1.2, runtime.crate.z);
+    }
   });
   return (
     <>
@@ -129,8 +135,8 @@ function Pins() {
           <boxGeometry args={[1.26, 0.12, 1.26]} />
           <meshBasicMaterial color={new THREE.Color("#b05cff").multiplyScalar(4)} toneMapped={false} />
         </mesh>
-        <pointLight color="#b05cff" intensity={20} distance={10} decay={2} />
       </group>
+      <pointLight ref={crateLight} color="#b05cff" intensity={0} distance={10} decay={2} />
     </>
   );
 }

@@ -7,7 +7,7 @@ import { PALETTE } from "./config";
 import { damageDrone, hitDrones, nearestVisibleDrone } from "./Enemies";
 import { fx } from "./Effects";
 import { handles } from "./refs";
-import { useGame } from "./store";
+import { uiBlocking, useGame } from "./store";
 import { rayBuildings, rayGround } from "./world";
 import { isLocked, pointer, requestLock } from "./pointer";
 
@@ -82,7 +82,6 @@ export function PlayerCombat() {
   const dom = useThree((s) => s.gl.domElement);
   const lastShot = useRef(-Infinity);
   const triggerHeld = useRef(false);
-  const faceUntil = useRef(0);
   const pendingShot = useRef(false);
 
   useEffect(() => {
@@ -144,10 +143,10 @@ export function PlayerCombat() {
     const canFire = s.mode === "foot" && s.flatlinedAt === null && !s.shopOpen;
     const touchFire = !!useButtonStore.getState().buttons.fire;
 
-    // Đã khoá chuột thì nhân vật luôn quay theo hướng camera (kiểu bắn góc nhìn thứ 3);
-    // trên cảm ứng chỉ quay theo khi ngắm hoặc vừa bắn
-    player.setLockForward(canFire && (s.pointerLocked || s.aiming || t < faceUntil.current));
-    if (canFire && s.pointerLocked && player.body) {
+    // Nhân vật luôn quay theo hướng camera (kiểu bắn góc nhìn thứ 3): xoay camera tới đâu thân quay tới đó
+    const faceCamera = canFire && !uiBlocking(s);
+    player.setLockForward(faceCamera);
+    if (faceCamera && player.body) {
       // Lực xoay của ecctrl khá chậm: bám thẳng theo hướng camera để rê chuột tới đâu người quay tới đó
       camera.getWorldDirection(_flat);
       const aimYaw = Math.atan2(_flat.x, _flat.z);
@@ -166,7 +165,6 @@ export function PlayerCombat() {
     const weapon = s.upgrades.repeater ? WEAPONS.repeater : WEAPONS.blaster;
     if (t - lastShot.current < weapon.cooldown) return;
     lastShot.current = t;
-    faceUntil.current = t + 0.6;
 
     const damage = weapon.damage * (s.upgrades.overclock ? 1.5 : 1);
     _chest.copy(player.currPos).setY(player.currPos.y + 0.5);

@@ -345,18 +345,18 @@ function Fx({ sim }: { sim: PlatformerSim }) {
     let i = 0;
     for (let k = sim.fx.length - 1; k >= 0 && i < FX_POOL; k--) {
       const f = sim.fx[k];
-      const life = f.kind === "boom" ? 0.55 : f.kind === "hit" ? 0.18 : f.kind === "land" ? 0.25 : 0;
+      const life = f.kind === "boom" ? 0.55 : f.kind === "hit" ? 0.18 : f.kind === "land" ? 0.25 : f.kind === "dust" ? 0.35 : 0;
       const age = sim.time - f.at;
       if (!life || age > life) continue;
       const o = g.children[i++] as THREE.Mesh;
       const u = age / life;
-      const size = f.kind === "boom" ? 0.4 + u * 2.4 : f.kind === "land" ? 0.3 + u * 1.2 : 0.25 + u * 0.5;
+      const size = f.kind === "boom" ? 0.4 + u * 2.4 : f.kind === "land" ? 0.3 + u * 1.2 : f.kind === "dust" ? 0.12 + u * 0.3 : 0.25 + u * 0.5;
       o.visible = true;
-      o.position.set(f.x, f.y + (f.kind === "land" ? 0.1 : 0), 0.4);
+      o.position.set(f.x, f.y + (f.kind === "land" ? 0.1 : f.kind === "dust" ? u * 0.4 : 0), 0.4);
       o.scale.set(size, f.kind === "land" ? size * 0.25 : size, size);
       const mat = o.material as THREE.MeshBasicMaterial;
-      mat.opacity = 1 - u;
-      mat.color.setRGB(...((f.kind === "boom" ? [3, 1.4, 0.4] : f.kind === "land" ? [1, 1, 1.4] : [2.6, 2.6, 3]) as [number, number, number]));
+      mat.opacity = (1 - u) * (f.kind === "dust" ? 0.5 : 1);
+      mat.color.setRGB(...((f.kind === "boom" ? [3, 1.4, 0.4] : f.kind === "land" ? [1, 1, 1.4] : f.kind === "dust" ? [0.75, 0.72, 0.8] : [2.6, 2.6, 3]) as [number, number, number]));
     }
     for (; i < FX_POOL; i++) g.children[i].visible = false;
     // Quầng nạp đạn quanh nhân vật
@@ -613,7 +613,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     // Trượt tường: bụi bắn ra ở chỗ tay chân miết vào tường
     if (onWall && p.vy < -1 && sim.time - lastDust.current > 0.12) {
       lastDust.current = sim.time;
-      sim.fx.push({ kind: "land", x: p.x + p.wallNear * (p.w / 2), y: p.y + 0.4, at: sim.time });
+      sim.fx.push({ kind: "dust", x: p.x + p.wallNear * (p.w / 2), y: p.y + 0.3, at: sim.time });
     }
     // Nhấp nháy khi bất tử sau khi trúng đòn
     o.visible = sim.status === "dead" || p.invuln <= 0 || Math.floor(sim.time * 20) % 2 === 0;

@@ -42,7 +42,7 @@ export type Shot = { x: number; y: number; vx: number; vy: number; r: number; dm
 
 export type Pickup = { x: number; y: number; kind: "health"; taken: boolean };
 
-export type FxEvent = { kind: "hit" | "boom" | "shot" | "charge" | "hurt" | "pickup" | "checkpoint" | "land" | "dash"; x: number; y: number; at: number };
+export type FxEvent = { kind: "hit" | "boom" | "shot" | "charge" | "hurt" | "pickup" | "checkpoint" | "land" | "dash" | "dust"; x: number; y: number; at: number };
 
 export type LevelDef = {
   id: string;

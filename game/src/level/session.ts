@@ -13,6 +13,10 @@ import { useGame } from "../game/store";
 import { MISSION_GATE } from "../game/config";
 import { LEVEL_1 } from "./level1";
 import { PlatformerSim } from "./platformer";
+import { keptOnQuit, type LootDrop } from "./loot";
+import { addShards, type KeyId } from "../sim/season";
+import { createRng } from "../sim/rng";
+import { RARITY_LABEL } from "../sim/loot";
 
 /** Thưởng CRED: cơ bản khi qua màn + mỗi địch hạ */
 export const LEVEL_REWARD = { clear: 60, perKill: 3 };
@@ -23,6 +27,8 @@ type LevelState = {
   contract: boolean;
   /** Đã trao thưởng qua màn chưa */
   rewarded: boolean;
+  /** Đồ vừa nhặt gần đây, cho HUD hiện dòng thông báo */
+  feed: { text: string; color: string; at: number }[];
   start: () => void;
   leave: () => void;
 };
@@ -31,10 +37,24 @@ export const useLevel = create<LevelState>((set, get) => ({
   sim: null,
   contract: false,
   rewarded: false,
+  feed: [],
   start: () => {
-    const sim = new PlatformerSim(LEVEL_1);
+    const g = useGame.getState();
+    const sim = new PlatformerSim(LEVEL_1, {
+      pity: useHunter.getState().pity,
+      chestKeys: g.inventory.chestKey ?? 0,
+      mapMultiplier: 1,
+    });
     let lastCheckpoint = -1;
-    sim.onEvent = (kind) => {
+    const note = (text: string, color: string) =>
+      set((st) => ({ feed: [...st.feed.filter((f) => sim.time - f.at < 4).slice(-4), { text, color, at: sim.time }] }));
+    sim.onEvent = (kind, detail) => {
+      if (kind === "loot" && detail?.drop) {
+        const [text, color] = describe(detail.drop);
+        note(text, color);
+      }
+      if (kind === "chest") note("Mở rương!", "#ffd23d");
+      if (kind === "chestLocked") note("Rương bị khoá: cần Chìa rương (rơi từ địch)", "#ff8fb1");
       const c = useHunter.getState().contract;
       if (kind === "kill") {
         questProgress("kill");
@@ -46,15 +66,19 @@ export const useLevel = create<LevelState>((set, get) => ({
       }
       if (kind === "cleared") finish();
     };
-    set({ sim, contract: !!useHunter.getState().contract, rewarded: false });
+    set({ sim, contract: !!useHunter.getState().contract, rewarded: false, feed: [] });
   },
   leave: () => {
     const { sim, rewarded } = get();
     const c = useHunter.getState().contract;
     // Bỏ dở giữa chừng: hợp đồng tính như thất bại
-    if (sim && !rewarded && c) {
-      useHunter.getState().endContract("dead");
-      useGame.getState().showToast("Bỏ dở nhiệm vụ: hợp đồng thất bại");
+    if (sim && !rewarded) {
+      // Bỏ dở: giữ chìa và CRED, mất 30% linh kiện từ Hiếm trở xuống
+      grantLoot(keptOnQuit(sim.collected, createRng(Date.now() & 0xffff)), sim.chestKeys);
+      if (c) {
+        useHunter.getState().endContract("dead");
+        useGame.getState().showToast("Bỏ dở nhiệm vụ: hợp đồng thất bại, mất 30% đồ thường/hiếm đã nhặt");
+      }
     }
     set({ sim: null });
     exitToHub();
@@ -81,6 +105,7 @@ function finish() {
   const sim = st.sim;
   const g = useGame.getState();
   g.addCred(LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill);
+  grantLoot(sim.collected, sim.chestKeys);
   const h = useHunter.getState();
   const c = h.contract;
   if (c) {
@@ -114,3 +139,28 @@ function exitToHub() {
   }
   useGame.getState().setLocation("city");
 }
+
+/** Cất đồ nhặt trong màn vào tài khoản: linh kiện vào kho, CRED, mảnh Chìa mùa, số Chìa rương còn lại */
+function grantLoot(drops: LootDrop[], chestKeysLeft: number) {
+  const g = useGame.getState();
+  const h = useHunter.getState();
+  const parts = drops.flatMap((d) => (d.kind === "part" ? [d.part] : []));
+  const cred = drops.reduce((n, d) => n + (d.kind === "cred" ? d.amount : 0), 0);
+  const shards = drops.filter((d) => d.kind === "keyShard").length;
+  if (cred) g.addCred(cred);
+  useGame.setState((s) => ({ inventory: { ...s.inventory, chestKey: chestKeysLeft } }));
+  const season = { ...h.season, shards: { ...h.season.shards }, keys: [...h.season.keys] };
+  const newKey: KeyId | null = shards ? addShards(season, "neon_city", shards) : null;
+  useHunter.setState({ parts: [...h.parts, ...parts], season, pity: { ...h.pity } });
+  if (newKey) g.showToast("Ghép được Chìa Đồng!");
+}
+
+function describe(d: LootDrop): [string, string] {
+  if (d.kind === "part") return [`${d.part.name} · ${RARITY_LABEL[d.part.rarity]}`, RARITY_HEX[d.part.rarity]];
+  if (d.kind === "cred") return [`+${d.amount} CRED`, "#ffd23d"];
+  if (d.kind === "chestKey") return ["+1 Chìa rương", "#7dffb0"];
+  if (d.kind === "keyShard") return ["+1 Mảnh Chìa Đồng", "#e0a060"];
+  return ["Hồi máu", "#7dff9a"];
+}
+
+const RARITY_HEX = { common: "#c9d0d8", rare: "#5ab4ff", epic: "#c27dff", legendary: "#ffc23d", mythic: "#ff4a64" } as const;

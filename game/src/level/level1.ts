@@ -116,6 +116,12 @@ function build(): LevelDef {
       [116, 3.5],
       [158.5, 2.5],
     ],
+    // Rương giấu: trên mái che đầu màn, trên bậc leo tường thành, trên khối giữa bãi hoang
+    chests: [
+      { x: 13.5, y: 5, tier: "bronze" },
+      { x: 66.5, y: 6, tier: "silver" },
+      { x: 130.5, y: 5, tier: "gold" },
+    ],
     bossArena: [166, 189],
     theme: "quarantine",
   };

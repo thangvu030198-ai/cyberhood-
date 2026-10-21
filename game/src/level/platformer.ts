@@ -3,6 +3,9 @@
 
 import { LEVEL_TUNING as T } from "./levelTuning";
 import type { ThemeId } from "./themes";
+import { chestContents, rollEnemyDrops, type ChestTier, type LootContext, type LootDrop } from "./loot";
+import { freshPity, type PityState } from "../sim/loot";
+import { createRng } from "../sim/rng";
 
 export type Input = { left: boolean; right: boolean; jump: boolean; shoot: boolean; dash: boolean };
 export const NO_INPUT: Input = { left: false, right: false, jump: false, shoot: false, dash: false };
@@ -40,7 +43,22 @@ export type Enemy = {
 
 export type Shot = { x: number; y: number; vx: number; vy: number; r: number; dmg: number; pierce: boolean; life: number; enemy: boolean; level: 0 | 1 | 2 };
 
-export type Pickup = { x: number; y: number; kind: "health"; taken: boolean };
+export type Pickup = { x: number; y: number; vx: number; vy: number; drop: LootDrop; taken: boolean; bornAt: number };
+
+export type Chest = { x: number; y: number; tier: ChestTier; opened: boolean; lockedHintAt: number };
+
+export type SimOptions = {
+  /** Hạt giống ngẫu nhiên cho đồ rơi (test cố định được) */
+  seed?: number;
+  /** Bộ đếm pity của người chơi: dùng chung với hợp đồng, được cập nhật tại chỗ */
+  pity?: PityState;
+  /** Chìa rương mang vào màn */
+  chestKeys?: number;
+  /** Hệ số rơi đồ của map (GDD: Neon City ×1.0 … Citadel ×2.0) */
+  mapMultiplier?: number;
+};
+
+export type SimEvent = "kill" | "checkpoint" | "cleared" | "loot" | "chest" | "chestLocked";
 
 export type FxEvent = { kind: "hit" | "boom" | "shot" | "charge" | "hurt" | "pickup" | "checkpoint" | "land" | "dash" | "dust"; x: number; y: number; at: number };
 
@@ -53,6 +71,8 @@ export type LevelDef = {
   checkpoints: [number, number][];
   enemies: { kind: EnemyKind; x: number; y: number }[];
   pickups: [number, number][];
+  /** Rương giấu trong màn, mở bằng Chìa rương */
+  chests?: { x: number; y: number; tier: ChestTier }[];
   /** Vùng đấu trùm: [xMin, xMax]; đi vào thì cửa đóng lại */
   bossArena: [number, number];
   /** Bảng màu / bối cảnh để LevelScene trang trí (themes.ts) */
@@ -108,10 +128,19 @@ export class PlatformerSim {
   private deadAt = 0;
   clearedAt = 0;
   /** Báo cho bên ngoài (thưởng, nhiệm vụ): hạ địch, qua checkpoint, qua màn */
-  onEvent: ((kind: "kill" | "checkpoint" | "cleared", enemy?: Enemy) => void) | null = null;
+  onEvent: ((kind: SimEvent, detail?: { enemy?: Enemy; drop?: LootDrop; chest?: Chest }) => void) | null = null;
+  chests: Chest[] = [];
+  /** Chìa rương đang có (mang vào + nhặt được − đã dùng) */
+  chestKeys = 0;
+  /** Mọi thứ đã nhặt trong màn (trừ viên máu), để trao khi qua màn */
+  collected: LootDrop[] = [];
+  private loot: LootContext;
   private acc = 0;
 
-  constructor(def: LevelDef) {
+  constructor(def: LevelDef, opts: SimOptions = {}) {
+    this.loot = { rng: createRng(opts.seed ?? (Date.now() & 0xffffff)), pity: opts.pity ?? freshPity(), mapMultiplier: opts.mapMultiplier ?? 1 };
+    this.chestKeys = opts.chestKeys ?? 0;
+    this.chests = (def.chests ?? []).map((c) => ({ ...c, opened: false, lockedHintAt: -99 }));
     this.def = def;
     this.grid = def.rows;
     this.height = def.rows.length;
@@ -120,7 +149,7 @@ export class PlatformerSim {
     this.reset(def.start);
     let id = 0;
     this.enemies = def.enemies.map((e) => makeEnemy(id++, e.kind, e.x, e.y));
-    this.pickups = def.pickups.map(([x, y]) => ({ x, y, kind: "health" as const, taken: false }));
+    this.pickups = def.pickups.map(([x, y]) => ({ x, y, vx: 0, vy: 0, drop: { kind: "health" as const }, taken: false, bornAt: -99 }));
   }
 
   private reset([x, y]: [number, number]) {
@@ -265,7 +294,7 @@ export class PlatformerSim {
     this.updatePlayer(dt, input, pressed);
     this.updateEnemies(dt);
     this.updateShots(dt);
-    this.updatePickups();
+    this.updatePickups(dt);
     this.prev = input;
   }
 
@@ -612,11 +641,12 @@ export class PlatformerSim {
             e.alive = false;
             e.deadAt = this.time;
             this.kills++;
-            this.onEvent?.("kill", e);
+            this.onEvent?.("kill", { enemy: e });
+            this.spawnDrops(e.x, e.y + e.h * 0.5, rollEnemyDrops(e.kind, this.loot));
             this.fx.push({ kind: "boom", x: e.x, y: e.y + e.h / 2, at: this.time });
             if (e.kind === "boss") this.clear();
             // Thỉnh thoảng rơi viên máu
-            else if (this.kills % 3 === 0) this.pickups.push({ x: e.x, y: e.y + 0.3, kind: "health", taken: false });
+            else if (this.kills % 3 === 0) this.spawnDrops(e.x, e.y + 0.6, [{ kind: "health" }]);
           }
           if (!s.pierce) {
             s.life = 0;
@@ -628,19 +658,71 @@ export class PlatformerSim {
     this.shots = this.shots.filter((s) => s.life > 0 && s.x > -2 && s.x < this.width + 2);
   }
 
-  private updatePickups() {
+  /** Đồ bật ra từ địch / rương, toả hai bên rồi rơi xuống đất */
+  private spawnDrops(x: number, y: number, drops: LootDrop[]) {
+    drops.forEach((drop, i) => {
+      const spread = drops.length > 1 ? (i / (drops.length - 1) - 0.5) * 2 : 0;
+      this.pickups.push({ x, y, vx: spread * 2.2, vy: 6 + (i % 2) * 1.5, drop, taken: false, bornAt: this.time });
+    });
+  }
+
+  private updatePickups(dt: number) {
     const p = this.player;
+    const L = T.loot;
     for (const k of this.pickups) {
       if (k.taken) continue;
-      if (Math.abs(k.x - p.x) < 0.8 && k.y > p.y - 0.5 && k.y < p.y + p.h) {
-        k.taken = true;
-        p.hp = Math.min(T.player.maxHp, p.hp + T.player.healthPickup);
-        this.fx.push({ kind: "pickup", x: k.x, y: k.y, at: this.time });
+      // Gần người chơi thì bị hút về (đỡ phải nhảy nhặt từng món)
+      const dx = p.x - k.x;
+      const dy = p.y + p.h / 2 - k.y;
+      const d = Math.hypot(dx, dy);
+      const age = this.time - k.bornAt;
+      if (age > L.pickupDelay && d < L.magnetRange && k.drop.kind !== "health") {
+        k.x += (dx / d) * L.magnetSpeed * dt;
+        k.y += (dy / d) * L.magnetSpeed * dt;
+      } else if (k.vx !== 0 || k.vy !== 0 || !this.hits(k.x, k.y - 0.05, 0.3, 0.05)) {
+        k.vy = Math.max(-T.player.maxFall, k.vy - T.player.gravity * dt);
+        const box = { x: k.x, y: k.y, vx: k.vx, vy: k.vy, w: 0.3, h: 0.3 };
+        const m = this.move(box, dt);
+        k.x = box.x;
+        k.y = box.y;
+        k.vx = m.ground ? 0 : box.vx * 0.99;
+        k.vy = box.vy;
+        if (k.y < -3) k.taken = true;
+      }
+      if (age > L.pickupDelay && Math.abs(k.x - p.x) < 0.8 && k.y > p.y - 0.5 && k.y < p.y + p.h) this.take(k);
+    }
+    // Rương: chạm vào khi có chìa thì mở, không có chìa thì nhắc
+    for (const c of this.chests) {
+      if (c.opened || Math.abs(c.x - p.x) > 0.9 || Math.abs(c.y - p.y) > 1) continue;
+      if (this.chestKeys > 0) {
+        this.chestKeys--;
+        c.opened = true;
+        this.fx.push({ kind: "pickup", x: c.x, y: c.y + 0.6, at: this.time });
+        this.onEvent?.("chest", { chest: c });
+        this.spawnDrops(c.x, c.y + 0.8, chestContents(c.tier, this.loot));
+      } else if (this.time - c.lockedHintAt > 2) {
+        c.lockedHintAt = this.time;
+        this.onEvent?.("chestLocked", { chest: c });
       }
     }
   }
 
+  private take(k: Pickup) {
+    const p = this.player;
+    k.taken = true;
+    this.fx.push({ kind: "pickup", x: k.x, y: k.y, at: this.time });
+    if (k.drop.kind === "health") {
+      p.hp = Math.min(T.player.maxHp, p.hp + T.player.healthPickup);
+      return;
+    }
+    if (k.drop.kind === "chestKey") this.chestKeys++;
+    this.collected.push(k.drop);
+    this.onEvent?.("loot", { drop: k.drop });
+  }
+
   private clear() {
+    // Qua màn: gom luôn đồ còn nằm trên đất (đồ trùm rơi)
+    for (const k of this.pickups) if (!k.taken && k.drop.kind !== "health") this.take(k);
     this.status = "cleared";
     this.clearedAt = this.time;
     this.shots = [];

@@ -46,6 +46,7 @@ export function LevelCanvas() {
       <BossDoors sim={sim} />
       <Shots sim={sim} />
       <Pickups sim={sim} />
+      <Chests sim={sim} />
       <Fx sim={sim} />
       <Suspense fallback={null}>
         <Backdrop width={sim.width} theme={th} />
@@ -306,29 +307,127 @@ function Shots({ sim }: { sim: PlatformerSim }) {
   );
 }
 
+const PICKUP_POOL = 48;
+const RARITY_GLOW: Record<string, [number, number, number]> = {
+  common: [1.6, 1.7, 1.8],
+  rare: [0.5, 1.6, 3],
+  epic: [2, 0.8, 3],
+  legendary: [3, 2.1, 0.4],
+  mythic: [3, 0.4, 0.6],
+};
+
+/** Hình dạng đồ rơi: viên máu (xanh lá), linh kiện (khối bát diện + cột sáng màu độ hiếm), CRED (đồng xu),
+ * Chìa rương (chìa xanh ngọc), mảnh Chìa mùa (mảnh đồng) */
 function Pickups({ sim }: { sim: PlatformerSim }) {
   const group = useRef<THREE.Group>(null);
+  const geo = useMemo(
+    () => ({
+      health: new THREE.CapsuleGeometry(0.16, 0.28, 4, 8),
+      part: new THREE.OctahedronGeometry(0.3),
+      cred: new THREE.CylinderGeometry(0.22, 0.22, 0.06, 20).rotateX(Math.PI / 2),
+      chestKey: new THREE.TorusGeometry(0.14, 0.05, 8, 16).translate(0, 0.16, 0).rotateZ(0),
+      keyShard: new THREE.TetrahedronGeometry(0.26),
+      beam: new THREE.CylinderGeometry(0.06, 0.18, 3, 10, 1, true).translate(0, 1.5, 0),
+    }),
+    [],
+  );
   useFrame(({ clock }) => {
     const g = group.current;
     if (!g) return;
-    sim.pickups.forEach((k, i) => {
-      const o = g.children[i];
-      if (!o) return;
-      o.visible = !k.taken;
-      o.position.set(k.x, k.y + 0.35 + Math.sin(clock.elapsedTime * 3 + i) * 0.1, 0);
-      o.rotation.y = clock.elapsedTime * 2;
-    });
+    const t = clock.elapsedTime;
+    let i = 0;
+    for (const k of sim.pickups) {
+      if (k.taken || i >= PICKUP_POOL) continue;
+      const slot = g.children[i++] as THREE.Group;
+      const body = slot.children[0] as THREE.Mesh;
+      const beam = slot.children[1] as THREE.Mesh;
+      slot.visible = true;
+      const resting = k.vx === 0 && k.vy === 0;
+      slot.position.set(k.x, k.y + (resting ? 0.35 + Math.sin(t * 3 + i) * 0.08 : 0.15), 0.2);
+      body.rotation.y = t * 2.4;
+      const d = k.drop;
+      body.geometry = geo[d.kind];
+      const color =
+        d.kind === "part" ? RARITY_GLOW[d.part.rarity] : d.kind === "cred" ? [3, 2.2, 0.4] : d.kind === "chestKey" ? [0.4, 3, 1.8] : d.kind === "keyShard" ? [2.4, 1.2, 0.5] : [0.4, 3, 1];
+      (body.material as THREE.MeshBasicMaterial).color.setRGB(color[0], color[1], color[2]);
+      // Cột sáng chỉ cho linh kiện từ Hiếm trở lên, cao dần theo độ hiếm
+      const tall = d.kind === "part" ? ["common", "rare", "epic", "legendary", "mythic"].indexOf(d.part.rarity) : -1;
+      beam.visible = tall >= 1;
+      if (beam.visible) {
+        beam.scale.set(1, 0.6 + tall * 0.35, 1);
+        const bm = beam.material as THREE.MeshBasicMaterial;
+        bm.color.setRGB(color[0], color[1], color[2]);
+        bm.opacity = 0.35 + Math.sin(t * 4) * 0.08;
+      }
+    }
+    for (; i < PICKUP_POOL; i++) g.children[i].visible = false;
   });
-  // Viên máu rơi ra thêm khi hạ địch: tạo sẵn đủ chỗ
-  const slots = sim.pickups.length + 24;
   return (
     <group ref={group}>
-      {Array.from({ length: slots }, (_, i) => (
-        <mesh key={i} visible={false}>
-          <capsuleGeometry args={[0.16, 0.28, 4, 8]} />
-          <meshBasicMaterial color={[0.4, 3, 1]} toneMapped={false} />
-        </mesh>
+      {Array.from({ length: PICKUP_POOL }, (_, i) => (
+        <group key={i} visible={false}>
+          <mesh geometry={geo.health}>
+            <meshBasicMaterial toneMapped={false} />
+          </mesh>
+          <mesh geometry={geo.beam}>
+            <meshBasicMaterial transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
       ))}
+    </group>
+  );
+}
+
+const CHEST_TINT = { bronze: "#e09a5a", silver: "#dfe8f5", gold: "#ffd23d" } as const;
+
+/** Rương giấu: hòm tiếp tế Meshy nhuộm theo bậc, viền sáng khi còn khoá, tắt sáng khi đã mở */
+function Chests({ sim }: { sim: PlatformerSim }) {
+  return (
+    <>
+      {sim.chests.map((_, i) => (
+        <Suspense key={i} fallback={null}>
+          <ChestModel sim={sim} index={i} />
+        </Suspense>
+      ))}
+    </>
+  );
+}
+
+function ChestModel({ sim, index }: { sim: PlatformerSim; index: number }) {
+  const c = sim.chests[index];
+  const { root } = useFitted("mx_supply_crate", c.tier === "gold" ? 1.3 : 1.05, "height", 0.3);
+  const glow = useRef<THREE.Mesh>(null);
+  const group = useRef<THREE.Group>(null);
+  useMemo(() => {
+    root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      mat.color.set(CHEST_TINT[c.tier]);
+      m.material = mat;
+    });
+  }, [root, c.tier]);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (group.current) {
+      group.current.rotation.y = c.opened ? 0.4 : Math.sin(t * 1.5 + index) * 0.15;
+      group.current.scale.setScalar(c.opened ? 0.9 : 1);
+    }
+    if (glow.current) {
+      glow.current.visible = !c.opened;
+      glow.current.scale.setScalar(1 + Math.sin(t * 3) * 0.08);
+    }
+  });
+  const tint = new THREE.Color(CHEST_TINT[c.tier]).multiplyScalar(2.2);
+  return (
+    <group position={[c.x, c.y, -0.2]}>
+      <group ref={group}>
+        <primitive object={root} />
+      </group>
+      <mesh ref={glow} position={[0, 0.03, 0]} rotation-x={-Math.PI / 2}>
+        <ringGeometry args={[0.7, 0.9, 32]} />
+        <meshBasicMaterial color={tint} transparent opacity={0.7} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
     </group>
   );
 }

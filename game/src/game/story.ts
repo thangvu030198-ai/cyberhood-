@@ -85,10 +85,11 @@ export const NPCS: Record<NpcId, Npc> = {
 // ---------------------------------------------------------------------------
 // Vật phẩm
 
-export type ItemId = "stim" | "shard" | "ghostKey";
+export type ItemId = "stim" | "shard" | "ghostKey" | "chestKey";
 
 export const ITEMS: Record<ItemId, { name: string; desc: string; usable: boolean; quest?: boolean }> = {
   stim: { name: "Stim Pack", desc: "Hồi 60 máu. Nhấn Q để dùng nhanh.", usable: true },
+  chestKey: { name: "Chìa rương", desc: "Mở rương giấu trong các màn sau cổng nhiệm vụ. Rơi từ địch, chỉ kiếm được bằng chơi.", usable: false },
   shard: { name: "Data Shard", desc: "Mảnh dữ liệu mã hoá, phát tín hiệu lạ.", usable: false, quest: true },
   ghostKey: {
     name: "Ghost Fragment",

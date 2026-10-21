@@ -1648,3 +1648,19 @@ canvas {
 }
 .lv__pad .lv__jump { width: 78px; height: 78px; border-color: var(--amber); }
 .lv__pause { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; }
+.lv__loot { color: #7dffb0; }
+.lv__feed {
+  position: absolute;
+  right: 70px;
+  top: 64px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font: 700 13px var(--font-display);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.6);
+}
+.lv__feed li { padding: 2px 8px; background: rgba(13, 2, 33, 0.55); border-radius: 3px; }

@@ -22,6 +22,7 @@ export function LevelHud() {
   const sim = useLevel((s) => s.sim);
   const contract = useLevel((s) => s.contract);
   const leave = useLevel((s) => s.leave);
+  const feed = useLevel((s) => s.feed);
   const [paused, setPaused] = useState(false);
   useTicker(20);
 
@@ -78,7 +79,19 @@ export function LevelHud() {
           Hạ {sim.kills} · Checkpoint {sim.checkpointIndex + 1}/{sim.def.checkpoints.length}
           {!contract && " · Luyện tập"}
         </span>
+        <span className="lv__loot">
+          Chìa rương ×{sim.chestKeys} · Linh kiện {sim.collected.filter((d) => d.kind === "part").length}
+        </span>
       </div>
+      <ul className="lv__feed">
+        {feed
+          .filter((f) => sim.time - f.at < 4)
+          .map((f, i) => (
+            <li key={`${f.at}-${i}`} style={{ color: f.color, opacity: Math.min(1, 4 - (sim.time - f.at)) }}>
+              {f.text}
+            </li>
+          ))}
+      </ul>
 
       {sim.status === "intro" && <div className="lv__banner lv__banner--ready">READY</div>}
       {sim.status === "dead" && <div className="lv__banner lv__banner--dead">HỒI SINH Ở CHECKPOINT…</div>}
@@ -88,6 +101,10 @@ export function LevelHud() {
           <h2>Đã hạ trùm Redbot Reaper</h2>
           <p>
             +{cred} CRED · {sim.kills} địch bị hạ · chết {sim.deaths} lần
+          </p>
+          <p>
+            Nhặt được {sim.collected.filter((d) => d.kind === "part").length} linh kiện · {sim.chests.filter((c) => c.opened).length}/
+            {sim.chests.length} rương
           </p>
           {contract && <p>Hợp đồng hoàn thành: đồ rơi đã vào kho (xem bảng kết quả trong thành phố)</p>}
           <button className="lv__btn" onClick={leave}>

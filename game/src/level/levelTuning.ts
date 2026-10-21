@@ -59,6 +59,9 @@ export const LEVEL_TUNING = {
     full: { speed: 24, r: 0.65, dmg: 6 },
   },
 
+  /** Đồ rơi: chờ một nhịp rồi mới nhặt được, gần thì tự bay về phía người chơi */
+  loot: { pickupDelay: 0.35, magnetRange: 2.6, magnetSpeed: 9 },
+
   enemy: {
     /** Địch chỉ hoạt động khi cách người chơi ít hơn mức này */
     wakeRange: 16,

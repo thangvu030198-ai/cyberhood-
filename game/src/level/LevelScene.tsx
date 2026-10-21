@@ -628,7 +628,8 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       sh.scale.setScalar(Math.max(0.35, 1 - h * 0.12));
       (sh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.1, 0.45 - h * 0.05);
     }
-    light.current?.position.set(p.x + p.facing * 0.5, p.y + 2.2, 2.2);
+    // Đèn đặt hẳn phía trước mặt đứng của khối nền (z = DEPTH/2) để không đốt cháy sáng mặt tường khi bám tường
+    light.current?.position.set(p.x, p.y + 1.6, DEPTH / 2 + 2.4);
   });
   return (
     <>
@@ -640,7 +641,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
         <meshBasicMaterial color="#000" transparent opacity={0.4} depthWrite={false} />
       </mesh>
       {/* Đèn rọi đi theo nhân vật chính để luôn sáng hơn nền */}
-      <pointLight ref={light} intensity={9} distance={7} decay={1.6} color="#ffffff" />
+      <pointLight ref={light} intensity={6} distance={7} decay={1.4} color="#ffffff" />
     </>
   );
 }

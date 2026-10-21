@@ -1,4 +1,4 @@
-import { use, useEffect, useMemo, useRef } from "react";
+import { Suspense, use, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useAnimations, useKeyboardControls } from "@react-three/drei";
@@ -6,7 +6,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { Ecctrl, type EcctrlHandle } from "ecctrl";
 import { EcctrlAnimationStateController, useEcctrlAnimationStore } from "ecctrl/animation";
 import { useButtonStore, useJoystickStore } from "ecctrl/input";
-import { models } from "./assets";
+import { extraModel, models } from "./assets";
 import { PLAYER } from "./config";
 import { handles } from "./refs";
 import { uiBlocking, useGame, type Emote } from "./store";
@@ -149,16 +149,11 @@ function CharacterModel() {
     // Dạng Mech: phóng to giữ chân chạm đất, giáp phát sáng hổ phách
     const blend = handles.mechBlend;
     if (group.current) {
-      const k = 1 + blend * (MECH_SCALE - 1);
+      // Người lính thu nhỏ vào trong bộ giáp Titan Frame (model robot riêng hiện ra ở MechModel)
+      const k = Math.max(0.001, 1 - blend);
       group.current.scale.setScalar(k);
       group.current.position.y = FEET_Y * (1 - k);
-    }
-    if (suit) {
-      // Ánh hổ phách nhẹ trên giáp kim loại; mạnh quá thì bloom biến cả thân thành mảng vàng phẳng
-      suit.emissive.set("#ff8a00");
-      suit.emissiveIntensity = blend * 0.08;
-      suit.metalness = 0.45 + blend * 0.4;
-      suit.roughness = 0.45 - blend * 0.2;
+      group.current.visible = blend < 0.98;
     }
     // Flatline: ngã ngửa ra sau (model không có clip chết)
     fall.current = THREE.MathUtils.damp(fall.current, flatlined ? 1 : 0, 6, dt);
@@ -192,8 +187,70 @@ function CharacterModel() {
 }
 
 const GUN_OFFSET = new THREE.Vector3(0, 0, 0);
-/** Titan Frame cao gấp ~2,3 lần người */
-const MECH_SCALE = 2.3;
+/** Titan Frame cao ~4,2 m, gấp ~2,3 lần người */
+const MECH_HEIGHT = 4.2;
+
+/** Clip của robot Titan Frame (Godot TPS Demo) theo trạng thái di chuyển của ecctrl */
+const MECH_CLIP_FOR_STATE: Record<string, string> = {
+  IDLE: "Idlecombat-cycle",
+  WALK: "walking_gun-cycle",
+  RUN: "running_gun-cycle",
+  JUMP_START: "jump_1_up",
+  JUMP_IDLE: "jump_3_midair-cycle",
+  JUMP_FALL: "jump_4_falling-cycle",
+  JUMP_LAND: "jump_5_hardlanding",
+};
+
+/** Robot Titan Frame: to dần khi biến hình, dùng động tác đi/chạy/nhảy riêng */
+function MechModel() {
+  const gltf = use(extraModel("mech"));
+  const group = useRef<THREE.Group>(null);
+  const scene = useMemo(() => {
+    const s = cloneSkinned(gltf.scene);
+    fitCharacter(s, MECH_HEIGHT, FEET_Y);
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = m.material as THREE.MeshStandardMaterial;
+      if (mat.emissiveMap || mat.emissive?.getHex()) mat.emissiveIntensity = Math.max(mat.emissiveIntensity, 2.5);
+    });
+    return s;
+  }, [gltf]);
+  const mixer = useMemo(() => new THREE.AnimationMixer(scene), [scene]);
+  const current = useRef<THREE.AnimationAction | null>(null);
+  const animationState = useEcctrlAnimationStore((s) => s.animationState);
+  useEffect(() => {
+    const name = MECH_CLIP_FOR_STATE[animationState] ?? "Idlecombat-cycle";
+    const clip = gltf.animations.find((c) => c.name === name);
+    if (!clip) return;
+    const next = mixer.clipAction(clip);
+    if (next === current.current) return;
+    const once = name.startsWith("jump_1") || name.startsWith("jump_5");
+    next.reset().setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    next.clampWhenFinished = true;
+    next.fadeIn(0.2).play();
+    current.current?.fadeOut(0.2);
+    current.current = next;
+  }, [animationState, gltf, mixer]);
+  useFrame((_, dt) => {
+    const g = group.current;
+    if (!g) return;
+    const blend = handles.mechBlend;
+    g.visible = blend > 0.02;
+    if (!g.visible) return;
+    // Mọc lên từ chân: giữ bàn chân chạm đất khi thu phóng
+    const k = Math.max(0.001, blend);
+    g.scale.setScalar(k);
+    g.position.y = FEET_Y * (1 - k);
+    mixer.update(Math.min(dt, 0.1));
+  });
+  return (
+    <group ref={group} visible={false}>
+      <primitive object={scene} />
+    </group>
+  );
+}
 
 /** Gom input bàn phím + joystick cảm ứng rồi đẩy vào Ecctrl mỗi frame. */
 function useDriveInput(ecctrl: React.RefObject<EcctrlHandle | null>) {
@@ -316,6 +373,9 @@ export function Player() {
       >
         <group ref={model}>
           <CharacterModel />
+          <Suspense fallback={null}>
+            <MechModel />
+          </Suspense>
         </group>
       </Ecctrl>
     </>

@@ -1,7 +1,9 @@
-import { use, useMemo, useRef } from "react";
+import { Suspense, use, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { models, playSfx } from "./assets";
+import { extraModel, models, playSfx } from "./assets";
+import { fitCharacter } from "./Player";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, mulberry32 } from "./config";
 import { fx } from "./Effects";
 import { handles } from "./refs";
@@ -32,6 +34,8 @@ export type Drone = {
   nextShot: number;
   deadAt: number;
   hurtAt: number;
+  /** Lần bắn gần nhất (để trùm chạy động tác giật pháo) */
+  firedAt: number;
   orbit: number;
 };
 
@@ -39,6 +43,9 @@ const DRONE_COUNT = 14;
 const COURIER_HP = 160;
 const BOSS_HP = 2400;
 const COURIER_SPEED = 9;
+/** Trùm là robot đi bộ: tâm vùng trúng đạn ở giữa thân, chân chạm đất */
+const BOSS_CENTER = 2.7;
+const BOSS_HEIGHT = 5.6;
 const DRONE_HP = 100;
 const HIT_RADIUS = 0.95;
 const HOVER = 4.5;
@@ -78,6 +85,7 @@ export const drones: Drone[] = (() => {
       nextShot: 0,
       deadAt: 0,
       hurtAt: -1,
+      firedAt: -1,
       orbit: rand() * Math.PI * 2,
     });
   }
@@ -98,6 +106,7 @@ export const drones: Drone[] = (() => {
       nextShot: 0,
       deadAt: 0,
       hurtAt: -1,
+      firedAt: -1,
       orbit: 0,
     });
   }
@@ -107,7 +116,7 @@ export const drones: Drone[] = (() => {
 /** Kích hoạt drone đặc biệt tại một điểm (hợp đồng gọi) */
 export function spawnSpecial(kind: Exclude<DroneKind, "legion">, at: THREE.Vector3) {
   const d = drones.find((x) => x.kind === kind)!;
-  d.pos.copy(at).setY(kind === "boss" ? 6 : HOVER);
+  d.pos.copy(at).setY(kind === "boss" ? BOSS_CENTER : HOVER);
   d.home.copy(d.pos);
   d.vel.set(0, 0, 0);
   d.hp = d.maxHp;
@@ -269,6 +278,64 @@ function DroneModel({ index }: { index: number }) {
   );
 }
 
+/** Trùm Mech: robot đỏ đi bộ của Godot TPS Demo (CC-BY 3.0), bước đi và giật pháo khi bắn */
+function BossModel({ index }: { index: number }) {
+  const gltf = use(extraModel("redbot"));
+  const ref = useRef<THREE.Group>(null);
+  const { scene, mixer, walk, recoil, glow } = useMemo(() => {
+    const s = cloneSkinned(gltf.scene);
+    fitCharacter(s, BOSS_HEIGHT, -BOSS_CENTER);
+    const glow: { mat: THREE.MeshStandardMaterial; base: THREE.Color }[] = [];
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      mat.emissiveIntensity = Math.max(mat.emissiveIntensity, 2.5);
+      m.material = mat;
+      glow.push({ mat, base: mat.emissive.clone() });
+    });
+    const mixer = new THREE.AnimationMixer(s);
+    const clip = (n: string) => gltf.animations.find((a) => a.name === n);
+    const walkClip = clip("Walk-cycle");
+    const walk = walkClip ? mixer.clipAction(walkClip) : null;
+    walk?.play();
+    const recoilClip = clip("Cannon_Fire_Recoil");
+    const recoil = recoilClip ? mixer.clipAction(recoilClip).setLoop(THREE.LoopOnce, 1) : null;
+    return { scene: s, mixer, walk, recoil, glow };
+  }, [gltf]);
+  const lastFired = useRef(-1);
+  useFrame((_, dt) => {
+    const d = drones[index];
+    const g = ref.current;
+    if (!g) return;
+    g.visible = d.state !== "dead";
+    if (!g.visible) return;
+    g.position.copy(d.pos);
+    _aim.subVectors(_target, d.pos);
+    if (_aim.lengthSq() > 0.01) {
+      const yaw = Math.atan2(_aim.x, _aim.z);
+      g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, g.rotation.y + shortest(g.rotation.y, yaw), 0.1);
+    }
+    if (walk) walk.timeScale = THREE.MathUtils.clamp(d.vel.length() / 3, 0.2, 1.4);
+    if (recoil && d.firedAt !== lastFired.current) {
+      lastFired.current = d.firedAt;
+      recoil.reset().fadeIn(0.05).play();
+    }
+    const hurt = clock - d.hurtAt < 0.12;
+    for (const { mat, base } of glow) {
+      if (hurt) mat.emissive.setRGB(1, 0.15, 0.15);
+      else mat.emissive.copy(base);
+    }
+    mixer.update(Math.min(dt, 0.1));
+  });
+  return (
+    <group ref={ref} visible={false}>
+      <primitive object={scene} />
+    </group>
+  );
+}
+
 function shortest(from: number, to: number) {
   return ((((to - from) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
 }
@@ -338,7 +405,7 @@ export function Enemies() {
         _desired.set(
           _target.x + Math.cos(d.orbit) * standoff,
           // Sà thấp khi tấn công để người chơi ngắm được
-          (boss ? 7 : ATTACK_HEIGHT) + Math.sin(d.orbit * 1.7) * 0.8 + behind * behind * 9,
+          boss ? BOSS_CENTER : ATTACK_HEIGHT + Math.sin(d.orbit * 1.7) * 0.8 + behind * behind * 9,
           _target.z + Math.sin(d.orbit) * standoff,
         );
         _desired.sub(d.pos);
@@ -361,16 +428,22 @@ export function Enemies() {
 
       d.vel.lerp(_desired, 1 - Math.exp(-2.5 * step));
       d.pos.addScaledVector(d.vel, step);
-      d.pos.y = THREE.MathUtils.clamp(d.pos.y - (d.pos.y > 14 ? 8 * step : 0), 2.5, 32);
+      d.pos.y = d.kind === "boss" ? BOSS_CENTER : THREE.MathUtils.clamp(d.pos.y - (d.pos.y > 14 ? 8 * step : 0), 2.5, 32);
       pushOutOfBuildings(d.pos);
     }
   });
 
   return (
     <>
-      {drones.map((d) => (
-        <DroneModel key={d.id} index={d.id} />
-      ))}
+      {drones.map((d) =>
+        d.kind === "boss" ? (
+          <Suspense key={d.id} fallback={<DroneModel index={d.id} />}>
+            <BossModel index={d.id} />
+          </Suspense>
+        ) : (
+          <DroneModel key={d.id} index={d.id} />
+        ),
+      )}
     </>
   );
 }
@@ -381,6 +454,7 @@ function shoot(d: Drone, dist: number, targetSpeed: number, inCar: boolean, want
   if (hit) {
     // Súng của Legion là súng EMP: trúng Mech thì có thể trừ thời gian biến hình
     const boss = d.kind === "boss";
+    d.firedAt = clock;
     fx.tracer(d.pos, _target, boss ? "#ff7a1f" : "#ff1f3d");
     useGame.getState().damagePlayer(((inCar ? 3 : 6) + wanted) * (boss ? 3 : 1), { emp: boss || Math.random() < 0.25 });
   } else {

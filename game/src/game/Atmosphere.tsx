@@ -1,7 +1,7 @@
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { CITY_HALF, NEON_COLORS, PALETTE, mulberry32 } from "./config";
+import { PALETTE, mulberry32 } from "./config";
 import { useGame } from "./store";
 
 /** Bầu trời: dải màu tím-đen, phía chân trời ửng hồng như ánh đèn thành phố hắt lên mây. */
@@ -89,59 +89,6 @@ export function Rain({ count = 3500, radius = 40 }) {
       </bufferGeometry>
       <lineBasicMaterial color="#8fa8ff" transparent opacity={0.35} />
     </lineSegments>
-  );
-}
-
-/** Xe bay trên cao: chạy theo các làn song song trục X/Z, đèn hậu phát sáng. */
-export function SkyTraffic({ count = 60 }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const cars = useMemo(() => {
-    const rand = mulberry32(11);
-    return Array.from({ length: count }, (_, i) => ({
-      axis: i % 2,
-      lane: (rand() - 0.5) * CITY_HALF * 1.8,
-      height: 28 + Math.floor(rand() * 4) * 9,
-      offset: rand() * CITY_HALF * 4,
-      speed: (rand() < 0.5 ? -1 : 1) * (14 + rand() * 16),
-      color: new THREE.Color(NEON_COLORS[i % NEON_COLORS.length]).multiplyScalar(4),
-    }));
-  }, [count]);
-
-  useLayoutEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    cars.forEach((c, i) => mesh.setColorAt(i, c.color));
-    mesh.instanceColor!.needsUpdate = true;
-  }, [cars]);
-
-  const m = useMemo(() => new THREE.Matrix4(), []);
-  const q = useMemo(() => new THREE.Quaternion(), []);
-  const p = useMemo(() => new THREE.Vector3(), []);
-  const s = useMemo(() => new THREE.Vector3(), []);
-  useFrame(({ clock }) => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const t = clock.elapsedTime;
-    const span = CITY_HALF * 4;
-    cars.forEach((c, i) => {
-      const d = (((c.offset + c.speed * t) % span) + span) % span - span / 2;
-      if (c.axis === 0) {
-        p.set(d, c.height, c.lane);
-        s.set(3.2, 0.5, 1.2);
-      } else {
-        p.set(c.lane, c.height, d);
-        s.set(1.2, 0.5, 3.2);
-      }
-      mesh.setMatrixAt(i, m.compose(p, q, s));
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-
-  return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]} frustumCulled={false}>
-      <boxGeometry />
-      <meshBasicMaterial toneMapped={false} />
-    </instancedMesh>
   );
 }
 

@@ -16,6 +16,16 @@ export const CREDITS = [
   "Phố, biển neon, tàu điện: Polygonal Mind · CC0",
   "Nóc nhà: KayKit Space Base · Kay Lousberg · CC0",
   "Drone, súng, âm thanh: Kenney · CC0",
+  "Titan Frame, trùm robot đỏ, xe nâng bay: Godot TPS Demo · Juan Linietsky, Fernando Calabró · CC-BY 3.0",
+  "“Littlest Tokyo” · Glen Fox · CC-BY 4.0",
+  "“Lulaby city” · jemepousse · CC-BY 4.0",
+  "“Old Computers” · Rafael Rodrigues · CC-BY 4.0",
+  "“Love neon sign 02” · daysena · CC-BY 4.0",
+  "“Black Honey - Robotic Arm” (Sketchfab) · CC-BY 4.0",
+  "“Primary Ion Drive” · Mike Murdock · CC-BY 4.0",
+  "Commercial Refrigerator · Eric Chadwick, Darmstadt Graphics Group, Sean Thomas · CC-BY 4.0",
+  "Low Poly Spaceship · EdwinRC · CC-BY 2.0",
+  "UFO, cổng dịch chuyển, cây holo: Polygonal Mind · CC0 · Thùng sci-fi: Sara Vieira · CC0",
 ];
 
 export function CharacterCreator() {

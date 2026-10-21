@@ -43,6 +43,14 @@ npm run build    # bản production trong game/dist
 - `game/src/ui/`: HUD, minimap, chợ đen, tạo nhân vật, hội thoại, túi đồ, tracker nhiệm vụ
 - `game/src/game/refs.ts`: handle vật lý của nhân vật và xe, đọc mỗi frame
 - `game/src/game/config.ts`: thông số thế giới và bảng màu
+- `game/src/sim/`: **lõi logic GameFi theo GDD, không phụ thuộc React/three** để sau chạy nguyên si trên server. Mọi con số đọc từ `sim/game_config.json`. Có test: `npm test`
+  - `loot.ts` (5 độ hiếm, hệ số map, pity, linh kiện), `mech.ts` (ráp, sức mạnh, độ bền, ghép, nung), `transform.ts` (máy trạng thái biến hình), `contract.ts` (hợp đồng 7 phút, điểm, sao, mất đồ), `energy.ts`, `season.ts` (mảnh, Chìa, tier Launchpad)
+- `game/src/game/hunter.ts`: tiến trình Hunter (linh kiện, Mech, năng lượng, pity, mùa), lưu ở `localStorage["cyberhood.hunter.v1"]`
+- `game/src/game/contracts.ts` + `ContractScene.tsx`: hợp đồng trong Neon City (bảng hợp đồng, 4 nhiệm vụ, sự kiện phút 4, điểm thoát, cột sáng, cổng đua)
+- `game/src/game/Mech.tsx`: biến hình Titan Frame (phím T), Mech chịu đòn, EMP, độ bền
+- `game/src/game/Showcase.tsx`: model cao cấp tải nền (đạo cụ Hub, đội xe bay, Littlest Tokyo, skyline)
+- `game/src/ui/HunterUi.tsx`: HUD hợp đồng, thanh biến hình, bảng hợp đồng, kết quả, gara Mech (phím G)
+- `docs/`: GDD v1.1, handoff thiết kế, dữ liệu tham khảo Ready Player One
 
 ## Asset và giấy phép
 
@@ -71,6 +79,8 @@ Chi tiết trong `game/src/assets/LICENSES.md`. Tóm tắt:
 - [x] Giai đoạn 1: lên xuống xe, lái xe, camera ngửa lên, cảm ứng trên điện thoại
 - [x] Giai đoạn 2: chiến đấu, drone OMNI-DYNE, $CRED off-chain, chợ đen, truy nã, minimap
 - [x] Giai đoạn 3: Netrunner ID, túi đồ, NPC có hội thoại, 5 nhiệm vụ cốt truyện, Server Vault; nâng cấp hình ảnh
+- [x] GameFi MVP 1–3 phía client (theo `docs/GDD_GameFi_HoanChinh.md`): hợp đồng 7 phút, biến hình Titan Frame, rơi đồ 5 độ hiếm, gara Mech, tiến độ mùa
+- [ ] MVP 0: server authoritative (Colyseus), chuyển `sim/` lên server
 - [ ] Giai đoạn 4: multiplayer
 - [ ] Giai đoạn 5: token và NFT
 - [ ] Giai đoạn 6: Root Protocol Hunt

@@ -4,7 +4,7 @@ import { KeyboardControls } from "@react-three/drei";
 import { Physics, useRapier } from "@react-three/rapier";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { City } from "./game/City";
-import { Lights, Rain, Sky, SkyTraffic } from "./game/Atmosphere";
+import { Lights, Rain, Sky } from "./game/Atmosphere";
 import { Player } from "./game/Player";
 import { CameraRig, Interaction } from "./game/CameraRig";
 import { Vehicles } from "./game/Vehicles";
@@ -16,6 +16,7 @@ import { GameRules } from "./game/GameRules";
 import { Npcs } from "./game/Npcs";
 import { ContractScene } from "./game/ContractScene";
 import { MechController } from "./game/Mech";
+import { HubProps, Showcase } from "./game/Showcase";
 import { useHunter } from "./game/hunter";
 import { runtime, startNewContract } from "./game/contracts";
 import { Vault, VaultDoor } from "./game/Vault";
@@ -112,6 +113,7 @@ export default function App() {
               <Npcs />
               <Vault />
               <ContractScene />
+              <HubProps />
               <KitDressing />
             </Physics>
             <VaultDoor />
@@ -125,7 +127,7 @@ export default function App() {
             <GameRules />
             <CameraRig />
             <Interaction />
-            <SkyTraffic count={30} />
+            <Showcase quality={quality} />
             <Rain />
             <DebugHook />
             {!NO_FX && (

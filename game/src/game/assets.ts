@@ -76,6 +76,52 @@ function fetchGlb(name: string, sizeHint: number): Promise<GLTF> {
     });
 }
 
+/** Model tải nền sau khi vào game: không chặn màn hình tải, hiện ra khi xong */
+const extraCache = new Map<string, Promise<GLTF>>();
+const EXTRA_SIZES = {
+  /** Titan Frame: robot người chơi của Godot TPS Demo (Juan Linietsky, Fernando Calabró, CC-BY 3.0) */
+  mech: 7_416_000,
+  /** Trùm Mech: robot đỏ TPS Demo (CC-BY 3.0) */
+  redbot: 3_108_000,
+  forklift: 3_914_000,
+  spaceship: 578_000,
+  ufo: 89_000,
+  fridge: 1_751_000,
+  computers: 295_000,
+  love: 225_000,
+  iondrive: 2_814_000,
+  robotarm: 2_491_000,
+  crate: 198_000,
+  tokyo: 8_137_000,
+  skyline: 5_249_000,
+  teleporter: 60_000,
+  holotree: 84_000,
+} as const;
+export type ExtraModel = keyof typeof EXTRA_SIZES;
+
+/** Tiến độ tải nền, cho HUD hiện "Đang tải thêm chi tiết…" */
+export const extraProgress = { loaded: 0, total: 0, done: 0, files: 0 };
+
+export function extraModel(name: ExtraModel): Promise<GLTF> {
+  let p = extraCache.get(name);
+  if (!p) {
+    extraProgress.total += EXTRA_SIZES[name];
+    extraProgress.files++;
+    p = fetch(`models/${name}.glb${MODEL_SUFFIX}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Không tải được ${name} (${res.status})`);
+        return res.arrayBuffer();
+      })
+      .then((buf) => {
+        extraProgress.loaded += EXTRA_SIZES[name];
+        extraProgress.done++;
+        return makeLoader().parseAsync(buf, "");
+      });
+    extraCache.set(name, p);
+  }
+  return p;
+}
+
 export const models = {
   drone: parseGlb(droneUrl),
   blaster: parseGlb(blasterUrl),

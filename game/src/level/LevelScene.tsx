@@ -412,11 +412,13 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
         args={[undefined, undefined, data.ledges.length]}
         frustumCulled={false}
       >
-        <boxGeometry args={[1, 0.22, DEPTH * 0.7]} />
+        <boxGeometry args={[1, 0.14, DEPTH * 0.55]} />
         <meshStandardMaterial
           color={theme.ledge}
           emissive={theme.ledge}
-          emissiveIntensity={0.9}
+          emissiveIntensity={0.3}
+          metalness={0.4}
+          roughness={0.45}
         />
       </instancedMesh>
       <instancedMesh

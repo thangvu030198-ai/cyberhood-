@@ -1,4 +1,4 @@
-import { use, useEffect, useMemo, useRef } from "react";
+import { use, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import { useButtonStore } from "ecctrl/input";
@@ -35,25 +35,30 @@ export function Gun({ hand, offset }: { hand: THREE.Object3D; offset: THREE.Vect
   const repeater = useGame((s) => s.upgrades.repeater);
   const blaster = use(models.blaster);
   const rep = use(models.repeater);
-  const scene = useMemo(() => (repeater ? rep : blaster).scene.clone(true), [repeater, rep, blaster]);
+  // Đo súng ngay khi vừa clone, lúc chưa gắn vào tay: kích thước không phụ thuộc ma trận thế giới
+  // (nếu đo sau khi gắn, khung xương bị co 0.01 lần làm súng phình to gấp trăm lần)
+  const { scene, size } = useMemo(() => {
+    const s = (repeater ? rep : blaster).scene.clone(true);
+    s.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(s).getSize(new THREE.Vector3()).length() || 1;
+    return { scene: s, size };
+  }, [repeater, rep, blaster]);
   const group = useRef<THREE.Group>(null);
 
   // Xương tay nằm trong armature đã bị co giãn: bù lại để súng có kích thước thật.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const g = group.current;
     if (!g) return;
     hand.updateWorldMatrix(true, false);
     const handScale = new THREE.Vector3();
     hand.getWorldScale(handScale);
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = box.getSize(new THREE.Vector3()).length() || 1;
     g.scale.setScalar(GUN_SIZE / size / handScale.x);
     g.add(muzzle);
     muzzle.position.set(0, 0.05, -size * 0.55);
     return () => {
       g.remove(muzzle);
     };
-  }, [hand, scene]);
+  }, [hand, size]);
 
   return createPortal(
     // Nòng súng Kenney hướng -Z; xoay để nòng chạy dọc trục +Y của xương cẳng tay

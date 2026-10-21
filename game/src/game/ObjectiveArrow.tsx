@@ -25,8 +25,8 @@ export function ObjectiveArrow() {
     s.closePath();
     const g = new THREE.ExtrudeGeometry(s, { depth: 0.08, bevelEnabled: false });
     g.translate(0, 0, -0.04);
-    // Nằm ngang: trục Y của hình → trục +Z thế giới
-    g.rotateX(-Math.PI / 2);
+    // Nằm ngang: trục +Y của hình (mũi nhọn) → trục +Z thế giới, để rotation.y = yaw chỉ đúng về mục tiêu
+    g.rotateX(Math.PI / 2);
     return g;
   }, []);
   const color = useMemo(() => new THREE.Color(), []);

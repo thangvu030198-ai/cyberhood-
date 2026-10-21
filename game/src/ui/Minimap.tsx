@@ -5,7 +5,7 @@ import { fx } from "../game/Effects";
 import { handles } from "../game/refs";
 import { SHOP_POS } from "../game/Shop";
 import { useGame } from "../game/store";
-import { objectiveTarget } from "../game/quests";
+import { currentObjective } from "../game/objectives";
 import { contractPins } from "../game/contracts";
 
 const RANGE = 70; // mét từ tâm tới mép bản đồ
@@ -75,23 +75,48 @@ export function Minimap({ size }: { size: number }) {
         ctx.strokeRect(x - 4, y - 4, 8, 8);
       }
 
-      // Mục tiêu nhiệm vụ: hình thoi vàng; nằm ngoài tầm radar thì ghim ở mép theo đúng hướng
-      const target = objectiveTarget();
-      if (target && target.z < 1000) {
-        let [tx, ty] = map(target.x, target.z);
+      // Mục tiêu đang dẫn đường (cùng mục tiêu với mũi tên cạnh nhân vật): chấm lớn nhấp nháy có vòng sáng;
+      // nằm ngoài tầm radar thì ghim ở mép kèm mũi nhọn chỉ ra ngoài
+      const obj = currentObjective();
+      if (obj) {
+        let [tx, ty] = map(obj.x, obj.z);
         const r = Math.hypot(tx, ty);
-        const edge = size / 2 - 8;
-        if (r > edge) {
+        const edge = size / 2 - 9;
+        const outside = r > edge;
+        if (outside) {
           tx = (tx / r) * edge;
           ty = (ty / r) * edge;
         }
+        const pulse = (Math.sin(time / 180) + 1) / 2;
         ctx.save();
         ctx.translate(tx, ty);
-        ctx.rotate(Math.PI / 4 - handles.camYaw);
-        ctx.fillStyle = "#ffb000";
-        ctx.shadowColor = "#ffb000";
-        ctx.shadowBlur = 8;
-        ctx.fillRect(-4.5, -4.5, 9, 9);
+        ctx.shadowColor = obj.color;
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = obj.color;
+        ctx.globalAlpha = 0.35 + pulse * 0.5;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 7 + pulse * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = obj.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(0, 0, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        if (outside) {
+          ctx.rotate(Math.atan2(ty, tx));
+          ctx.fillStyle = obj.color;
+          ctx.beginPath();
+          ctx.moveTo(12, 0);
+          ctx.lineTo(6, -4);
+          ctx.lineTo(6, 4);
+          ctx.closePath();
+          ctx.fill();
+        }
         ctx.restore();
       }
 

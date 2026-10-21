@@ -266,8 +266,8 @@ function BossDoors({ sim }: { sim: PlatformerSim }) {
     <group ref={group}>
       {[a - 0.5, b + 1.5].map((x) => (
         <mesh key={x} position={[x, sim.height / 2, 0]}>
-          <boxGeometry args={[0.35, sim.height, DEPTH]} />
-          <meshBasicMaterial color={[3, 0.3, 0.5]} transparent opacity={0.55} toneMapped={false} />
+          <boxGeometry args={[0.25, sim.height, 0.6]} />
+          <meshBasicMaterial color={[3, 0.3, 0.5]} transparent opacity={0.4} toneMapped={false} />
         </mesh>
       ))}
     </group>

@@ -396,7 +396,7 @@ export function Hud() {
 
       <Crosshair />
       {!touch && !pointerLocked && !panelOpen && pointer.supported && (
-        <div className="lock-hint">Nhấp vào màn hình để điều khiển bằng chuột</div>
+        <div className="lock-hint">Rê chuột để xoay · nhấp vào màn hình để khoá chuột</div>
       )}
       <Vitals />
       {location === "city" && <ContractHud />}

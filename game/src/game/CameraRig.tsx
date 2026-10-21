@@ -20,6 +20,8 @@ const MECH_DISTANCE = 10;
 const AIM_DISTANCE = 3.2;
 /** Độ nhạy chuột khi đã khoá (rad mỗi pixel) */
 const MOUSE_SENSITIVITY = 0.0028;
+/** Chưa khoá chuột thì con trỏ chỉ chạy trong màn hình: tăng độ nhạy để một lần rê xoay được đủ vòng */
+const FREE_LOOK_GAIN = 1.8;
 /** Sau bao lâu không kéo chuột thì camera tự quay về sau đuôi xe (giây) */
 const AUTO_FOLLOW_DELAY = 1.2;
 
@@ -57,9 +59,16 @@ export function CameraRig() {
 
     // Khoá chuột: tự xử lý rê chuột để xoay camera, tắt kéo-xoay của CameraControls
     const onMove = (e: MouseEvent) => {
-      if (document.pointerLockElement !== dom) return;
+      const locked = document.pointerLockElement === dom;
+      // Không khoá được chuột (khung nhúng từ chối hoặc chưa nhấp): vẫn xoay camera khi rê chuột trên màn hình game,
+      // miễn là không giữ nút (kéo chuột trái đã do CameraControls xử lý) và không mở bảng giao diện
+      if (!locked) {
+        const s = useGame.getState();
+        if (e.buttons !== 0 || e.target !== dom || uiBlocking(s)) return;
+      }
       const aimScale = useGame.getState().aiming ? 0.6 : 1;
-      controls.rotate(-e.movementX * MOUSE_SENSITIVITY * aimScale, -e.movementY * MOUSE_SENSITIVITY * aimScale, false);
+      const k = locked ? MOUSE_SENSITIVITY : MOUSE_SENSITIVITY * FREE_LOOK_GAIN;
+      controls.rotate(-e.movementX * k * aimScale, -e.movementY * k * aimScale, false);
       lastUserInput.current = performance.now() / 1000;
     };
     const unsubscribe = useGame.subscribe((s, prev) => {

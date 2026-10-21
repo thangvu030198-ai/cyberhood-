@@ -15,8 +15,9 @@ export const NO_INPUT: Input = { left: false, right: false, up: false, down: fal
  * - platform: chạy, nhảy, bắn ngang (Mega Man X)
  * - climb: leo ngược lên tháp, sương ma dâng từ dưới, chạm sương là mất mạng (Ice Climber / Kid Icarus)
  * - shmup: cưỡi xe bay, màn hình tự cuộn sang phải, bay tự do bốn hướng, chạm địa hình bị thương (Gradius / Metal Slug)
+ * - topdown: đi 8 hướng trên mặt đất (y là chiều sâu), bắn theo hướng nhìn (Zelda / Final Fantasy Tactics nhìn chéo)
  */
-export type PlayMode = "platform" | "climb" | "shmup";
+export type PlayMode = "platform" | "climb" | "shmup" | "topdown";
 
 export type Box = { x: number; y: number; w: number; h: number };
 
@@ -125,6 +126,9 @@ export class PlatformerSim {
     dashCarry: false,
     /** Đang ở sát tường bên nào khi trên không (cho động tác leo/trượt tường) */
     wallNear: 0 as -1 | 0 | 1,
+    /** Hướng ngắm khi đi 8 hướng (chế độ topdown) */
+    aimX: 1,
+    aimY: 0,
   };
   enemies: Enemy[] = [];
   shots: Shot[] = [];
@@ -158,6 +162,8 @@ export class PlatformerSim {
     this.loot = { rng: createRng(opts.seed ?? (Date.now() & 0xffffff)), pity: opts.pity ?? freshPity(), mapMultiplier: opts.mapMultiplier ?? 1 };
     this.chestKeys = opts.chestKeys ?? 0;
     this.mode = def.mode ?? "platform";
+    // Nhìn từ trên: thân người chơi là ô vuông nhỏ trên mặt đất
+    if (this.mode === "topdown") this.player.h = T.topdown.body;
     this.chests = (def.chests ?? []).map((c) => ({ ...c, opened: false, lockedHintAt: -99 }));
     this.def = def;
     this.grid = def.rows;
@@ -315,9 +321,11 @@ export class PlatformerSim {
     }
 
     if (this.mode === "shmup") this.updateFlyer(dt, input, pressed);
+    else if (this.mode === "topdown") this.updateWalker(dt, input, pressed);
     else this.updatePlayer(dt, input, pressed);
     if (this.mode === "climb") this.updateFog(dt);
-    this.updateEnemies(dt);
+    if (this.mode === "topdown") this.updateEnemiesTop(dt);
+    else this.updateEnemies(dt);
     this.updateShots(dt);
     this.updatePickups(dt);
     this.prev = input;
@@ -537,6 +545,129 @@ export class PlatformerSim {
     }
   }
 
+  /** Đi 8 hướng trên mặt đất: không trọng lực, va tường, lướt nhanh, bắn theo hướng nhìn */
+  private updateWalker(dt: number, input: Input, pressed: (k: keyof Input) => boolean) {
+    const p = this.player;
+    const W = T.topdown;
+    let dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    let dy = (input.up ? 1 : 0) - (input.down ? 1 : 0);
+    const len = Math.hypot(dx, dy);
+    if (len > 0) {
+      dx /= len;
+      dy /= len;
+      // Đang giữ bắn thì giữ hướng ngắm (đi ngang mà vẫn bắn thẳng)
+      if (!input.shoot) {
+        p.aimX = dx;
+        p.aimY = dy;
+      }
+      if (dx !== 0) p.facing = dx > 0 ? 1 : -1;
+    }
+    if (pressed("dash") && p.dashTime <= 0) {
+      p.dashTime = W.dashTime;
+      this.fx.push({ kind: "dash", x: p.x, y: p.y, at: this.time });
+    }
+    p.dashTime -= dt;
+    p.knock -= dt;
+    const speed = W.speed * (p.dashTime > 0 ? W.dashMul : 1);
+    if (p.knock <= 0) {
+      p.vx = dx * speed;
+      p.vy = dy * speed;
+    } else {
+      p.vx *= 0.9;
+      p.vy *= 0.9;
+    }
+    this.move(p, dt);
+    p.onGround = true;
+    p.invuln -= dt;
+    p.shootTimer -= dt;
+    if (pressed("shoot")) this.fire(0);
+    if (input.shoot) p.charge += dt;
+    else if (this.prev.shoot) {
+      if (p.charge >= T.shot.chargeFull) this.fire(2);
+      else if (p.charge >= T.shot.chargeMid) this.fire(1);
+      p.charge = 0;
+    }
+    if (this.touchesSpike(p.x, p.y, p.w)) this.hurt(T.player.spikeDamage, -p.facing as 1 | -1);
+    this.def.checkpoints.forEach(([cx, cy], i) => {
+      if (i > this.checkpointIndex && Math.hypot(p.x - cx, p.y - cy) < 1.6) {
+        this.checkpointIndex = i;
+        this.checkpoint = [cx, cy];
+        this.fx.push({ kind: "checkpoint", x: cx, y: cy, at: this.time });
+        this.onEvent?.("checkpoint");
+      }
+    });
+    const [ax, bx] = this.def.bossArena;
+    if (!this.bossActive && p.x > ax + 1 && p.x < bx) {
+      this.bossActive = true;
+      const boss = this.enemies.find((e) => e.kind === "boss");
+      if (boss) {
+        boss.awake = true;
+        boss.timer = 1.5;
+      }
+    }
+  }
+
+  /** Địch khi nhìn từ trên: zombie đuổi, lính và drone bắn nhắm, trùm đuổi + loạt đạn quạt + vòng đạn toả */
+  private updateEnemiesTop(dt: number) {
+    const p = this.player;
+    const E = T.enemy;
+    const W = T.topdown;
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const dx = p.x - e.x;
+      const dy = p.y - e.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (e.kind !== "boss") e.awake = d < E.wakeRange;
+      if (!e.awake) continue;
+      e.timer -= dt;
+      e.facing = dx > 0 ? 1 : -1;
+      const shoot = (speed: number, dmg: number, spread = 0, r = 0.2, level: 0 | 1 | 2 = 0) => {
+        const a = Math.atan2(dy, dx) + spread;
+        this.shots.push({ x: e.x, y: e.y + e.h / 2, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r, dmg, pierce: false, life: 3, enemy: true, level });
+      };
+      if (e.kind === "zombie") {
+        const sp = d < E.zombie.sight ? E.zombie.chase : 0;
+        e.vx = (dx / d) * sp;
+        e.vy = (dy / d) * sp;
+        this.move(e, dt);
+      } else if (e.kind === "trooper") {
+        // Giữ khoảng cách vừa tầm bắn, đi vòng quanh người chơi
+        const want = d > W.trooperRange ? 1 : d < W.trooperRange - 2 ? -1 : 0;
+        e.vx = (dx / d) * want * E.trooper.walk + (-dy / d) * 0.6;
+        e.vy = (dy / d) * want * E.trooper.walk + (dx / d) * 0.6;
+        this.move(e, dt);
+        if (e.timer <= 0 && d < E.trooper.sight) {
+          e.timer = E.trooper.fireEvery;
+          e.firedAt = this.time;
+          shoot(E.trooper.shotSpeed, E.trooper.shotDamage);
+        }
+      } else if (e.kind === "drone") {
+        const t = this.time + e.id;
+        e.x = e.homeX + Math.sin(t * 0.8) * E.drone.sway;
+        e.y = e.homeY + Math.cos(t * 1.1) * E.drone.sway * 0.6;
+        if (e.timer <= 0 && d < E.drone.sight) {
+          e.timer = E.drone.fireEvery;
+          e.firedAt = this.time;
+          shoot(E.drone.shotSpeed, E.drone.shotDamage);
+        }
+      } else if (e.kind === "boss") {
+        const B = E.boss;
+        const rage = e.hp < e.maxHp / 2 ? B.rageSpeedup : 1;
+        e.vx = (dx / d) * B.walk * 0.7 * rage;
+        e.vy = (dy / d) * B.walk * 0.7 * rage;
+        this.move(e, dt);
+        if (e.timer <= 0) {
+          e.firedAt = this.time;
+          // Xen kẽ: loạt 3 viên hình quạt, rồi vòng 10 viên toả đều
+          if (Math.floor(this.time / 3) % 2 === 0) for (const sp of [-0.25, 0, 0.25]) shoot(B.shotSpeed, B.shotDamage, sp, 0.3, 1);
+          else for (let k = 0; k < 10; k++) shoot(B.waveSpeed * 0.8, B.waveDamage, (k / 10) * Math.PI * 2, 0.3, 2);
+          e.timer = 1.6 / rage;
+        }
+      }
+      if (overlap(p, e)) this.hurt(e.kind === "boss" ? E.boss.contactDamage : E.contactDamage, p.x < e.x ? -1 : 1);
+    }
+  }
+
   private touchesSpike(x: number, y: number, w: number) {
     for (let c = Math.floor(x - w / 2 + 0.1); c <= Math.floor(x + w / 2 - 0.1); c++) {
       if (this.tile(c, Math.floor(y + 0.05)) === "^") return true;
@@ -549,6 +680,15 @@ export class PlatformerSim {
     const S = T.shot;
     if (level === 0 && this.shots.filter((s) => !s.enemy && s.level === 0).length >= S.maxSmall) return;
     const spec = level === 0 ? S.small : level === 1 ? S.mid : S.full;
+    if (this.mode === "topdown") {
+      // Đi 8 hướng: bắn theo hướng đang nhìn, xuất phát từ tâm thân
+      const ox = p.x + p.aimX * 0.6;
+      const oy = p.y + p.h / 2 + p.aimY * 0.6;
+      this.shots.push({ x: ox, y: oy, vx: p.aimX * spec.speed, vy: p.aimY * spec.speed, r: spec.r, dmg: spec.dmg, pierce: level === 2, life: S.life, enemy: false, level });
+      p.shootTimer = 0.3;
+      this.fx.push({ kind: "shot", x: ox, y: oy, at: this.time });
+      return;
+    }
     // Bám tường thì bắn ra phía ngược tường
     const dir = p.wall !== 0 ? (-p.wall as 1 | -1) : p.facing;
     this.shots.push({
@@ -574,7 +714,9 @@ export class PlatformerSim {
     p.invuln = T.player.invuln;
     p.knock = T.player.knockTime;
     p.vx = from * T.player.knockSpeed;
-    p.vy = Math.max(p.vy, 4);
+    // Đi ngang: bị hất lên một chút; đi 8 hướng (y là chiều sâu mặt đất) thì chỉ lùi theo hướng ngang
+    if (this.mode === "topdown") p.vy = 0;
+    else p.vy = Math.max(p.vy, 4);
     p.dashTime = 0;
     this.fx.push({ kind: "hurt", x: p.x, y: p.y + 1, at: this.time });
     if (p.hp <= 0) this.kill();
@@ -650,7 +792,7 @@ export class PlatformerSim {
 
   /** Hướng đạn địch: chế độ bay thì nhắm vào người chơi (người chơi bay trên cao), còn lại bắn ngang */
   private aim(x: number, y: number, facing: 1 | -1, speed: number) {
-    if (this.mode !== "shmup") return { vx: facing * speed, vy: 0 };
+    if (this.mode !== "shmup" && this.mode !== "topdown") return { vx: facing * speed, vy: 0 };
     const dx = this.player.x - x;
     const dy = this.player.y + this.player.h / 2 - y;
     const len = Math.hypot(dx, dy) || 1;
@@ -769,7 +911,7 @@ export class PlatformerSim {
       const dy = p.y + p.h / 2 - k.y;
       const d = Math.hypot(dx, dy);
       const age = this.time - k.bornAt;
-      const flying = this.mode === "shmup";
+      const flying = this.mode === "shmup" || this.mode === "topdown";
       if (age > L.pickupDelay && d < L.magnetRange * (flying ? 2 : 1) && (k.drop.kind !== "health" || flying)) {
         k.x += (dx / d) * L.magnetSpeed * dt;
         k.y += (dy / d) * L.magnetSpeed * dt;

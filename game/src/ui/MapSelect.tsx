@@ -6,7 +6,7 @@ import { playLevel, useLevel } from "../level/session";
 import { viewById } from "../level/views";
 import { useHunter } from "../game/hunter";
 
-const MODE_LABEL = { platform: "Đi ngang", climb: "Leo tháp", shmup: "Bay bắn" } as const;
+const MODE_LABEL = { platform: "Đi ngang", climb: "Leo tháp", shmup: "Bay bắn", topdown: "Đi 8 hướng" } as const;
 
 export function MapSelect() {
   const selecting = useLevel((s) => s.selecting);
@@ -41,7 +41,7 @@ export function MapSelect() {
           return (
             <li key={l.def.id} className={open ? "" : "locked"}>
               <button disabled={!open} onClick={() => playLevel(l.def.id)}>
-                <span className="map-select__num">{i + 1}</span>
+                <span className="map-select__num">{l.side ? "★" : i + 1}</span>
                 <span className="map-select__body">
                   <b>
                     {l.def.name} {done && <em>ĐÃ QUA</em>}
@@ -51,7 +51,7 @@ export function MapSelect() {
                     {MODE_LABEL[l.def.mode ?? "platform"]} · {v.label} (học từ {v.inspired}) · rơi đồ ×{l.mapMultiplier} · {l.keyLabel} · trùm {l.bossName}
                   </small>
                 </span>
-                <span className="map-select__state">{open ? "VÀO" : i === LEVELS.length - 1 ? "Qua đủ 3 map" : `Qua ${LEVELS[i - 1].def.name}`}</span>
+                <span className="map-select__state">{open ? "VÀO" : l.side ? `Qua ${LEVELS[0].def.name}` : l.mapId === "citadel_raid" ? "Qua đủ 3 map" : `Qua ${LEVELS[i - 1].def.name}`}</span>
               </button>
             </li>
           );

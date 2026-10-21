@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LEVEL_1 } from "./level1";
-import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_WARZONE } from "./maps";
+import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_HUNT, LEVEL_WARZONE } from "./maps";
 import { LEVEL_TUNING as T } from "./levelTuning";
 import { NO_INPUT, PlatformerSim, type LevelDef } from "./platformer";
 
@@ -106,12 +106,12 @@ function climbReachable(def: LevelDef) {
 }
 
 describe("các map", () => {
-  for (const def of [LEVEL_1, LEVEL_HOTEL, LEVEL_WARZONE, LEVEL_CITADEL]) {
+  for (const def of [LEVEL_1, LEVEL_HOTEL, LEVEL_WARZONE, LEVEL_CITADEL, LEVEL_HUNT]) {
     describe(`${def.name} (${def.mode ?? "platform"})`, () => {
       it("bản đồ hợp lệ: hàng đều nhau, điểm xuất phát/checkpoint/rương không nằm trong khối đặc, đúng 1 trùm", () => {
         const sim = new PlatformerSim(def);
         expect(new Set(def.rows.map((r) => r.length)).size).toBe(1);
-        const flying = def.mode === "shmup";
+        const flying = def.mode === "shmup" || def.mode === "topdown";
         const ok = (x: number, y: number) => {
           const here = sim.tile(Math.floor(x), y) !== "#" && sim.tile(Math.floor(x), y + 1) !== "#";
           const below = sim.tile(Math.floor(x), y - 1);
@@ -133,6 +133,25 @@ describe("các map", () => {
       if (def.mode === "climb")
         it("có đường leo từ đáy lên sân thượng phòng trùm", () => {
           expect(climbReachable(def)).toBeGreaterThanOrEqual(def.bossFloor!);
+        });
+
+      if (def.mode === "topdown")
+        it("có lối đi từ điểm xuất phát tới khu mục tiêu, mọi rương và checkpoint", () => {
+          const sim = new PlatformerSim(def);
+          const ok = (c: number, r: number) => sim.tile(c, r) !== "#" && sim.tile(c, r) !== "^";
+          const seen = new Set<string>();
+          const q: [number, number][] = [[Math.floor(def.start[0]), Math.floor(def.start[1])]];
+          while (q.length) {
+            const [c, r] = q.shift()!;
+            const k = `${c},${r}`;
+            if (seen.has(k) || !ok(c, r)) continue;
+            seen.add(k);
+            q.push([c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]);
+          }
+          const at = (x: number, y: number) => seen.has(`${Math.floor(x)},${Math.floor(y)}`);
+          expect(at(def.bossArena[0] + 3, 20)).toBe(true);
+          for (const c of def.chests ?? []) expect(at(c.x, c.y), `rương (${c.x}, ${c.y})`).toBe(true);
+          for (const [x, y] of def.checkpoints) expect(at(x, y), `checkpoint (${x}, ${y})`).toBe(true);
         });
 
       if (def.mode === "shmup")
@@ -172,5 +191,40 @@ describe("chế độ bay", () => {
     expect(sim.scrollX).toBeGreaterThan(sx + 3);
     expect(sim.player.y).toBeGreaterThan(y);
     expect(sim.player.x).toBeGreaterThanOrEqual(sim.scrollX - T.shmup.viewHalf + 1 - 1e-6);
+  });
+});
+
+describe("chế độ đi 8 hướng", () => {
+  it("đi chéo được, không xuyên tường, bắn theo hướng nhìn", () => {
+    const sim = new PlatformerSim(LEVEL_HUNT, { seed: 1 });
+    for (let i = 0; i < 120; i++) sim.step(NO_INPUT);
+    const x0 = sim.player.x;
+    const y0 = sim.player.y;
+    for (let i = 0; i < 30; i++) sim.step({ ...NO_INPUT, right: true, up: true });
+    expect(sim.player.x).toBeGreaterThan(x0 + 1);
+    expect(sim.player.y).toBeGreaterThan(y0 + 1);
+    // Đâm vào tường viền trái: không ra ngoài
+    for (let i = 0; i < 120; i++) sim.step({ ...NO_INPUT, left: true });
+    expect(sim.player.x).toBeGreaterThan(1);
+    // Nhìn lên rồi bắn: đạn bay theo +y
+    sim.step({ ...NO_INPUT, up: true });
+    sim.step({ ...NO_INPUT, up: true, shoot: true });
+    const shot = sim.shots.find((s) => !s.enemy)!;
+    expect(shot.vy).toBeGreaterThan(0);
+    expect(Math.abs(shot.vx)).toBeLessThan(1e-6);
+  });
+
+  it("zombie đuổi theo người chơi trên mặt đất", () => {
+    const sim = new PlatformerSim(LEVEL_HUNT, { seed: 1 });
+    for (let i = 0; i < 120; i++) sim.step(NO_INPUT);
+    const z = sim.enemies.find((e) => e.kind === "zombie")!;
+    sim.player.x = z.x - 5;
+    sim.player.y = z.y;
+    const zx0 = z.x;
+    for (let i = 0; i < 40; i++) {
+      sim.player.hp = T.player.maxHp;
+      sim.step(NO_INPUT);
+    }
+    expect(z.x).toBeLessThan(zx0 - 0.5);
   });
 });

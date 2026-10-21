@@ -243,3 +243,62 @@ function citadel(): LevelDef {
 export const LEVEL_HOTEL = hollowHotel();
 export const LEVEL_WARZONE = warzone();
 export const LEVEL_CITADEL = citadel();
+
+/** Khu Săn Neon (nhìn chéo sa bàn kiểu Final Fantasy Tactics): đi 8 hướng giữa các dãy nhà, săn mục tiêu truy nã */
+function huntZone(): LevelDef {
+  const W = 64;
+  const H = 40;
+  const b = new LevelBuilder(W, H);
+  // Viền khu săn
+  b.ground(0, 0, H).ground(W - 1, W - 1, H).block(1, W - 2, 1, 1).block(1, W - 2, H, 1);
+  // Các dãy nhà (khối đặc) chừa phố ngang dọc
+  const house = (x0: number, x1: number, y0: number, y1: number) => b.block(x0, x1, y1 + 1, y1 - y0 + 1);
+  house(6, 12, 5, 11);
+  house(6, 12, 17, 23);
+  house(6, 12, 29, 34);
+  house(18, 24, 5, 13);
+  house(18, 24, 19, 25);
+  house(18, 22, 31, 35);
+  house(30, 36, 3, 9);
+  house(30, 36, 15, 22);
+  house(30, 36, 28, 35);
+  house(41, 44, 8, 30);
+  // Bãi gai điện giữa phố
+  b.spikes(14, 15, 14).spikes(26, 27, 26).spikes(38, 38, 12);
+  // Khu mục tiêu (phòng trùm) phía đông: cửa đóng sau khi vào
+  return {
+    id: "hunt_neon",
+    name: "KHU SĂN NEON",
+    mode: "topdown",
+    rows: b.rows(),
+    start: [3.5, 3],
+    checkpoints: [
+      [15.5, 20],
+      [38.5, 25],
+    ],
+    enemies: [
+      e("trooper", 14, 8),
+      e("zombie", 15, 30),
+      e("drone", 26, 10),
+      e("trooper", 27, 17),
+      e("zombie", 26, 33),
+      e("drone", 38, 5),
+      e("trooper", 38, 18),
+      e("zombie", 39, 33),
+      e("boss", 55, 20),
+    ],
+    pickups: [
+      [16, 21],
+      [39, 26],
+    ],
+    chests: [
+      { x: 3.5, y: 36, tier: "bronze" },
+      { x: 27.5, y: 2, tier: "silver" },
+      { x: 38.5, y: 37, tier: "gold" },
+    ],
+    bossArena: [47, W - 3],
+    theme: "harbor",
+  };
+}
+
+export const LEVEL_HUNT = huntZone();

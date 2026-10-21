@@ -6,7 +6,7 @@
 // - Game Boy: phẳng hoàn toàn, 4 sắc xanh lá, hạt to
 // - Điện ảnh: camera thấp, zoom theo nhịp (đứng yên thì gần, lướt thì xa), khung đen trên dưới khi đánh trùm
 
-export type ViewId = "classic" | "ps2" | "snes" | "gameboy" | "cinema" | "topdown";
+export type ViewId = "classic" | "ps2" | "snes" | "gameboy" | "cinema" | "topdown" | "iso";
 
 export type ViewPreset = {
   id: ViewId;
@@ -24,6 +24,8 @@ export type ViewPreset = {
   post: "none" | "snes" | "gameboy" | "cinema";
   /** "top": mặt phẳng chơi nằm ngang, camera trên cao nhìn xuống, tiến = lên trên màn hình */
   plane?: "side" | "top";
+  /** Nhìn chéo sa bàn: camera xoay 45° và chúc xuống ~35°, bám theo người chơi */
+  iso?: boolean;
 };
 
 export const VIEWS: ViewPreset[] = [
@@ -32,6 +34,7 @@ export const VIEWS: ViewPreset[] = [
   { id: "snes", label: "Màu retro 16-bit", inspired: "Gradius III · Mega Man X (SNES)", fov: 9, distance: 92, yaw: 0, rise: 0.4, lookAhead: 2.5, damp: 7, post: "snes" },
   { id: "gameboy", label: "Game Boy", inspired: "Mega Man Xtreme · Game Boy", fov: 9, distance: 80, yaw: 0, rise: 0.4, lookAhead: 2, damp: 8, post: "gameboy" },
   { id: "topdown", label: "Nhìn từ trên, cuộn dọc", inspired: "1942 · Raiden · bắn máy bay hẻm núi", fov: 40, distance: 36, yaw: 0, rise: 7, lookAhead: 0, damp: 6, post: "none", plane: "top" },
+  { id: "iso", label: "Nhìn chéo sa bàn", inspired: "Final Fantasy Tactics (PS1)", fov: 26, distance: 46, yaw: 0, rise: 0, lookAhead: 0, damp: 6, post: "snes", plane: "top", iso: true },
   { id: "cinema", label: "Điện ảnh", inspired: "Shinobi · Strider 2 (PS2)", fov: 34, distance: 16, yaw: -0.18, rise: -0.6, lookAhead: 3.5, damp: 3, post: "cinema" },
 ];
 

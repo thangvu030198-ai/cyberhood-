@@ -51,6 +51,12 @@ const isTop = (sim: PlatformerSim) =>
   viewById(levelById(sim.def.id).view).plane === "top";
 /** Góc dựng đứng model trong thế giới đã xoay (thứ tự Euler XYZ: quay mặt quanh trục đứng trước, dựng sau) */
 const upright = (sim: PlatformerSim) => (isTop(sim) ? Math.PI / 2 : 0);
+/** Đi 8 hướng: vật thể đứng trên mặt sàn (đáy khối nền), không lơ lửng giữa khối */
+const zFloor = (sim: PlatformerSim) => (sim.mode === "topdown" ? -DEPTH / 2 : 0);
+/** Góc quay mặt về hướng (dx, dy) trên mặt đất khi nhìn từ trên: model nhìn +Z, y mô phỏng nằm theo -z */
+const groundYaw = (dx: number, dy: number) => Math.atan2(dx, -dy);
+/** Góc đích gần góc hiện tại nhất (tránh quay vòng 360° khi đổi hướng qua ±π) */
+const nearestAngle = (from: number, to: number) => from + Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
 /** Bề sâu khối nền (trục z), nhân vật đứng ở z = 0 */
 const DEPTH = 4;
@@ -99,7 +105,15 @@ export function LevelCanvas() {
         intensity={th.rim.intensity}
         color={th.rim.color}
       />
-      {top ? <TopGround sim={sim} theme={th} /> : <Sky theme={th} />}
+      {top ? (
+        sim.mode === "topdown" ? (
+          <FloorGround sim={sim} theme={th} entry={levelById(sim.def.id)} />
+        ) : (
+          <TopGround sim={sim} theme={th} />
+        )
+      ) : (
+        <Sky theme={th} />
+      )}
       <group rotation-x={top ? -Math.PI / 2 : 0}>
         <Tiles sim={sim} theme={th} />
         {!top && <Checkpoints sim={sim} />}
@@ -146,16 +160,16 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
     if (!levelInput.paused) {
       const i = levelInput.state();
       // Nhìn từ trên: lên màn hình = tiến (x mô phỏng), trái/phải màn hình = trục y mô phỏng
-      const input = isTop(sim)
-        ? {
-            ...i,
-            right: i.up || i.jump,
-            left: i.down,
-            up: i.left,
-            down: i.right,
-            jump: false,
-          }
-        : i;
+      const v = viewById(levelById(sim.def.id).view);
+      let input = i;
+      if (v.iso) {
+        // Sa bàn xoay 45°: lên màn hình = (-x, +y) mô phỏng, phải màn hình = (+x, +y)
+        const sx = (i.right ? 1 : 0) - (i.left ? 1 : 0);
+        const sy = (i.up || i.jump ? 1 : 0) - (i.down ? 1 : 0);
+        const dx = sx - sy;
+        const dy = sx + sy;
+        input = { ...i, right: dx > 0, left: dx < 0, up: dy > 0, down: dy < 0, jump: false };
+      } else if (isTop(sim)) input = { ...i, right: i.up || i.jump, left: i.down, up: i.left, down: i.right, jump: false };
       sim.update(Math.min(dt, 0.1), input);
     }
     for (let i = seen.current; i < sim.fx.length; i++) {
@@ -245,6 +259,23 @@ function LevelCamera({
     const k = 1 - Math.exp(-v.damp * dt);
     look.current.x += (tx - look.current.x) * k;
     look.current.y += (ty - look.current.y) * k;
+    if (v.iso) {
+      // Sa bàn: nhìn từ góc (+x, +z) xuống, chúc ~35°; thế giới đã xoay nên y mô phỏng nằm theo -z
+      const k2 = 1 - Math.exp(-v.damp * dt);
+      look.current.x += (p.x - look.current.x) * k2;
+      look.current.y += (p.y - look.current.y) * k2;
+      const tz = -look.current.y;
+      const pitch = THREE.MathUtils.degToRad(35);
+      const h = Math.cos(pitch) * dist;
+      camera.up.set(0, 1, 0);
+      camera.position.set(look.current.x + h * Math.SQRT1_2, Math.sin(pitch) * dist - 2, tz + h * Math.SQRT1_2);
+      camera.lookAt(look.current.x, -2, tz);
+      if (scene.fog instanceof THREE.Fog) {
+        scene.fog.near = dist + 10;
+        scene.fog.far = dist + 80;
+      }
+      return;
+    }
     if (v.plane === "top") {
       // Nhìn từ trên: thế giới đã xoay nên trục y mô phỏng nằm theo -z; camera hơi lùi về sau cho có phối cảnh
       const cx = sim.scrollX;
@@ -316,16 +347,45 @@ function PostFx({ sim }: { sim: PlatformerSim }) {
   );
 }
 
+/** Mặt sàn khu phố khi đi 8 hướng: nền gạch dưới chân + đạo cụ đặt theo toạ độ ô (x, y) trên mặt đất */
+function FloorGround({ sim, theme, entry }: { sim: PlatformerSim; theme: LevelTheme; entry: LevelEntry }) {
+  const tex = useMemo(() => {
+    const t = panelTexture();
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(sim.width / 2, sim.height / 2);
+    return t;
+  }, [sim]);
+  return (
+    <group>
+      <mesh rotation-x={-Math.PI / 2} position={[sim.width / 2, -2.02, -sim.height / 2]}>
+        <planeGeometry args={[sim.width, sim.height]} />
+        <meshStandardMaterial map={tex} color={theme.backFloor} roughness={0.8} />
+      </mesh>
+      <mesh rotation-x={-Math.PI / 2} position={[sim.width / 2, -2.1, -sim.height / 2]}>
+        <planeGeometry args={[sim.width + 200, sim.height + 200]} />
+        <meshStandardMaterial color={theme.fog} roughness={1} />
+      </mesh>
+      {entry.props.map((pr, i) => (
+        <Quiet key={i}>
+          <Suspense fallback={null}>
+            <Prop name={pr.name} height={pr.height} position={[pr.at[0], -2, -pr.at[1]]} rotationY={pr.rot ?? 0} selfLit={pr.selfLit} />
+          </Suspense>
+        </Quiet>
+      ))}
+    </group>
+  );
+}
+
 /** Nền hẻm núi nhìn từ trên: đáy tím sẫm và những cụm pha lê Meshy dọc hai mép vách */
 function TopGround({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
   const crystals = useMemo(() => {
     const list: { x: number; z: number; h: number; rot: number }[] = [];
     for (let x = 8; x < sim.width; x += 13) {
-      list.push({ x, z: 1.5, h: 5 + (x % 3), rot: x * 0.7 });
+      list.push({ x, z: 3.5, h: 2.6 + (x % 3) * 0.5, rot: x * 0.7 });
       list.push({
         x: x + 6,
-        z: -sim.height - 1.5,
-        h: 4 + (x % 4),
+        z: -sim.height - 3.5,
+        h: 2.4 + (x % 4) * 0.4,
         rot: x * 1.3,
       });
     }
@@ -607,7 +667,7 @@ function Shots({ sim }: { sim: PlatformerSim }) {
       const stretch = s.enemy ? 1 : 1.8;
       mat
         .makeScale(s.r * 2 * stretch, s.r * 2, s.r * 2)
-        .setPosition(s.x, s.y, 0.2);
+        .setPosition(s.x, s.y, zFloor(sim) + (sim.mode === "topdown" ? 1 : 0.2));
       m.setMatrixAt(i, mat);
       m.setColorAt(
         i,
@@ -676,8 +736,8 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
       const resting = k.vx === 0 && k.vy === 0;
       slot.position.set(
         k.x,
-        k.y + (resting ? 0.35 + Math.sin(t * 3 + i) * 0.08 : 0.15),
-        0.2,
+        k.y + (resting && sim.mode !== "topdown" ? 0.35 + Math.sin(t * 3 + i) * 0.08 : 0.15),
+        sim.mode === "topdown" ? zFloor(sim) + 0.5 + Math.sin(t * 3 + i) * 0.08 : 0.2,
       );
       body.rotation.y = t * 2.4;
       const d = k.drop;
@@ -869,7 +929,7 @@ function ChestModel({ sim, index }: { sim: PlatformerSim; index: number }) {
   });
   const tint = new THREE.Color(CHEST_TINT[c.tier]).multiplyScalar(2.2);
   return (
-    <group position={[c.x, c.y, -0.2]}>
+    <group position={[c.x, c.y, sim.mode === "topdown" ? zFloor(sim) : -0.2]} rotation-x={upright(sim)}>
       <group ref={group}>
         <primitive object={root} />
       </group>
@@ -925,7 +985,7 @@ function Fx({ sim }: { sim: PlatformerSim }) {
       o.position.set(
         f.x,
         f.y + (f.kind === "land" ? 0.1 : f.kind === "dust" ? u * 0.4 : 0),
-        0.4,
+        zFloor(sim) + (sim.mode === "topdown" ? 1.2 : 0.4),
       );
       o.scale.set(size, f.kind === "land" ? size * 0.25 : size, size);
       const mat = o.material as THREE.MeshBasicMaterial;
@@ -952,7 +1012,7 @@ function Fx({ sim }: { sim: PlatformerSim }) {
             ? 1
             : 0;
       c.visible = lvl > 0 && sim.status === "playing";
-      c.position.set(p.x, p.y + 1, 0.3);
+      c.position.set(p.x, p.y + (sim.mode === "topdown" ? 0 : 1), zFloor(sim) + (sim.mode === "topdown" ? 1 : 0.3));
       const pulse = 1 + Math.sin(sim.time * (lvl === 2 ? 40 : 22)) * 0.15;
       c.scale.setScalar((lvl === 2 ? 1.3 : 0.95) * pulse);
       (c.material as THREE.MeshBasicMaterial).color.setRGB(
@@ -1226,12 +1286,12 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     if (!o) return;
     dt = Math.min(dt, 0.1);
     // Cưỡi xe bay: ngồi cao hơn mặt xe một chút
-    o.position.set(p.x, p.y + (sim.mode === "shmup" ? 0.55 : 0), 0);
+    o.position.set(p.x, p.y + (sim.mode === "shmup" ? 0.55 : 0), zFloor(sim));
     // Sát tường trên không: quay mặt vào tường để bám/leo; còn lại quay theo hướng chạy
     const onWall = p.wallNear !== 0 && sim.status === "playing" && p.knock <= 0;
     yaw.current = THREE.MathUtils.damp(
       yaw.current,
-      faceYaw(onWall ? p.wallNear : p.facing),
+      sim.mode === "topdown" ? nearestAngle(yaw.current, groundYaw(p.aimX, p.aimY)) : faceYaw(onWall ? p.wallNear : p.facing),
       16,
       dt,
     );
@@ -1276,14 +1336,14 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       );
       jump.time = THREE.MathUtils.damp(jump.time, t, 20, dt);
       jump.timeScale = 0;
-    } else if (Math.abs(p.vx) > 0.5)
+    } else if (Math.hypot(p.vx, sim.mode === "topdown" ? p.vy : 0) > 0.5)
       setAnim(rig, shooting || p.dashTime > 0 ? "runshoot" : "run", 0.12);
     else setAnim(rig, shooting ? "runshoot" : "idle", 0.15);
     const run = rig.actions.run;
     if (run) run.timeScale = p.dashTime > 0 ? 1.6 : 1.15;
     if (rig.actions.runshoot)
       rig.actions.runshoot.timeScale =
-        Math.abs(p.vx) > 0.5 ? (p.dashTime > 0 ? 1.6 : 1.15) : 0.0001;
+        Math.hypot(p.vx, sim.mode === "topdown" ? p.vy : 0) > 0.5 ? (p.dashTime > 0 ? 1.6 : 1.15) : 0.0001;
     rig.mixer.update(dt);
     // Động tác leo / trượt tường đè lên tư thế của clip, trộn dần vào và ra
     climb.apply(onWall ? p.wallNear : 0, p.vy, p.y, dt);
@@ -1310,6 +1370,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       while (gy > 0 && sim.tile(Math.floor(p.x), gy - 1) === ".") gy--;
       const h = p.y - gy;
       sh.position.set(p.x, gy + 0.02, 0.3);
+      sh.visible = sim.mode !== "topdown" && sim.mode !== "shmup";
       sh.scale.setScalar(Math.max(0.35, 1 - h * 0.12));
       (sh.material as THREE.MeshBasicMaterial).opacity = Math.max(
         0.1,
@@ -1555,9 +1616,9 @@ function RiggedEnemy({
     if (!o.visible) return;
     const nearCam = Math.abs(e.x - sim.player.x) < 26;
     if (!nearCam) return;
-    o.position.set(e.x, e.y, enemy.kind === "boss" ? -0.3 : 0);
+    o.position.set(e.x, e.y, zFloor(sim) + (enemy.kind === "boss" && sim.mode !== "topdown" ? -0.3 : 0));
     o.rotation.x = upright(sim);
-    yaw.current = THREE.MathUtils.damp(yaw.current, faceYaw(e.facing), 10, dt);
+    yaw.current = THREE.MathUtils.damp(yaw.current, sim.mode === "topdown" ? nearestAngle(yaw.current, groundYaw(sim.player.x - e.x, sim.player.y - e.y)) : faceYaw(e.facing), 10, dt);
     o.rotation.y = yaw.current;
     if (!e.alive) setAnim(rig, "death", 0.1);
     else if (
@@ -1572,13 +1633,13 @@ function RiggedEnemy({
         rig,
         sim.time - e.firedAt < 0.6
           ? "shoot"
-          : Math.abs(e.vx) > 0.1
+          : Math.hypot(e.vx, sim.mode === "topdown" ? e.vy : 0) > 0.1
             ? "walk"
             : "idle",
         0.15,
       );
     else if (e.kind === "zombie")
-      setAnim(rig, Math.abs(e.vx) > 1.5 ? "run" : "walk", 0.2);
+      setAnim(rig, Math.hypot(e.vx, sim.mode === "topdown" ? e.vy : 0) > 1.5 ? "run" : "walk", 0.2);
     else if (e.kind === "boss") {
       const anim = !e.awake
         ? "scream"
@@ -1627,7 +1688,7 @@ function DroneModel({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
     const age = sim.time - enemy.deadAt;
     o.visible = enemy.alive || age < 0.6;
     if (!o.visible) return;
-    o.position.set(enemy.x, enemy.y - (enemy.alive ? 0 : age * age * 12), 0);
+    o.position.set(enemy.x, enemy.y - (enemy.alive ? 0 : age * age * 12), zFloor(sim) + (sim.mode === "topdown" ? 1.6 : 0));
     o.rotation.y = enemy.facing > 0 ? Math.PI / 2 : -Math.PI / 2;
     o.rotation.x = upright(sim);
     o.rotation.z = enemy.alive

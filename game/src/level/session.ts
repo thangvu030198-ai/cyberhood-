@@ -5,7 +5,6 @@
 import { create } from "zustand";
 import { addKill, completeEvent, completeMission } from "../sim/contract";
 import { playSfx } from "../game/assets";
-import { startNewContract } from "../game/contracts";
 import { useHunter } from "../game/hunter";
 import { questProgress } from "../game/quests";
 import { handles } from "../game/refs";
@@ -165,13 +164,18 @@ export function enterLevel() {
 export function playLevel(levelId: string) {
   const g = useGame.getState();
   useLevel.getState().setSelecting(false);
-  if (!useHunter.getState().contract) {
+  document.exitPointerLock?.();
+  const go = () => {
+    useLevel.getState().start(levelId);
+    g.setLocation("level");
+  };
+  if (useHunter.getState().contract) return go();
+  // Nạp muộn: contracts kéo theo Enemies, nạp tĩnh ở đây sẽ tạo vòng import
+  void import("../game/contracts").then(({ startNewContract }) => {
     const err = startNewContract();
     if (err) g.showToast(`${err}. Vào màn luyện tập (chỉ nhận CRED)`);
-  }
-  document.exitPointerLock?.();
-  useLevel.getState().start(levelId);
-  g.setLocation("level");
+    go();
+  });
 }
 
 /** Về Hub: đứng ngay trước cổng, quay lưng lại cổng */

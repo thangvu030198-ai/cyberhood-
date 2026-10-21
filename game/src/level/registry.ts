@@ -5,7 +5,7 @@ import type { ExtraModel } from "../game/assets";
 import type { MapId } from "../sim/config";
 import type { KeyId } from "../sim/season";
 import { LEVEL_1 } from "./level1";
-import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_WARZONE } from "./maps";
+import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_HUNT, LEVEL_WARZONE } from "./maps";
 import type { LevelDef } from "./platformer";
 import type { ViewId } from "./views";
 
@@ -29,6 +29,8 @@ export type LevelEntry = {
   /** Model cho lính / zombie / trùm (drone dùng chung) */
   looks: { trooper: RigLook; zombie: RigLook; boss: RigLook };
   bossName: string;
+  /** Map phụ (chế độ chơi khác): mở khi đã qua map đầu tiên, không chặn map chính */
+  side?: boolean;
   /** Toà nhà xa phía sau */
   backBuildings: ExtraModel[];
   /** Đạo cụ lớp giữa và sát làn chơi */
@@ -168,11 +170,40 @@ export const LEVELS: LevelEntry[] = [
   },
 ];
 
+LEVELS.push({
+  def: LEVEL_HUNT,
+  mapId: "neon_city",
+  key: "copper",
+  keyLabel: "Chìa Đồng",
+  mapMultiplier: 1.3,
+  blurb: "Khu phố bị Legion phong toả. Đi giữa các dãy nhà, săn mục tiêu truy nã ở góc đông.",
+  view: "iso",
+  howTo: "Săn tiền thưởng nhìn chéo sa bàn (kiểu Final Fantasy Tactics). W/A/S/D đi 8 hướng, J bắn theo hướng nhìn, K lướt.",
+  side: true,
+  looks: { trooper: TROOPER, zombie: zombieLook("mx_zmb_runner"), boss: monster("mx_mon_psycho", 2.6) },
+  bossName: "Kẻ Bị Truy Nã",
+  backBuildings: [],
+  // Map đi 8 hướng: toạ độ đạo cụ là [x, y ô trên mặt đất, bỏ qua]
+  props: [
+    { name: "mx_noodle_stall", height: 2.6, at: [14.5, 15, 0], rot: 0.4 },
+    { name: "mx_vending_kiosk", height: 2.4, at: [26.5, 15, 0], rot: -0.3 },
+    { name: "mx_car_taxi", height: 1.6, at: [15.5, 27, 0], rot: 1.57 },
+    { name: "mx_prop_trash_pile", height: 1.2, at: [27, 30, 0], rot: 1 },
+    { name: "mx_supply_crate", height: 1, at: [38, 12, 0], rot: 0.2 },
+    { name: "mx_car_police", height: 1.6, at: [46, 10, 0], rot: 0.1 },
+    { name: "mx_prop_neon_arch", height: 6, at: [46.5, 20, 0], rot: 1.57, selfLit: 0.6 },
+    { name: "mx_holo_tower", height: 5, at: [3, 20, 0], selfLit: 0.7 },
+  ],
+});
+
 export const levelById = (id: string) => LEVELS.find((l) => l.def.id === id) ?? LEVELS[0];
 
 /** Map mở khi đã qua map đứng trước (Citadel cần qua đủ ba map: tượng trưng cho đủ 3 Chìa) */
 export function isUnlocked(index: number, cleared: string[]) {
   if (index === 0) return true;
-  if (LEVELS[index].mapId === "citadel_raid") return LEVELS.slice(0, index).every((l) => cleared.includes(l.def.id));
+  if (LEVELS[index].side) return cleared.includes(LEVELS[0].def.id);
+  if (LEVELS[index].mapId === "citadel_raid") return LEVELS.slice(0, index)
+      .filter((l) => !l.side)
+      .every((l) => cleared.includes(l.def.id));
   return cleared.includes(LEVELS[index - 1].def.id);
 }

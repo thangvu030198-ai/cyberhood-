@@ -152,10 +152,17 @@ export function LevelHud() {
       )}
 
       {touchDevice ? (
-        <TouchPad flying={sim.mode === "shmup"} onPause={() => setPaused((x) => !x)} />
+        <TouchPad flying={sim.mode === "shmup" || sim.mode === "topdown"} onPause={() => setPaused((x) => !x)} />
       ) : (
         <div className="lv__help">
-          {sim.mode === "shmup" ? (
+          {sim.mode === "topdown" ? (
+            <>
+              <kbd>W</kbd>
+              <kbd>A</kbd>
+              <kbd>S</kbd>
+              <kbd>D</kbd> đi 8 hướng · <kbd>J</kbd> bắn theo hướng nhìn (giữ J để khoá hướng) · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
+            </>
+          ) : sim.mode === "shmup" ? (
             <>
               <kbd>W</kbd>
               <kbd>A</kbd>

@@ -65,6 +65,9 @@ export const LEVEL_TUNING = {
   /** Bay tự cuộn (Warzone): tốc độ cuộn, tốc độ bay, nửa bề ngang khung hình gameplay */
   shmup: { scrollSpeed: 4, speed: 7, boost: 1.6, viewHalf: 13, crashDamage: 4 },
 
+  /** Đi 8 hướng (nhìn từ trên / nhìn chéo): tốc độ, lướt, cỡ thân, tầm giữ khoảng cách của lính */
+  topdown: { speed: 6, dashMul: 2, dashTime: 0.22, body: 0.8, trooperRange: 8 },
+
   /** Đồ rơi: chờ một nhịp rồi mới nhặt được, gần thì tự bay về phía người chơi */
   loot: { pickupDelay: 0.35, magnetRange: 2.6, magnetSpeed: 9 },
 

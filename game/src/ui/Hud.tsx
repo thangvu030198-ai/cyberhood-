@@ -6,6 +6,8 @@ import { Minimap } from "./Minimap";
 import { pointer } from "../game/pointer";
 import { loadProgress } from "../game/assets";
 import { ContractHud, DropBanner, HunterPanels, MechMeter } from "./HunterUi";
+import { MissionPanel } from "./MissionPanel";
+import { useMissions } from "../game/missionStore";
 import { useHunter } from "../game/hunter";
 import { HUB_PEACEFUL, inSafeZone, inQuarantine } from "../game/config";
 import { currentObjective, playerPos } from "../game/objectives";
@@ -293,6 +295,8 @@ function Help({ mode }: { mode: "foot" | "drive" }) {
           <dd>Biến hình Mech khi thanh đầy 100%</dd>
           <dt>G</dt>
           <dd>Gara Mech: ráp, ghép, sửa linh kiện</dd>
+          <dt>N</dt>
+          <dd>Nhiệm vụ ngày · tuần · tháng, Điểm Hunter</dd>
           <dt>Q · Tab</dt>
           <dd>Dùng Stim Pack · Túi đồ, cài đặt đồ hoạ</dd>
           <dt>1 2 3</dt>
@@ -342,6 +346,11 @@ export function Hud() {
   const [help, setHelp] = useState(true);
   const touch = isTouchDevice();
 
+  // Vào game là tính nhiệm vụ đăng nhập trong ngày
+  useEffect(() => {
+    if (ready && profile) useMissions.getState().track("login");
+  }, [ready, profile]);
+
   // Bảng hướng dẫn tự thu gọn sau một lúc để không che màn hình chơi
   useEffect(() => {
     if (!ready) return;
@@ -356,6 +365,12 @@ export function Hud() {
       const emote = EMOTE_KEYS[e.code];
       if (emote) setEmote(emote);
       if (e.code === "KeyH") setHelp((h) => !h);
+      if (e.code === "KeyN") {
+        const g = useGame.getState();
+        const m = useMissions.getState();
+        if (m.open) m.setOpen(false);
+        else if (g.profile && !g.dialogue && !g.shopOpen && !g.inventoryOpen && !g.panelOpen) m.setOpen(true);
+      }
       if (e.code === "KeyG") {
         const g = useGame.getState();
         if (g.profile && !g.dialogue && !g.shopOpen && !g.inventoryOpen) {
@@ -480,6 +495,7 @@ export function Hud() {
       <DialoguePanel />
       <InventoryPanel />
       <HunterPanels />
+      <MissionPanel />
       <CharacterCreator />
       <Flatline />
     </div>

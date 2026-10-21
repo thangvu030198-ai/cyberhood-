@@ -17,6 +17,8 @@ import { keptOnQuit, type LootDrop } from "./loot";
 import { addShards, type KeyId } from "../sim/season";
 import { createRng } from "../sim/rng";
 import { RARITY_LABEL } from "../sim/loot";
+import { rarityIndex } from "../sim/config";
+import { trackMission } from "../game/missionStore";
 
 /** Thưởng CRED: cơ bản khi qua màn + mỗi địch hạ */
 export const LEVEL_REWARD = { clear: 60, perKill: 3 };
@@ -52,8 +54,15 @@ export const useLevel = create<LevelState>((set, get) => ({
       if (kind === "loot" && detail?.drop) {
         const [text, color] = describe(detail.drop);
         note(text, color);
+        const d = detail.drop;
+        if (d.kind === "part" && rarityIndex(d.part.rarity) >= rarityIndex("epic")) trackMission("epic");
+        if (d.kind === "part" && rarityIndex(d.part.rarity) >= rarityIndex("legendary")) trackMission("legendary");
       }
-      if (kind === "chest") note("Mở rương!", "#ffd23d");
+      if (kind === "kill") trackMission("kill");
+      if (kind === "chest") {
+        note("Mở rương!", "#ffd23d");
+        trackMission("chest");
+      }
       if (kind === "chestLocked") note("Rương bị khoá: cần Chìa rương (rơi từ địch)", "#ff8fb1");
       const c = useHunter.getState().contract;
       if (kind === "kill") {
@@ -105,6 +114,8 @@ function finish() {
   const sim = st.sim;
   const g = useGame.getState();
   g.addCred(LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill);
+  trackMission("clear");
+  trackMission("boss");
   grantLoot(sim.collected, sim.chestKeys);
   const h = useHunter.getState();
   const c = h.contract;

@@ -1664,3 +1664,52 @@ canvas {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.6);
 }
 .lv__feed li { padding: 2px 8px; background: rgba(13, 2, 33, 0.55); border-radius: 3px; }
+
+/* Bảng nhiệm vụ ngày / tuần / tháng */
+.mission-panel { width: min(620px, calc(100vw - 32px)); border-color: rgba(5, 217, 232, 0.55); z-index: 30; }
+.mission-points { display: grid; justify-items: end; }
+.mission-points__value { font: 700 26px var(--font-display); color: #ffd23d; text-shadow: 0 0 10px rgba(255, 210, 61, 0.5); }
+.mission-points__label { font-size: 11px; color: var(--muted); }
+.mission-tabs { display: flex; gap: 6px; align-items: center; }
+.mission-tabs button {
+  position: relative;
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid rgba(5, 217, 232, 0.4);
+  color: var(--text);
+  font: 700 13px var(--font-display);
+  cursor: pointer;
+}
+.mission-tabs button.on { background: var(--cyan); color: var(--ink); }
+.mission-dot { position: absolute; top: -4px; right: -4px; width: 9px; height: 9px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 6px var(--pink); }
+.mission-reset { margin-left: auto; font-size: 11px; color: var(--muted); }
+.mission-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mission-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+}
+.mission-list li.done { border-left-color: #7dffb0; background: rgba(125, 255, 176, 0.08); }
+.mission-list li.claimed { opacity: 0.55; }
+.mission-list__text { display: grid; gap: 3px; }
+.mission-list__title { font-weight: 700; }
+.mission-list__reward { font-size: 11px; color: #ffd23d; }
+.mission-list__count { font: 700 13px var(--font-mono); color: var(--muted); }
+.mission-bar { display: block; height: 4px; background: rgba(255, 255, 255, 0.1); }
+.mission-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), #7dffb0); }
+.mission-claim {
+  min-width: 78px;
+  padding: 6px 10px;
+  border: 0;
+  background: #7dffb0;
+  color: var(--ink);
+  font: 700 12px var(--font-display);
+  cursor: pointer;
+}
+.mission-claim:disabled { background: rgba(255, 255, 255, 0.1); color: var(--muted); cursor: default; }
+.mission-bonus { border-left-color: #ffd23d !important; }
+.mission-note { margin: 0; font-size: 11px; color: var(--muted); }

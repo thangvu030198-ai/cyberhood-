@@ -6,7 +6,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { extraModel, models, type ExtraModel } from "./assets";
 import { inPlace } from "./meshyAnim";
 import { fitCharacter } from "./Player";
-import { PALETTE } from "./config";
+import { MISSION_GATE, PALETTE } from "./config";
 import { fx } from "./Effects";
 import { activeShards, checkReach, interact, npcMarker, objectiveTarget, questProgress, VAULT_EXIT, VAULT_TERMINAL } from "./quests";
 import { handles } from "./refs";
@@ -284,6 +284,7 @@ function InteractionScanner() {
       }
       consider({ kind: "door" }, VAULT_DOOR[0], VAULT_DOOR[2], DOOR_REACH);
       consider({ kind: "board" }, BOARD_POS.x, BOARD_POS.z, DOOR_REACH);
+      consider({ kind: "gate" }, MISSION_GATE.x, MISSION_GATE.z, MISSION_GATE.reach);
     } else {
       consider({ kind: "exit" }, VAULT_ORIGIN[0] + VAULT_EXIT[0], VAULT_ORIGIN[2] + VAULT_EXIT[2] - 1.5, DOOR_REACH);
       consider({ kind: "terminal" }, VAULT_ORIGIN[0] + VAULT_TERMINAL[0], VAULT_ORIGIN[2] + VAULT_TERMINAL[2] + 1, DOOR_REACH);
@@ -299,6 +300,8 @@ function InteractionScanner() {
 function InteractionKeys() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Trong màn đi ngang, bàn phím thuộc về màn chơi
+      if (useGame.getState().location === "level") return;
       if (e.repeat) return;
       const s = useGame.getState();
       if (s.profile === null) return;

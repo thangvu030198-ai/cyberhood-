@@ -69,6 +69,11 @@ export function mulberry32(seed: number) {
 export const ENEMY_DAMAGE_MUL = 0;
 
 export const SAFE_ZONE = { x: 0, z: 6, r: 26 };
+/** Cả thành phố là vùng an toàn: không Legion, không zombie. Đánh nhau diễn ra trong màn đi ngang
+ * sau cổng nhiệm vụ (src/level). Đặt false để bật lại địch ngoài phố như bản cũ */
+export const HUB_PEACEFUL = true;
+/** Cổng nhiệm vụ: cổng torii neon trên phố phía bắc điểm xuất phát */
+export const MISSION_GATE = { x: 0, z: -26, reach: 4.5 };
 /** Vùng cách ly phía tây ngoài thành phố: tàn tích sau đợt bùng phát, zombie cyber lang thang */
 export const QUARANTINE = { x: -CITY_HALF - 58, z: 48, r: 48 };
 export const inQuarantine = (x: number, z: number, pad = 0) => Math.hypot(x - QUARANTINE.x, z - QUARANTINE.z) < QUARANTINE.r + pad;

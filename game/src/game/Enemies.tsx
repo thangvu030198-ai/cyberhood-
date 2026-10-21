@@ -7,7 +7,7 @@ import { clipRootSpeed, Locomotion } from "./locomotion";
 import { alarm } from "./trafficWorld";
 import { fitCharacter } from "./Player";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, QUARANTINE, SAFE_ZONE, inQuarantine, inSafeZone, mulberry32 } from "./config";
+import { CITY, CITY_HALF, CITY_PITCH, HUB_PEACEFUL, PALETTE, PLAYER, QUARANTINE, SAFE_ZONE, inQuarantine, inSafeZone, mulberry32 } from "./config";
 import { fx } from "./Effects";
 import { handles } from "./refs";
 import { useGame } from "./store";
@@ -213,6 +213,13 @@ export const drones: Drone[] = (() => {
       orbit: 0,
     });
   }
+  // Hub hoà bình: không drone/lính/zombie nào trên phố (giữ danh sách để code cũ vẫn chạy)
+  if (HUB_PEACEFUL)
+    for (const d of list) {
+      d.state = "dead";
+      d.hp = 0;
+      d.pos.set(0, -50, 0);
+    }
   return list;
 })();
 

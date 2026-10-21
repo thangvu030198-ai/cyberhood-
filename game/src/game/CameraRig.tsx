@@ -160,6 +160,8 @@ export function CameraRig() {
 export function Interaction() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Trong màn đi ngang, bàn phím thuộc về màn chơi
+      if (useGame.getState().location === "level") return;
       if (e.repeat) return;
       const s = useGame.getState();
       if (e.code === "KeyF") toggleCar();

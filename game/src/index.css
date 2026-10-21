@@ -1514,3 +1514,137 @@ canvas {
 .compass__dist { opacity: 0.75; }
 @media (max-width: 520px) { .compass { top: 46px; font-size: 11px; } }
 .traffic-debug { position: absolute; left: 16px; top: 120px; padding: 8px 10px; max-width: 420px; background: rgba(0, 0, 0, 0.7); border: 1px solid #05d9e8; font: 11px/1.5 "JetBrains Mono", monospace; color: #cfe; pointer-events: none; }
+
+/* ---------------------------------------------------------------------------
+   Màn đi ngang kiểu Rockman X */
+.level-canvas {
+  position: fixed !important;
+  inset: 0;
+  z-index: 5;
+}
+.lv {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  font-family: var(--font-display);
+}
+.lv button { pointer-events: auto; }
+.lv__hp {
+  position: absolute;
+  left: 18px;
+  top: 56px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 5px;
+  background: rgba(13, 2, 33, 0.75);
+  border: 2px solid var(--cyan);
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(5, 217, 232, 0.4);
+}
+.lv__hp--boss { left: auto; right: 18px; border-color: var(--pink); box-shadow: 0 0 12px rgba(255, 42, 109, 0.4); }
+.lv__hp-tag { font-weight: 700; font-size: 14px; color: var(--cyan); }
+.lv__hp--boss .lv__hp-tag { color: var(--pink); }
+.lv__bar { display: flex; flex-direction: column-reverse; gap: 2px; }
+.lv__bar i { display: block; width: 16px; height: 5px; background: rgba(255, 255, 255, 0.08); }
+.lv__bar i.on { background: linear-gradient(90deg, #fff6c2, #ffd23d); box-shadow: 0 0 4px #ffd23d; }
+.lv__hp--boss .lv__bar i.on { background: linear-gradient(90deg, #ffc2d4, #ff2a6d); box-shadow: 0 0 4px #ff2a6d; }
+.lv__top {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  padding: 4px 14px;
+  background: rgba(13, 2, 33, 0.6);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.lv__stage { color: var(--amber); font-family: var(--font-display); font-weight: 700; letter-spacing: 0.12em; }
+.lv__banner {
+  position: absolute;
+  top: 40%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(36px, 8vw, 84px);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: #fff;
+  text-shadow: 0 0 18px var(--cyan), 0 0 4px var(--cyan);
+  animation: lv-blink 0.5s steps(2) infinite;
+}
+.lv__banner--dead { font-size: clamp(18px, 3vw, 28px); color: var(--pink); text-shadow: 0 0 12px var(--pink); animation: none; }
+@keyframes lv-blink { 50% { opacity: 0.35; } }
+.lv__panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 32px));
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(13, 2, 33, 0.92);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  text-align: center;
+  pointer-events: auto;
+}
+.lv__panel h2 { margin: 0; font-size: 22px; }
+.lv__panel p { margin: 0; color: var(--text); font-family: var(--font-mono); font-size: 13px; }
+.lv__panel-tag { color: var(--amber) !important; font-family: var(--font-display) !important; font-size: 15px !important; letter-spacing: 0.3em; font-weight: 700; }
+.lv__note { color: var(--muted) !important; }
+.lv__btn {
+  padding: 10px 16px;
+  background: var(--cyan);
+  color: var(--ink);
+  border: 0;
+  border-radius: 4px;
+  font: 700 15px var(--font-display);
+  cursor: pointer;
+}
+.lv__btn kbd { margin-left: 6px; font-size: 11px; opacity: 0.7; }
+.lv__btn--ghost { background: transparent; color: var(--text); border: 1px solid var(--muted); }
+.lv__help {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(13, 2, 33, 0.6);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.lv__help kbd, .lv__btn kbd {
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+}
+.lv__pad { position: absolute; bottom: 18px; display: flex; gap: 12px; align-items: flex-end; }
+.lv__pad--left { left: 16px; }
+.lv__pad--right { right: 16px; }
+.lv__pad button, .lv__pause {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(5, 217, 232, 0.7);
+  background: rgba(13, 2, 33, 0.55);
+  color: var(--text);
+  font: 700 12px var(--font-display);
+  touch-action: none;
+}
+.lv__pad .lv__jump { width: 78px; height: 78px; border-color: var(--amber); }
+.lv__pause { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; }

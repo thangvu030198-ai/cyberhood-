@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BLOCK_CENTERS, BOARD_SPOT, CITY, CITY_PITCH, PLAYER, inSafeZone } from "./config";
+import { BLOCK_CENTERS, BOARD_SPOT, CITY, CITY_PITCH, HUB_PEACEFUL, MISSION_GATE, PLAYER, inSafeZone } from "./config";
 import { GAME } from "../sim/config";
 import {
   addKill,
@@ -325,7 +325,7 @@ export function updateContract(dt: number) {
   if (!c) return;
   const g = useGame.getState();
   if (g.flatlinedAt !== null) return endNow("dead");
-  if (g.location !== "city") return;
+  if (g.location !== "city" || HUB_PEACEFUL) return;
   const here = playerPos();
   if (!here) return;
 
@@ -382,11 +382,17 @@ onDroneKilled((d) => {
 });
 
 /** Mục tiêu đang cần tới (cho cột sáng và minimap) */
-export type Pin = { x: number; z: number; color: string; kind: "marker" | "objective" | "extract" | "crate" | "car" | "board" | "battery" };
+export type Pin = { x: number; z: number; color: string; kind: "marker" | "objective" | "extract" | "crate" | "car" | "board" | "battery" | "gate" };
 
 export function contractPins(): Pin[] {
   const pins: Pin[] = [];
   const c = useHunter.getState().contract;
+  if (HUB_PEACEFUL) {
+    // Hub hoà bình: mọi việc đánh đấm nằm sau cổng nhiệm vụ
+    if (!c) pins.push({ x: BOARD_POS.x, z: BOARD_POS.z, color: "#ffb000", kind: "board" });
+    pins.push({ x: MISSION_GATE.x, z: MISSION_GATE.z, color: "#b05cff", kind: "gate" });
+    return pins;
+  }
   if (!c) {
     pins.push({ x: BOARD_POS.x, z: BOARD_POS.z, color: "#ffb000", kind: "board" });
     return pins;

@@ -31,6 +31,10 @@ import { handles } from "./game/refs";
 import { useGame } from "./game/store";
 import { questProgress } from "./game/quests";
 import { Hud } from "./ui/Hud";
+import { HUB_PEACEFUL } from "./game/config";
+import { LevelCanvas } from "./level/LevelScene";
+import { LevelHud } from "./level/LevelHud";
+import { enterLevel, useLevel } from "./level/session";
 
 const KEYMAP = [
   { name: "forward", keys: ["ArrowUp", "KeyW"] },
@@ -93,6 +97,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
+      __level: { useLevel, enterLevel },
     });
   }
   return null;
@@ -100,10 +105,14 @@ function DebugHook() {
 
 export default function App() {
   const quality = useGame((s) => s.quality);
+  // Trong màn đi ngang: thành phố đứng hình (không vẽ, không chạy) nhưng vẫn giữ nguyên trạng thái
+  const inLevel = useGame((s) => s.location === "level");
   return (
     <Crash>
       <KeyboardControls map={KEYMAP}>
         <Canvas
+          frameloop={inLevel ? "never" : "always"}
+          style={{ visibility: inLevel ? "hidden" : "visible" }}
           shadows={false}
           dpr={quality === "high" ? [1, 1.25] : 1}
           gl={{ antialias: false, powerPreference: "high-performance" }}
@@ -130,7 +139,7 @@ export default function App() {
             <NeonEnvironment />
             <HoloAds />
             <SteamVents />
-            <Enemies />
+            {!HUB_PEACEFUL && <Enemies />}
             <MechController />
             <PlayerCombat />
             <Effects />
@@ -152,7 +161,14 @@ export default function App() {
             )}
           </Suspense>
         </Canvas>
-        <Hud />
+        {inLevel ? (
+          <Suspense fallback={null}>
+            <LevelCanvas />
+            <LevelHud />
+          </Suspense>
+        ) : (
+          <Hud />
+        )}
       </KeyboardControls>
     </Crash>
   );

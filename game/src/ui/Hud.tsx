@@ -7,7 +7,7 @@ import { pointer } from "../game/pointer";
 import { loadProgress } from "../game/assets";
 import { ContractHud, DropBanner, HunterPanels, MechMeter } from "./HunterUi";
 import { useHunter } from "../game/hunter";
-import { inSafeZone, inQuarantine } from "../game/config";
+import { HUB_PEACEFUL, inSafeZone, inQuarantine } from "../game/config";
 import { currentObjective, playerPos } from "../game/objectives";
 import { handles } from "../game/refs";
 import { trafficStats } from "../game/TrafficDebug";
@@ -125,6 +125,7 @@ function SafeZoneTag() {
   const z = useGame((s) => s.z);
   const location = useGame((s) => s.location);
   if (location !== "city") return null;
+  if (HUB_PEACEFUL) return <div className="safe-tag">VÙNG AN TOÀN · Nhiệm vụ ở cổng torii phía bắc</div>;
   if (inQuarantine(x, z)) return <div className="safe-tag safe-tag--danger">VÙNG CÁCH LY · Zombie cyber</div>;
   if (!inSafeZone(x, z)) return null;
   return <div className="safe-tag">VÙNG AN TOÀN · Legion không vào được</div>;
@@ -350,6 +351,8 @@ export function Hud() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Trong màn đi ngang, bàn phím thuộc về màn chơi
+      if (useGame.getState().location === "level") return;
       const emote = EMOTE_KEYS[e.code];
       if (emote) setEmote(emote);
       if (e.code === "KeyH") setHelp((h) => !h);

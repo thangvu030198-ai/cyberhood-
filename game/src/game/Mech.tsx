@@ -45,6 +45,8 @@ export function tryTransform() {
 export function MechController() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Trong màn đi ngang, bàn phím thuộc về màn chơi
+      if (useGame.getState().location === "level") return;
       if (e.code === "KeyT" && !e.repeat) tryTransform();
     };
     window.addEventListener("keydown", onKey);

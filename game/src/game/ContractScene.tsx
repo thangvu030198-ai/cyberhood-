@@ -72,6 +72,7 @@ const PIN_STYLE: Record<Pin["kind"], { radius: number; height: number }> = {
   car: { radius: 2.4, height: 30 },
   board: { radius: 0.9, height: 25 },
   battery: { radius: 0.6, height: 12 },
+  gate: { radius: 2.6, height: 70 },
 };
 
 /** Cột sáng và vòng dưới đất cho mọi điểm cần tới */

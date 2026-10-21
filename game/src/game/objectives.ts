@@ -2,6 +2,7 @@
 // Hợp đồng đang chạy được ưu tiên (có giới hạn thời gian), sau đó tới nhiệm vụ cốt truyện.
 
 import { contractPins, type Pin } from "./contracts";
+import { HUB_PEACEFUL, MISSION_GATE } from "./config";
 import { drones } from "./Enemies";
 import { useHunter } from "./hunter";
 import { currentStep, objectiveTarget } from "./quests";
@@ -19,9 +20,10 @@ const PIN_LABEL: Record<Pin["kind"], string> = {
   crate: "Thùng tiếp tế",
   battery: "Pin năng lượng",
   board: "Bảng hợp đồng",
+  gate: "Cổng nhiệm vụ: vào màn",
 };
 /** Thứ tự ưu tiên khi hợp đồng có nhiều điểm cùng lúc */
-const PIN_RANK: Pin["kind"][] = ["objective", "car", "extract", "crate", "marker", "battery"];
+const PIN_RANK: Pin["kind"][] = ["gate", "objective", "car", "extract", "crate", "marker", "battery"];
 
 export function currentObjective(): Objective | null {
   const g = useGame.getState();
@@ -40,6 +42,10 @@ export function currentObjective(): Objective | null {
 
   const q = questById(g.quest.active);
   const step = currentStep();
+  if (step?.kind === "kill" && g.location === "city" && HUB_PEACEFUL) {
+    // Hạ địch giờ diễn ra trong màn sau cổng nhiệm vụ
+    return { x: MISSION_GATE.x, z: MISSION_GATE.z, label: `${q?.title ?? "Hạ Legion"} · qua cổng`, color: "#b05cff" };
+  }
   if (step?.kind === "kill" && g.location === "city") {
     // Bước "hạ Legion": chỉ tới drone/lính Legion còn sống gần nhất
     let best: { x: number; z: number } | null = null;

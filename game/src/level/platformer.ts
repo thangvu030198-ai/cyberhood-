@@ -1,0 +1,661 @@
+// Lõi màn chơi đi ngang kiểu Rockman X: thuần TypeScript, bước cố định 1/60s, test được.
+// Đơn vị: 1 ô = 1 mét. Trục x sang phải, trục y lên trên. Hiển thị 3D nằm ở LevelScene.tsx.
+
+import { LEVEL_TUNING as T } from "./levelTuning";
+
+export type Input = { left: boolean; right: boolean; jump: boolean; shoot: boolean; dash: boolean };
+export const NO_INPUT: Input = { left: false, right: false, jump: false, shoot: false, dash: false };
+
+export type Box = { x: number; y: number; w: number; h: number };
+
+export type EnemyKind = "trooper" | "drone" | "zombie" | "boss";
+
+export type Enemy = {
+  id: number;
+  kind: EnemyKind;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  w: number;
+  h: number;
+  hp: number;
+  maxHp: number;
+  facing: 1 | -1;
+  homeX: number;
+  homeY: number;
+  alive: boolean;
+  /** Đang hoạt động (gần camera) */
+  awake: boolean;
+  timer: number;
+  /** Thời điểm bắn gần nhất (cho animation) */
+  firedAt: number;
+  hurtAt: number;
+  deadAt: number;
+  onGround: boolean;
+  /** Trùm: kiểu đòn đang ra */
+  move: "walk" | "jump" | "volley" | "idle";
+};
+
+export type Shot = { x: number; y: number; vx: number; vy: number; r: number; dmg: number; pierce: boolean; life: number; enemy: boolean; level: 0 | 1 | 2 };
+
+export type Pickup = { x: number; y: number; kind: "health"; taken: boolean };
+
+export type FxEvent = { kind: "hit" | "boom" | "shot" | "charge" | "hurt" | "pickup" | "checkpoint" | "land" | "dash"; x: number; y: number; at: number };
+
+export type LevelDef = {
+  id: string;
+  name: string;
+  /** Hàng trên cùng trước. '#' đặc, '=' bậc nhảy xuyên lên được, '^' gai, '.' trống */
+  rows: string[];
+  start: [number, number];
+  checkpoints: [number, number][];
+  enemies: { kind: EnemyKind; x: number; y: number }[];
+  pickups: [number, number][];
+  /** Vùng đấu trùm: [xMin, xMax]; đi vào thì cửa đóng lại */
+  bossArena: [number, number];
+  /** Màu / bối cảnh để LevelScene trang trí */
+  theme: "quarantine";
+};
+
+export type Status = "intro" | "playing" | "dead" | "cleared";
+
+export class PlatformerSim {
+  readonly def: LevelDef;
+  readonly width: number;
+  readonly height: number;
+  private grid: string[];
+  time = 0;
+  status: Status = "intro";
+  player = {
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    w: T.player.w,
+    h: T.player.h,
+    facing: 1 as 1 | -1,
+    onGround: false,
+    /** -1/1 khi đang bám tường bên trái/phải */
+    wall: 0 as -1 | 0 | 1,
+    dashTime: 0,
+    airDashUsed: false,
+    /** Khoá điều khiển ngang sau khi nhảy tường */
+    wallJumpLock: 0,
+    coyote: 0,
+    jumpBuffer: 0,
+    hp: T.player.maxHp,
+    invuln: 0,
+    charge: 0,
+    shootTimer: 0,
+    knock: 0,
+    /** Nhảy từ trạng thái lướt: giữ tốc độ lướt trên không */
+    dashCarry: false,
+  };
+  enemies: Enemy[] = [];
+  shots: Shot[] = [];
+  pickups: Pickup[] = [];
+  fx: FxEvent[] = [];
+  checkpoint: [number, number];
+  checkpointIndex = -1;
+  bossActive = false;
+  kills = 0;
+  deaths = 0;
+  private prev: Input = NO_INPUT;
+  private deadAt = 0;
+  clearedAt = 0;
+  /** Báo cho bên ngoài (thưởng, nhiệm vụ): hạ địch, qua checkpoint, qua màn */
+  onEvent: ((kind: "kill" | "checkpoint" | "cleared", enemy?: Enemy) => void) | null = null;
+  private acc = 0;
+
+  constructor(def: LevelDef) {
+    this.def = def;
+    this.grid = def.rows;
+    this.height = def.rows.length;
+    this.width = Math.max(...def.rows.map((r) => r.length));
+    this.checkpoint = def.start;
+    this.reset(def.start);
+    let id = 0;
+    this.enemies = def.enemies.map((e) => makeEnemy(id++, e.kind, e.x, e.y));
+    this.pickups = def.pickups.map(([x, y]) => ({ x, y, kind: "health" as const, taken: false }));
+  }
+
+  private reset([x, y]: [number, number]) {
+    const p = this.player;
+    p.x = x;
+    p.y = y;
+    p.vx = 0;
+    p.vy = 0;
+    p.hp = T.player.maxHp;
+    p.invuln = 1;
+    p.charge = 0;
+    p.dashTime = 0;
+    p.wall = 0;
+  }
+
+  /** Ô tại cột c, hàng-từ-dưới-lên r */
+  tile(c: number, r: number): string {
+    if (c < 0 || c >= this.width) return "#";
+    if (r < 0) return ".";
+    if (r >= this.height) return ".";
+    const row = this.grid[this.height - 1 - r];
+    return row[c] ?? ".";
+  }
+
+  private solid(c: number, r: number) {
+    const t = this.tile(c, r);
+    if (t === "#") return true;
+    // Cửa phòng trùm đóng lại khi trận đấu bắt đầu
+    if (this.bossActive && (c === this.def.bossArena[0] - 1 || c === this.def.bossArena[1] + 1) && r >= 0) return true;
+    return false;
+  }
+
+  /** Va chạm một hộp với ô đặc; trả về true nếu chạm */
+  private hits(x: number, y: number, w: number, h: number) {
+    for (let c = Math.floor(x - w / 2); c <= Math.floor(x + w / 2 - 1e-6); c++) {
+      for (let r = Math.floor(y); r <= Math.floor(y + h - 1e-6); r++) if (this.solid(c, r)) return true;
+    }
+    return false;
+  }
+
+  /** Bậc "=": chỉ đỡ khi đang rơi xuống từ phía trên */
+  private onPlatform(x: number, yOld: number, yNew: number, w: number) {
+    if (yNew > yOld) return null;
+    for (let c = Math.floor(x - w / 2); c <= Math.floor(x + w / 2 - 1e-6); c++) {
+      for (let r = Math.floor(yOld - 1e-6); r >= Math.floor(yNew); r--) {
+        if (this.tile(c, r) === "=" && yOld >= r + 1 - 1e-6 && yNew < r + 1) return r + 1;
+      }
+    }
+    return null;
+  }
+
+  /** Di chuyển một thực thể có hộp chân tại (x, y): trả về cờ chạm đất / tường */
+  private move(e: { x: number; y: number; vx: number; vy: number; w: number; h: number }, dt: number) {
+    let ground = false;
+    let wall: -1 | 0 | 1 = 0;
+    // Trục X
+    const nx = e.x + e.vx * dt;
+    if (!this.hits(nx, e.y, e.w, e.h)) e.x = nx;
+    else {
+      wall = e.vx > 0 ? 1 : -1;
+      // Áp sát tường
+      if (e.vx > 0) e.x = Math.floor(nx + e.w / 2) - e.w / 2 - 1e-4;
+      else e.x = Math.floor(nx - e.w / 2) + 1 + e.w / 2 + 1e-4;
+      e.vx = 0;
+    }
+    // Trục Y
+    const ny = e.y + e.vy * dt;
+    const plat = this.onPlatform(e.x, e.y, ny, e.w);
+    if (plat !== null) {
+      e.y = plat;
+      e.vy = 0;
+      ground = true;
+    } else if (!this.hits(e.x, ny, e.w, e.h)) e.y = ny;
+    else {
+      if (e.vy < 0) {
+        e.y = Math.floor(ny) + 1;
+        ground = true;
+      } else e.y = Math.floor(ny + e.h) - e.h - 1e-4;
+      e.vy = 0;
+    }
+    return { ground, wall };
+  }
+
+  private touchingWall(x: number, y: number, w: number, h: number, dir: -1 | 1) {
+    return this.hits(x + dir * 0.06, y + 0.2, w, h - 0.4);
+  }
+
+  private standing(x: number, y: number, w: number) {
+    if (this.hits(x, y - 0.05, w, 0.05)) return true;
+    for (let c = Math.floor(x - w / 2); c <= Math.floor(x + w / 2 - 1e-6); c++) {
+      const r = Math.round(y) - 1;
+      if (this.tile(c, r) === "=" && Math.abs(y - (r + 1)) < 0.06) return true;
+    }
+    return false;
+  }
+
+  /** Chạy mô phỏng theo thời gian thật `dt` (bước cố định bên trong) */
+  update(dt: number, input: Input) {
+    this.acc = Math.min(this.acc + dt, 0.25);
+    while (this.acc >= T.step) {
+      this.acc -= T.step;
+      this.step(input);
+    }
+  }
+
+  step(input: Input) {
+    const dt = T.step;
+    this.time += dt;
+    const pressed = (k: keyof Input) => input[k] && !this.prev[k];
+    if (this.status === "intro") {
+      if (this.time > T.introTime) this.status = "playing";
+      this.prev = input;
+      this.gravityOnly(dt);
+      return;
+    }
+    if (this.status === "cleared") {
+      this.prev = input;
+      return;
+    }
+    if (this.status === "dead") {
+      if (this.time - this.deadAt > T.respawnDelay) {
+        this.deaths++;
+        this.reset(this.checkpoint);
+        this.status = "playing";
+        // Chết trong phòng trùm: mở cửa, trùm hồi máu
+        if (this.bossActive) {
+          this.bossActive = false;
+          const boss = this.enemies.find((e) => e.kind === "boss");
+          if (boss) {
+            boss.hp = boss.maxHp;
+            boss.x = boss.homeX;
+            boss.y = boss.homeY;
+            boss.awake = false;
+          }
+        }
+        this.shots = this.shots.filter((s) => !s.enemy);
+      }
+      this.prev = input;
+      return;
+    }
+
+    this.updatePlayer(dt, input, pressed);
+    this.updateEnemies(dt);
+    this.updateShots(dt);
+    this.updatePickups();
+    this.prev = input;
+  }
+
+  private gravityOnly(dt: number) {
+    const p = this.player;
+    p.vy = Math.max(-T.player.maxFall, p.vy - T.player.gravity * dt);
+    const r = this.move(p, dt);
+    p.onGround = r.ground;
+  }
+
+  private updatePlayer(dt: number, input: Input, pressed: (k: keyof Input) => boolean) {
+    const p = this.player;
+    const P = T.player;
+    const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    if (dir !== 0 && p.wallJumpLock <= 0) p.facing = dir as 1 | -1;
+
+    p.onGround = this.standing(p.x, p.y, p.w);
+    if (p.onGround) {
+      p.coyote = P.coyote;
+      p.airDashUsed = false;
+    } else p.coyote -= dt;
+    if (pressed("jump")) p.jumpBuffer = P.jumpBuffer;
+    else p.jumpBuffer -= dt;
+
+    // Lướt (dash): trên đất hoặc một lần trên không
+    if (pressed("dash") && p.dashTime <= 0 && (p.onGround || !p.airDashUsed)) {
+      p.dashTime = P.dashTime;
+      if (!p.onGround) p.airDashUsed = true;
+      this.fx.push({ kind: "dash", x: p.x, y: p.y, at: this.time });
+    }
+    const dashing = p.dashTime > 0;
+    if (dashing) p.dashTime -= dt;
+    if (dashing && !input.dash && p.onGround) p.dashTime = 0;
+
+    // Tốc độ ngang
+    p.wallJumpLock -= dt;
+    p.knock -= dt;
+    if (p.knock > 0) {
+      // bị đánh bật lùi, mất điều khiển trong chốc lát
+    } else if (p.wallJumpLock > 0) {
+      // giữ đà nhảy tường
+    } else if (dashing) p.vx = p.facing * P.dashSpeed;
+    else {
+      // Giữ đà lướt khi nhảy từ trạng thái lướt (kiểu Rockman X)
+      const speed = p.onGround ? P.runSpeed : Math.max(P.runSpeed, Math.abs(p.vx) * (p.dashCarry ? 1 : 0));
+      p.vx = dir * speed;
+    }
+
+    // Bám tường: đang rơi, ép vào tường, không đứng đất
+    p.wall = 0;
+    if (!p.onGround && dir !== 0 && p.vy <= 0 && this.touchingWall(p.x, p.y, p.w, p.h, dir as -1 | 1)) {
+      p.wall = dir as -1 | 1;
+      p.vy = Math.max(p.vy, -P.wallSlide);
+      p.airDashUsed = false;
+    }
+
+    // Nhảy: từ đất (có thời gian ân hạn), hoặc nhảy tường
+    if (p.jumpBuffer > 0) {
+      if (p.coyote > 0) {
+        p.vy = P.jumpVel;
+        p.coyote = 0;
+        p.jumpBuffer = 0;
+        p.dashCarry = dashing || input.dash;
+        p.dashTime = 0;
+      } else if (p.wall !== 0 || this.touchingWall(p.x, p.y, p.w, p.h, -1) || this.touchingWall(p.x, p.y, p.w, p.h, 1)) {
+        const side = p.wall !== 0 ? p.wall : this.touchingWall(p.x, p.y, p.w, p.h, 1) ? 1 : -1;
+        p.vy = P.wallJumpVel;
+        const dashJump = input.dash;
+        p.vx = -side * (dashJump ? P.dashSpeed : P.wallKick);
+        p.facing = -side as 1 | -1;
+        p.wallJumpLock = P.wallJumpLock;
+        p.jumpBuffer = 0;
+        p.dashCarry = dashJump;
+      }
+    }
+    // Nhả nút nhảy sớm thì nhảy thấp (điều khiển độ cao)
+    if (!input.jump && p.vy > P.jumpCut) p.vy = P.jumpCut;
+
+    // Lướt trên mặt đất mà rơi khỏi mép: thôi lướt nhưng giữ đà. Lướt trên không: bay ngang
+    if (p.dashTime > 0 && !p.onGround && !p.airDashUsed) {
+      p.dashTime = 0;
+      p.dashCarry = true;
+    }
+    if (p.dashTime > 0 && !p.onGround) p.vy = 0;
+    else p.vy -= P.gravity * dt;
+    p.vy = Math.max(p.wall !== 0 ? -P.wallSlide : -P.maxFall, p.vy);
+
+    const wasGround = p.onGround;
+    const m = this.move(p, dt);
+    p.onGround = m.ground || this.standing(p.x, p.y, p.w);
+    if (p.onGround && p.vy <= 0) p.dashCarry = false;
+    if (!wasGround && p.onGround) this.fx.push({ kind: "land", x: p.x, y: p.y, at: this.time });
+
+    // Bắn: nhấn bắn đạn thường, giữ để nạp, thả ra bắn đạn nạp
+    p.shootTimer -= dt;
+    if (pressed("shoot")) this.fire(0);
+    if (input.shoot) {
+      p.charge += dt;
+      if (p.charge > T.shot.chargeMid && p.charge - dt <= T.shot.chargeMid) this.fx.push({ kind: "charge", x: p.x, y: p.y, at: this.time });
+    } else if (this.prev.shoot) {
+      if (p.charge >= T.shot.chargeFull) this.fire(2);
+      else if (p.charge >= T.shot.chargeMid) this.fire(1);
+      p.charge = 0;
+    }
+
+    p.invuln -= dt;
+
+    // Gai và rơi xuống vực
+    if (p.y < -3) this.kill();
+    else if (this.touchesSpike(p.x, p.y, p.w)) this.hurt(T.player.spikeDamage, -p.facing as 1 | -1);
+
+    // Checkpoint
+    this.def.checkpoints.forEach(([cx, cy], i) => {
+      if (i > this.checkpointIndex && Math.abs(p.x - cx) < 1 && Math.abs(p.y - cy) < 2.5) {
+        this.checkpointIndex = i;
+        this.checkpoint = [cx, cy];
+        this.fx.push({ kind: "checkpoint", x: cx, y: cy, at: this.time });
+        this.onEvent?.("checkpoint");
+      }
+    });
+
+    // Vào phòng trùm
+    const [ax, bx] = this.def.bossArena;
+    if (!this.bossActive && p.x > ax + 1 && p.x < bx) {
+      this.bossActive = true;
+      const boss = this.enemies.find((e) => e.kind === "boss");
+      if (boss) {
+        boss.awake = true;
+        boss.timer = 1.5;
+      }
+    }
+  }
+
+  private touchesSpike(x: number, y: number, w: number) {
+    for (let c = Math.floor(x - w / 2 + 0.1); c <= Math.floor(x + w / 2 - 0.1); c++) {
+      if (this.tile(c, Math.floor(y + 0.05)) === "^") return true;
+    }
+    return false;
+  }
+
+  private fire(level: 0 | 1 | 2) {
+    const p = this.player;
+    const S = T.shot;
+    if (level === 0 && this.shots.filter((s) => !s.enemy && s.level === 0).length >= S.maxSmall) return;
+    const spec = level === 0 ? S.small : level === 1 ? S.mid : S.full;
+    // Bám tường thì bắn ra phía ngược tường
+    const dir = p.wall !== 0 ? (-p.wall as 1 | -1) : p.facing;
+    this.shots.push({
+      x: p.x + dir * 0.7,
+      y: p.y + 1.15,
+      vx: dir * spec.speed,
+      vy: 0,
+      r: spec.r,
+      dmg: spec.dmg,
+      pierce: level === 2,
+      life: S.life,
+      enemy: false,
+      level,
+    });
+    p.shootTimer = 0.3;
+    this.fx.push({ kind: "shot", x: p.x + dir * 0.7, y: p.y + 1.15, at: this.time });
+  }
+
+  hurt(amount: number, from: 1 | -1) {
+    const p = this.player;
+    if (p.invuln > 0 || this.status !== "playing") return;
+    p.hp = Math.max(0, p.hp - amount);
+    p.invuln = T.player.invuln;
+    p.knock = T.player.knockTime;
+    p.vx = from * T.player.knockSpeed;
+    p.vy = Math.max(p.vy, 4);
+    p.dashTime = 0;
+    this.fx.push({ kind: "hurt", x: p.x, y: p.y + 1, at: this.time });
+    if (p.hp <= 0) this.kill();
+  }
+
+  private kill() {
+    if (this.status !== "playing") return;
+    this.player.hp = 0;
+    this.status = "dead";
+    this.deadAt = this.time;
+    this.fx.push({ kind: "boom", x: this.player.x, y: this.player.y + 1, at: this.time });
+  }
+
+  private updateEnemies(dt: number) {
+    const p = this.player;
+    const E = T.enemy;
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      if (e.kind !== "boss") e.awake = Math.abs(e.x - p.x) < E.wakeRange;
+      if (!e.awake) continue;
+      e.timer -= dt;
+      const dx = p.x - e.x;
+      if (e.kind === "trooper") {
+        // Tuần tra quanh điểm gốc; thấy người chơi thì quay mặt lại và bắn
+        const sees = Math.abs(dx) < E.trooper.sight && Math.abs(p.y - e.y) < 3;
+        if (sees) {
+          e.facing = dx > 0 ? 1 : -1;
+          e.vx = 0;
+          if (e.timer <= 0) {
+            e.timer = E.trooper.fireEvery;
+            e.firedAt = this.time;
+            this.shots.push({ x: e.x + e.facing * 0.7, y: e.y + 1.2, vx: e.facing * E.trooper.shotSpeed, vy: 0, r: 0.18, dmg: E.trooper.shotDamage, pierce: false, life: 3, enemy: true, level: 0 });
+          }
+        } else {
+          if (Math.abs(e.x - e.homeX) > E.trooper.patrol) e.facing = e.x > e.homeX ? -1 : 1;
+          e.vx = e.facing * E.trooper.walk;
+          // Không bước ra khỏi mép
+          const ahead = Math.floor(e.x + e.facing * 0.7);
+          if (!this.solid(ahead, Math.floor(e.y) - 1) && this.tile(ahead, Math.floor(e.y) - 1) !== "=") e.facing = (-e.facing) as 1 | -1;
+        }
+        this.fall(e, dt);
+      } else if (e.kind === "zombie") {
+        // Lừ đừ tiến về phía người chơi
+        const near = Math.abs(dx) < E.zombie.sight;
+        e.facing = near ? (dx > 0 ? 1 : -1) : e.facing;
+        e.vx = near ? e.facing * E.zombie.chase : e.facing * E.zombie.walk;
+        const ahead = Math.floor(e.x + e.facing * 0.6);
+        if (!this.solid(ahead, Math.floor(e.y) - 1) || this.solid(ahead, Math.floor(e.y))) {
+          e.facing = (-e.facing) as 1 | -1;
+          e.vx = 0;
+        }
+        this.fall(e, dt);
+      } else if (e.kind === "drone") {
+        // Bay lượn sóng quanh điểm gốc, thỉnh thoảng bắn chéo về phía người chơi
+        const t = this.time + e.id;
+        e.x = e.homeX + Math.sin(t * 0.8) * E.drone.sway;
+        e.y = e.homeY + Math.sin(t * 2.1) * 0.6;
+        e.facing = dx > 0 ? 1 : -1;
+        if (e.timer <= 0 && Math.abs(dx) < E.drone.sight) {
+          e.timer = E.drone.fireEvery;
+          e.firedAt = this.time;
+          const ty = p.y + 1 - (e.y + 0.4);
+          const len = Math.hypot(dx, ty) || 1;
+          this.shots.push({ x: e.x, y: e.y + 0.4, vx: (dx / len) * E.drone.shotSpeed, vy: (ty / len) * E.drone.shotSpeed, r: 0.2, dmg: E.drone.shotDamage, pierce: false, life: 4, enemy: true, level: 0 });
+        }
+      } else if (e.kind === "boss") {
+        this.updateBoss(e, dt);
+      }
+      // Chạm thân địch
+      if (overlap(p, e)) this.hurt(e.kind === "boss" ? E.boss.contactDamage : E.contactDamage, p.x < e.x ? -1 : 1);
+    }
+  }
+
+  private fall(e: Enemy, dt: number) {
+    e.vy = Math.max(-T.player.maxFall, e.vy - T.player.gravity * dt);
+    const r = this.move(e, dt);
+    e.onGround = r.ground;
+    if (r.wall !== 0) e.facing = (-r.wall) as 1 | -1;
+    if (e.y < -3) {
+      e.alive = false;
+      e.deadAt = this.time;
+    }
+  }
+
+  private updateBoss(e: Enemy, dt: number) {
+    const p = this.player;
+    const B = T.enemy.boss;
+    const rage = e.hp < e.maxHp / 2 ? B.rageSpeedup : 1;
+    const dx = p.x - e.x;
+    if (e.onGround) e.facing = dx > 0 ? 1 : -1;
+    if (e.timer <= 0) {
+      // Chọn đòn tiếp theo: đi tới, nhảy đè, hoặc bắn loạt đạn
+      const r = (Math.sin(this.time * 12.9898 + e.id) + 1) / 2;
+      e.move = r < 0.35 ? "walk" : r < 0.65 ? "jump" : "volley";
+      e.timer = (e.move === "walk" ? 1.6 : e.move === "jump" ? 1.4 : 1.8) / rage;
+      if (e.move === "jump" && e.onGround) {
+        e.vy = B.jumpVel;
+        e.vx = THREE_clamp(dx * 0.9, -B.jumpSpeed, B.jumpSpeed);
+      }
+      if (e.move === "volley") e.vx = 0;
+    }
+    if (e.move === "walk") e.vx = e.facing * B.walk * rage;
+    if (e.move === "volley") {
+      // Ba phát liên tiếp, phát giữa bắn thấp
+      const k = Math.floor((1.8 / rage - e.timer) / (0.45 / rage));
+      if (k >= 0 && k < 3 && this.time - e.firedAt > 0.4 / rage) {
+        e.firedAt = this.time;
+        const y = e.y + (k === 1 ? 0.6 : 1.9);
+        this.shots.push({ x: e.x + e.facing * 1.4, y, vx: e.facing * B.shotSpeed, vy: 0, r: 0.3, dmg: B.shotDamage, pierce: false, life: 3, enemy: true, level: 1 });
+      }
+    }
+    const wasAir = !e.onGround;
+    this.fall(e, dt);
+    // Đáp đất sau cú nhảy: sóng chấn động chạy hai bên sát đất
+    if (wasAir && e.onGround && e.move === "jump") {
+      e.vx = 0;
+      this.fx.push({ kind: "land", x: e.x, y: e.y, at: this.time });
+      for (const s of [1, -1]) this.shots.push({ x: e.x + s * 1.5, y: e.y + 0.3, vx: s * B.waveSpeed, vy: 0, r: 0.35, dmg: B.waveDamage, pierce: false, life: 2.2, enemy: true, level: 2 });
+    }
+    // Giữ trùm trong phòng
+    const [ax, bx] = this.def.bossArena;
+    e.x = Math.max(ax + e.w / 2, Math.min(bx - e.w / 2 + 1, e.x));
+  }
+
+  private updateShots(dt: number) {
+    const p = this.player;
+    for (const s of this.shots) {
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.life -= dt;
+      // Đạn thường vỡ khi chạm tường; sóng chấn động đi sát đất
+      if (this.solid(Math.floor(s.x), Math.floor(s.y)) && s.level !== 2) s.life = 0;
+      if (s.life <= 0) continue;
+      if (s.enemy) {
+        if (Math.abs(s.x - p.x) < p.w / 2 + s.r && s.y > p.y - s.r && s.y < p.y + p.h + s.r) {
+          this.hurt(s.dmg, s.vx > 0 ? 1 : -1);
+          s.life = 0;
+        }
+        continue;
+      }
+      for (const e of this.enemies) {
+        if (!e.alive || !e.awake) continue;
+        if (Math.abs(s.x - e.x) < e.w / 2 + s.r && s.y > e.y - s.r && s.y < e.y + e.h + s.r) {
+          e.hp -= s.dmg;
+          e.hurtAt = this.time;
+          this.fx.push({ kind: "hit", x: s.x, y: s.y, at: this.time });
+          if (e.hp <= 0) {
+            e.alive = false;
+            e.deadAt = this.time;
+            this.kills++;
+            this.onEvent?.("kill", e);
+            this.fx.push({ kind: "boom", x: e.x, y: e.y + e.h / 2, at: this.time });
+            if (e.kind === "boss") this.clear();
+            // Thỉnh thoảng rơi viên máu
+            else if (this.kills % 3 === 0) this.pickups.push({ x: e.x, y: e.y + 0.3, kind: "health", taken: false });
+          }
+          if (!s.pierce) {
+            s.life = 0;
+            break;
+          }
+        }
+      }
+    }
+    this.shots = this.shots.filter((s) => s.life > 0 && s.x > -2 && s.x < this.width + 2);
+  }
+
+  private updatePickups() {
+    const p = this.player;
+    for (const k of this.pickups) {
+      if (k.taken) continue;
+      if (Math.abs(k.x - p.x) < 0.8 && k.y > p.y - 0.5 && k.y < p.y + p.h) {
+        k.taken = true;
+        p.hp = Math.min(T.player.maxHp, p.hp + T.player.healthPickup);
+        this.fx.push({ kind: "pickup", x: k.x, y: k.y, at: this.time });
+      }
+    }
+  }
+
+  private clear() {
+    this.status = "cleared";
+    this.clearedAt = this.time;
+    this.shots = [];
+    this.onEvent?.("cleared");
+  }
+
+  get boss() {
+    return this.enemies.find((e) => e.kind === "boss") ?? null;
+  }
+}
+
+function overlap(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {
+  return Math.abs(a.x - b.x) < (a.w + b.w) / 2 && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+function THREE_clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+export function makeEnemy(id: number, kind: EnemyKind, x: number, y: number): Enemy {
+  const E = T.enemy;
+  const spec = kind === "trooper" ? E.trooper : kind === "drone" ? E.drone : kind === "zombie" ? E.zombie : E.boss;
+  return {
+    id,
+    kind,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    w: spec.w,
+    h: spec.h,
+    hp: spec.hp,
+    maxHp: spec.hp,
+    facing: -1,
+    homeX: x,
+    homeY: y,
+    alive: true,
+    awake: false,
+    timer: 1 + (id % 3) * 0.4,
+    firedAt: -9,
+    hurtAt: -9,
+    deadAt: 0,
+    onGround: false,
+    move: "idle",
+  };
+}

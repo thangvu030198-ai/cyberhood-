@@ -159,7 +159,7 @@ function warzone(): LevelDef {
       { x: 158.5, y: 8, tier: "gold" },
     ],
     bossArena: [210, 236],
-    theme: "warzone",
+    theme: "crystal",
   };
 }
 

@@ -107,9 +107,9 @@ export const LEVELS: LevelEntry[] = [
     key: "crystal",
     keyLabel: "Chìa Pha Lê",
     mapMultiplier: 1.5,
-    blurb: "Hẻm núi chiến trường. Cưỡi xe bay xuyên trụ pha lê và pháo phòng không Legion.",
-    view: "snes",
-    howTo: "Bay bắn tự cuộn kiểu Gradius 16-bit. W/A/S/D bay bốn hướng, K tăng tốc, J bắn.",
+    blurb: "Hẻm núi pha lê của hành tinh chiến tranh. Cưỡi xe bay ngược lên giữa hai vách pha lê.",
+    view: "topdown",
+    howTo: "Bay bắn cuộn dọc nhìn từ trên (kiểu 1942 / Raiden). W/A/S/D bay, K tăng tốc, J bắn.",
     looks: {
       trooper: { base: "mx_wz_heavy", clips: { walk: "walk", idle: "walk", shoot: "walkshoot", death: "death" }, height: 1.95 },
       zombie: zombieLook("mx_zmb_soldier"),

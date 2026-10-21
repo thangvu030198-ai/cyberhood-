@@ -1,7 +1,7 @@
 // Bảng màu từng màn đi ngang. Màn mới chỉ cần chọn một theme (hoặc thêm theme mới ở đây).
 // Nguyên tắc: nền sáng, ít bão hoà và có sương; nhân vật chính có viền sáng nên luôn nổi lên trên nền.
 
-export type ThemeId = "quarantine" | "harbor" | "skyline" | "hotel" | "warzone";
+export type ThemeId = "quarantine" | "harbor" | "skyline" | "hotel" | "warzone" | "crystal";
 
 export type LevelTheme = {
   /** Dải màu trời từ trên xuống */
@@ -91,6 +91,23 @@ export const THEMES: Record<ThemeId, LevelTheme> = {
     ledge: "#ff9a3d",
     backFloor: "#d6a676",
     backSelfLit: 0.18,
+    heroOutline: "#fff3a0",
+  },
+  // Hẻm núi pha lê (nhìn từ trên): đáy tím sẫm, vách pha lê hồng tím phát sáng
+  crystal: {
+    sky: ["#14062e", "#2a0b4a", "#4a1460", "#6a1a70"],
+    sun: [3, 1.2, 2.6],
+    fog: "#2a0a3e",
+    fogNear: 30,
+    fogFar: 120,
+    hemi: { sky: "#e8c8ff", ground: "#3a0e4a", intensity: 1.7 },
+    key: { color: "#ffe2f6", intensity: 2.2 },
+    rim: { color: "#5fd0ff", intensity: 1.6 },
+    tile: "#b04fd8",
+    edge: [3, 0.6, 2.4],
+    ledge: "#ff7ad9",
+    backFloor: "#3b0f4f",
+    backSelfLit: 0.3,
     heroOutline: "#fff3a0",
   },
   // Đỉnh toà tháp giữa mây: trắng xanh, viền tím

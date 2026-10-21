@@ -46,6 +46,12 @@ class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
   }
 }
 
+/** Màn nhìn từ trên: mặt phẳng chơi nằm ngang (cả thế giới xoay -90° quanh X), model dựng đứng lại */
+const isTop = (sim: PlatformerSim) =>
+  viewById(levelById(sim.def.id).view).plane === "top";
+/** Góc dựng đứng model trong thế giới đã xoay (thứ tự Euler XYZ: quay mặt quanh trục đứng trước, dựng sau) */
+const upright = (sim: PlatformerSim) => (isTop(sim) ? Math.PI / 2 : 0);
+
 /** Bề sâu khối nền (trục z), nhân vật đứng ở z = 0 */
 const DEPTH = 4;
 const CAM = {
@@ -63,6 +69,7 @@ export function LevelCanvas() {
   const quality = useGame((s) => s.quality);
   if (!sim) return null;
   const th = THEMES[sim.def.theme];
+  const top = isTop(sim);
   return (
     <Canvas
       className="level-canvas"
@@ -92,33 +99,41 @@ export function LevelCanvas() {
         intensity={th.rim.intensity}
         color={th.rim.color}
       />
-      <Sky theme={th} />
-      <Tiles sim={sim} theme={th} />
-      <Checkpoints sim={sim} />
-      <BossDoors sim={sim} />
-      <Shots sim={sim} />
-      <Pickups sim={sim} />
-      <Chests sim={sim} />
-      {sim.mode === "climb" && <GhostFog sim={sim} />}
-      <Fx sim={sim} />
-      <Suspense fallback={null}>
-        <Backdrop width={sim.width} theme={th} entry={levelById(sim.def.id)} />
-      </Suspense>
-      <Suspense fallback={<PlaceholderHero sim={sim} />}>
-        <Hero sim={sim} theme={th} />
-      </Suspense>
-      {sim.mode === "shmup" && (
-        <Suspense fallback={null}>
-          <Hoverbike sim={sim} />
-        </Suspense>
-      )}
-      {sim.enemies.map((e) => (
-        <Quiet key={e.id}>
+      {top ? <TopGround sim={sim} theme={th} /> : <Sky theme={th} />}
+      <group rotation-x={top ? -Math.PI / 2 : 0}>
+        <Tiles sim={sim} theme={th} />
+        {!top && <Checkpoints sim={sim} />}
+        <BossDoors sim={sim} />
+        <Shots sim={sim} />
+        <Pickups sim={sim} />
+        <Chests sim={sim} />
+        {sim.mode === "climb" && <GhostFog sim={sim} />}
+        <Fx sim={sim} />
+        {!top && (
           <Suspense fallback={null}>
-            <EnemyModel sim={sim} enemy={e} />
+            <Backdrop
+              width={sim.width}
+              theme={th}
+              entry={levelById(sim.def.id)}
+            />
           </Suspense>
-        </Quiet>
-      ))}
+        )}
+        <Suspense fallback={<PlaceholderHero sim={sim} />}>
+          <Hero sim={sim} theme={th} />
+        </Suspense>
+        {sim.mode === "shmup" && (
+          <Suspense fallback={null}>
+            <Hoverbike sim={sim} />
+          </Suspense>
+        )}
+        {sim.enemies.map((e) => (
+          <Quiet key={e.id}>
+            <Suspense fallback={null}>
+              <EnemyModel sim={sim} enemy={e} />
+            </Suspense>
+          </Quiet>
+        ))}
+      </group>
       <PostFx sim={sim} />
     </Canvas>
   );
@@ -128,7 +143,21 @@ export function LevelCanvas() {
 function SimDriver({ sim }: { sim: PlatformerSim }) {
   const seen = useRef(0);
   useFrame((_, dt) => {
-    if (!levelInput.paused) sim.update(Math.min(dt, 0.1), levelInput.state());
+    if (!levelInput.paused) {
+      const i = levelInput.state();
+      // Nhìn từ trên: lên màn hình = tiến (x mô phỏng), trái/phải màn hình = trục y mô phỏng
+      const input = isTop(sim)
+        ? {
+            ...i,
+            right: i.up || i.jump,
+            left: i.down,
+            up: i.left,
+            down: i.right,
+            jump: false,
+          }
+        : i;
+      sim.update(Math.min(dt, 0.1), input);
+    }
     for (let i = seen.current; i < sim.fx.length; i++) {
       const f = sim.fx[i];
       if (f.kind === "shot") playSfx("blaster", 0.35);
@@ -216,6 +245,16 @@ function LevelCamera({
     const k = 1 - Math.exp(-v.damp * dt);
     look.current.x += (tx - look.current.x) * k;
     look.current.y += (ty - look.current.y) * k;
+    if (v.plane === "top") {
+      // Nhìn từ trên: thế giới đã xoay nên trục y mô phỏng nằm theo -z; camera hơi lùi về sau cho có phối cảnh
+      const cx = sim.scrollX;
+      const cz = -sim.height / 2;
+      camera.up.set(1, 0, 0);
+      camera.position.set(cx - v.rise, dist, cz);
+      camera.lookAt(cx + 2, 0, cz);
+      return;
+    }
+    camera.up.set(0, 1, 0);
     camera.position.set(
       look.current.x + Math.sin(b.yaw) * dist,
       look.current.y + b.rise,
@@ -240,7 +279,12 @@ function PostFx({ sim }: { sim: PlatformerSim }) {
   if (post === "snes")
     return (
       <EffectComposer multisampling={0}>
-        <Bloom mipmapBlur intensity={1.1} luminanceThreshold={0.95} luminanceSmoothing={0.25} />
+        <Bloom
+          mipmapBlur
+          intensity={1.1}
+          luminanceThreshold={0.95}
+          luminanceSmoothing={0.25}
+        />
         <RetroGrade />
         <Vignette eskil={false} offset={0.3} darkness={0.5} />
       </EffectComposer>
@@ -269,6 +313,47 @@ function PostFx({ sim }: { sim: PlatformerSim }) {
       />
       <Vignette eskil={false} offset={0.3} darkness={0.35} />
     </EffectComposer>
+  );
+}
+
+/** Nền hẻm núi nhìn từ trên: đáy tím sẫm và những cụm pha lê Meshy dọc hai mép vách */
+function TopGround({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
+  const crystals = useMemo(() => {
+    const list: { x: number; z: number; h: number; rot: number }[] = [];
+    for (let x = 8; x < sim.width; x += 13) {
+      list.push({ x, z: 1.5, h: 5 + (x % 3), rot: x * 0.7 });
+      list.push({
+        x: x + 6,
+        z: -sim.height - 1.5,
+        h: 4 + (x % 4),
+        rot: x * 1.3,
+      });
+    }
+    return list;
+  }, [sim]);
+  return (
+    <group>
+      <mesh
+        rotation-x={-Math.PI / 2}
+        position={[sim.width / 2, -2.05, -sim.height / 2]}
+      >
+        <planeGeometry args={[sim.width + 80, sim.height + 80]} />
+        <meshStandardMaterial color={theme.backFloor} roughness={0.9} />
+      </mesh>
+      {crystals.map((c, i) => (
+        <Quiet key={i}>
+          <Suspense fallback={null}>
+            <Prop
+              name="mx_wz_crystal"
+              height={c.h}
+              position={[c.x, 1.9, c.z]}
+              rotationY={c.rot}
+              selfLit={0.6}
+            />
+          </Suspense>
+        </Quiet>
+      ))}
+    </group>
   );
 }
 
@@ -709,6 +794,7 @@ function Hoverbike({ sim }: { sim: PlatformerSim }) {
     );
     // Nghiêng theo hướng bay
     o.rotation.z = THREE.MathUtils.damp(o.rotation.z, p.vy * 0.04, 8, 1 / 60);
+    o.rotation.x = upright(sim);
     if (flame.current) flame.current.scale.x = 0.8 + Math.random() * 0.5;
   });
   return (
@@ -1150,6 +1236,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       dt,
     );
     o.rotation.y = yaw.current;
+    o.rotation.x = upright(sim);
     // Lướt: chúi người về trước; bám tường: ngả nhẹ ra khỏi tường. Đổi dần cho mượt
     const leanTarget =
       p.dashTime > 0 ? -p.facing * 0.22 : onWall ? -p.wallNear * 0.08 : 0;
@@ -1469,6 +1556,7 @@ function RiggedEnemy({
     const nearCam = Math.abs(e.x - sim.player.x) < 26;
     if (!nearCam) return;
     o.position.set(e.x, e.y, enemy.kind === "boss" ? -0.3 : 0);
+    o.rotation.x = upright(sim);
     yaw.current = THREE.MathUtils.damp(yaw.current, faceYaw(e.facing), 10, dt);
     o.rotation.y = yaw.current;
     if (!e.alive) setAnim(rig, "death", 0.1);
@@ -1541,6 +1629,7 @@ function DroneModel({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
     if (!o.visible) return;
     o.position.set(enemy.x, enemy.y - (enemy.alive ? 0 : age * age * 12), 0);
     o.rotation.y = enemy.facing > 0 ? Math.PI / 2 : -Math.PI / 2;
+    o.rotation.x = upright(sim);
     o.rotation.z = enemy.alive
       ? Math.sin(clock.elapsedTime * 3 + enemy.id) * 0.15
       : age * 6;

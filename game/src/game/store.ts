@@ -62,7 +62,8 @@ export type Interactable =
   | { kind: "exit" }
   | { kind: "terminal" }
   | { kind: "board" }
-  | { kind: "gate" };
+  | { kind: "gate" }
+  | { kind: "missions" };
 
 type SaveData = {
   cred: number;

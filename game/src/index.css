@@ -1713,3 +1713,23 @@ canvas {
 .mission-claim:disabled { background: rgba(255, 255, 255, 0.1); color: var(--muted); cursor: default; }
 .mission-bonus { border-left-color: #ffd23d !important; }
 .mission-note { margin: 0; font-size: 11px; color: var(--muted); }
+.lv__bars { position: absolute; left: 0; right: 0; height: 8vh; background: #000; z-index: 0; }
+.lv__bars--top { top: 0; }
+.lv__bars--bottom { bottom: 0; }
+.lv__view {
+  position: absolute;
+  top: 46px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  padding: 6px 16px;
+  background: rgba(13, 2, 33, 0.7);
+  border: 1px solid var(--cyan);
+  border-radius: 4px;
+}
+.lv__view b { font-size: 18px; letter-spacing: 0.1em; color: var(--cyan); }
+.lv__view span { font: 11px var(--font-mono); color: var(--muted); }
+.lv__views { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.lv__views .lv__btn { padding: 6px 10px; font-size: 13px; }
+.lv--gameboy .lv__hp, .lv--gameboy .lv__top { filter: sepia(1) hue-rotate(40deg) saturate(2.5); }

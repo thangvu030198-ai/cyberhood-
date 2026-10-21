@@ -268,6 +268,7 @@ const INTERACT_LABEL = {
   terminal: "Kích hoạt terminal GHOST_0",
   board: "Mở bảng hợp đồng",
   gate: "Qua cổng: vào màn VÙNG CÁCH LY",
+  missions: "Xem nhiệm vụ ngày · tuần · tháng",
 } as const;
 
 export function interactLabel(i: NonNullable<ReturnType<typeof useGame.getState>["nearInteract"]>) {

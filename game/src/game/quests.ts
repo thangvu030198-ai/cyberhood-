@@ -140,6 +140,10 @@ export const VAULT_EXIT: [number, number, number] = [0, 0, 0.2];
 export const VAULT_TERMINAL: [number, number, number] = [0, 0, -23.5];
 
 export function interact(target: Interactable) {
+  if (target.kind === "missions") {
+    void import("./missionStore").then((m) => m.useMissions.getState().setOpen(true));
+    return;
+  }
   if (target.kind === "gate") {
     // Nạp muộn để tránh vòng import (session → contracts → Enemies → quests)
     void import("../level/session").then((m) => m.enterLevel());

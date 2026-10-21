@@ -4,7 +4,9 @@
 import { Suspense, use, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
+import { Bloom, ChromaticAberration, ColorDepth, EffectComposer, Noise, Pixelation, Scanline, Vignette } from "@react-three/postprocessing";
+import { GameBoyPalette } from "./retroEffects";
+import { useLevelView, viewById } from "./views";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { extraModel, models, playSfx, type ExtraModel } from "../game/assets";
 import { inPlace, once } from "../game/meshyAnim";
@@ -36,7 +38,7 @@ export function LevelCanvas() {
       <color attach="background" args={[th.fog]} />
       <fog attach="fog" args={[th.fog, th.fogNear, th.fogFar]} />
       <SimDriver sim={sim} />
-      <LevelCamera sim={sim} />
+      <LevelCamera sim={sim} theme={th} />
       <hemisphereLight args={[th.hemi.sky, th.hemi.ground, th.hemi.intensity]} />
       <directionalLight position={[-20, 30, 25]} intensity={th.key.intensity} color={th.key.color} />
       <directionalLight position={[30, 10, -30]} intensity={th.rim.intensity} color={th.rim.color} />
@@ -59,10 +61,7 @@ export function LevelCanvas() {
           <EnemyModel sim={sim} enemy={e} />
         </Suspense>
       ))}
-      <EffectComposer multisampling={0}>
-        <Bloom mipmapBlur intensity={1.0} luminanceThreshold={1} luminanceSmoothing={0.2} />
-        <Vignette eskil={false} offset={0.3} darkness={0.35} />
-      </EffectComposer>
+      <PostFx />
     </Canvas>
   );
 }
@@ -89,24 +88,88 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
   return null;
 }
 
-function LevelCamera({ sim }: { sim: PlatformerSim }) {
-  const camera = useThree((s) => s.camera);
+function LevelCamera({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const scene = useThree((s) => s.scene);
   const look = useRef(new THREE.Vector3(sim.player.x, CAM.minY, 0));
+  const zoom = useRef(1);
+  const blend = useRef({ fov: CAM.fov, distance: CAM.distance, yaw: 0, rise: 1.2 });
   const aspect = useThree((s) => s.size.width / s.size.height);
+  const viewId = useLevelView((s) => s.view);
   useFrame((_, dt) => {
+    dt = Math.min(dt, 0.1);
+    const v = viewById(viewId);
     const p = sim.player;
-    const halfW = Math.tan(THREE.MathUtils.degToRad(CAM.fov / 2)) * CAM.distance * aspect;
-    let tx = p.x + p.facing * CAM.lookAhead;
+    // Đổi góc nhìn: chuyển dần chứ không nhảy cảnh
+    const b = blend.current;
+    const kb = 1 - Math.exp(-6 * dt);
+    b.fov += (v.fov - b.fov) * kb;
+    b.distance += (v.distance - b.distance) * kb;
+    b.yaw += (v.yaw - b.yaw) * kb;
+    b.rise += (v.rise - b.rise) * kb;
+    // Điện ảnh: đứng yên thì sát lại, lướt / chạy thì lùi ra
+    const speedK = Math.min(1, Math.abs(p.vx) / T.player.dashSpeed);
+    const zt = v.post === "cinema" ? (sim.bossActive ? 1.35 : 0.85 + speedK * 0.35) : 1;
+    zoom.current += (zt - zoom.current) * (1 - Math.exp(-1.5 * dt));
+    const dist = b.distance * zoom.current;
+    if (Math.abs(camera.fov - b.fov) > 0.01) {
+      camera.fov = b.fov;
+      camera.updateProjectionMatrix();
+    }
+    // Sương mù lùi theo khoảng cách camera để góc nhìn phẳng (camera rất xa) không bị mờ hết
+    if (scene.fog instanceof THREE.Fog) {
+      scene.fog.near = theme.fogNear + (dist - CAM.distance);
+      scene.fog.far = theme.fogFar + (dist - CAM.distance);
+    }
+    const halfW = Math.tan(THREE.MathUtils.degToRad(b.fov / 2)) * dist * aspect;
+    let tx = p.x + p.facing * v.lookAhead;
     if (sim.bossActive) tx = (sim.def.bossArena[0] + sim.def.bossArena[1] + 1) / 2;
     tx = THREE.MathUtils.clamp(tx, halfW, Math.max(halfW, sim.width - halfW));
     const ty = THREE.MathUtils.clamp(p.y + CAM.height, CAM.minY, CAM.maxY);
-    const k = 1 - Math.exp(-CAM.damp * Math.min(dt, 0.1));
+    const k = 1 - Math.exp(-v.damp * dt);
     look.current.x += (tx - look.current.x) * k;
     look.current.y += (ty - look.current.y) * k;
-    camera.position.set(look.current.x, look.current.y + 1.2, CAM.distance);
+    camera.position.set(look.current.x + Math.sin(b.yaw) * dist, look.current.y + b.rise, Math.cos(b.yaw) * dist);
     camera.lookAt(look.current.x, look.current.y, 0);
   });
   return null;
+}
+
+/** Hậu kỳ theo góc nhìn: 16-bit (vỡ hạt + giảm màu), Game Boy (4 sắc xanh), điện ảnh (hạt phim + quang sai) */
+function PostFx() {
+  const viewId = useLevelView((s) => s.view);
+  const post = viewById(viewId).post;
+  if (post === "gameboy")
+    return (
+      <EffectComposer multisampling={0}>
+        <Pixelation granularity={6} />
+        <GameBoyPalette />
+      </EffectComposer>
+    );
+  if (post === "snes")
+    return (
+      <EffectComposer multisampling={0}>
+        <Bloom mipmapBlur intensity={0.6} luminanceThreshold={1} luminanceSmoothing={0.2} />
+        <Pixelation granularity={4} />
+        <ColorDepth bits={12} />
+        <Scanline density={1.6} opacity={0.12} />
+      </EffectComposer>
+    );
+  if (post === "cinema")
+    return (
+      <EffectComposer multisampling={0}>
+        <Bloom mipmapBlur intensity={1.2} luminanceThreshold={0.95} luminanceSmoothing={0.25} />
+        <ChromaticAberration offset={new THREE.Vector2(0.0009, 0.0006)} />
+        <Noise opacity={0.06} />
+        <Vignette eskil={false} offset={0.25} darkness={0.6} />
+      </EffectComposer>
+    );
+  return (
+    <EffectComposer multisampling={0}>
+      <Bloom mipmapBlur intensity={1.0} luminanceThreshold={1} luminanceSmoothing={0.2} />
+      <Vignette eskil={false} offset={0.3} darkness={0.35} />
+    </EffectComposer>
+  );
 }
 
 /** Trời chạng vạng vùng cách ly: mặt trời đỏ thấp và dải mây tím */

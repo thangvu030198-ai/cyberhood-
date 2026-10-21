@@ -7,6 +7,7 @@ import { extraModel, models, type ExtraModel } from "./assets";
 import { inPlace } from "./meshyAnim";
 import { fitCharacter } from "./Player";
 import { MISSION_GATE, PALETTE } from "./config";
+import { MISSION_BOARD } from "./LedBoards";
 import { fx } from "./Effects";
 import { activeShards, checkReach, interact, npcMarker, objectiveTarget, questProgress, VAULT_EXIT, VAULT_TERMINAL } from "./quests";
 import { handles } from "./refs";
@@ -285,6 +286,7 @@ function InteractionScanner() {
       consider({ kind: "door" }, VAULT_DOOR[0], VAULT_DOOR[2], DOOR_REACH);
       consider({ kind: "board" }, BOARD_POS.x, BOARD_POS.z, DOOR_REACH);
       consider({ kind: "gate" }, MISSION_GATE.x, MISSION_GATE.z, MISSION_GATE.reach);
+      consider({ kind: "missions" }, MISSION_BOARD.x - 1, MISSION_BOARD.z, MISSION_BOARD.reach);
     } else {
       consider({ kind: "exit" }, VAULT_ORIGIN[0] + VAULT_EXIT[0], VAULT_ORIGIN[2] + VAULT_EXIT[2] - 1.5, DOOR_REACH);
       consider({ kind: "terminal" }, VAULT_ORIGIN[0] + VAULT_TERMINAL[0], VAULT_ORIGIN[2] + VAULT_TERMINAL[2] + 1, DOOR_REACH);

@@ -6,6 +6,7 @@ import { LEVEL_TUNING as T } from "./levelTuning";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { LEVEL_REWARD, useLevel } from "./session";
 import type { Input } from "./platformer";
+import { VIEWS, useLevelView, viewById } from "./views";
 
 const touchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 
@@ -23,6 +24,8 @@ export function LevelHud() {
   const contract = useLevel((s) => s.contract);
   const leave = useLevel((s) => s.leave);
   const feed = useLevel((s) => s.feed);
+  const view = useLevelView((s) => s.view);
+  const viewChangedAt = useLevelView((s) => s.changedAt);
   const [paused, setPaused] = useState(false);
   useTicker(20);
 
@@ -40,9 +43,10 @@ export function LevelHud() {
       levelInput.paused = false;
     };
   }, []);
-  // Qua màn: Enter để về thành phố
+  // Qua màn: Enter để về thành phố; V đổi góc nhìn
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.code === "KeyV" && !e.repeat) useLevelView.getState().next();
       if (e.code === "Enter" && useLevel.getState().sim?.status === "cleared") useLevel.getState().leave();
     };
     window.addEventListener("keydown", onKey);
@@ -53,8 +57,22 @@ export function LevelHud() {
   const p = sim.player;
   const boss = sim.boss;
   const cred = LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill;
+  const v = viewById(view);
+  const showView = performance.now() - viewChangedAt < 2200;
   return (
-    <div className="lv">
+    <div className={`lv lv--${v.post}`}>
+      {v.post === "cinema" && (
+        <>
+          <div className="lv__bars lv__bars--top" />
+          <div className="lv__bars lv__bars--bottom" />
+        </>
+      )}
+      {showView && (
+        <div className="lv__view">
+          <b>{v.label}</b>
+          <span>học từ {v.inspired}</span>
+        </div>
+      )}
       <div className="lv__hp" aria-label={`Máu ${p.hp}/${T.player.maxHp}`}>
         <span className="lv__hp-tag">X</span>
         <div className="lv__bar">
@@ -128,6 +146,14 @@ export function LevelHud() {
             Bỏ nhiệm vụ, về thành phố
           </button>
           {contract && <p className="lv__note">Bỏ dở thì hợp đồng tính là thất bại.</p>}
+          <p className="lv__panel-tag">GÓC NHÌN (phím V)</p>
+          <div className="lv__views">
+            {VIEWS.map((x) => (
+              <button key={x.id} className={`lv__btn ${x.id === view ? "" : "lv__btn--ghost"}`} onClick={() => useLevelView.getState().set(x.id)}>
+                {x.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -136,7 +162,7 @@ export function LevelHud() {
       ) : (
         <div className="lv__help">
           <kbd>A</kbd>
-          <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (bám tường + nhảy tiếp) · <kbd>J</kbd> bắn, giữ để nạp · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
+          <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (bám tường + nhảy tiếp) · <kbd>J</kbd> bắn, giữ để nạp · <kbd>K</kbd> lướt · <kbd>V</kbd> góc nhìn · <kbd>Esc</kbd> tạm dừng
         </div>
       )}
     </div>

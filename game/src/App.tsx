@@ -32,6 +32,7 @@ import { useGame } from "./game/store";
 import { questProgress } from "./game/quests";
 import { Hud } from "./ui/Hud";
 import { HUB_PEACEFUL } from "./game/config";
+import { LedBoards } from "./game/LedBoards";
 import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
 import { enterLevel, useLevel } from "./level/session";
@@ -150,6 +151,7 @@ export default function App() {
             <LifeDynamic quality={quality} />
             <MeshyDynamic />
             <ObjectiveArrow />
+            <LedBoards />
             <TrafficDebug />
             <Rain />
             <DebugHook />

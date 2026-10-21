@@ -10,9 +10,12 @@ const BODY_COLORS = ["#3a1a4a", "#0b2a33", "#2a2410", "#1a1a1f", "#0f2a1a", "#3a
 const GLOW_COLORS = [PALETTE.pink, PALETTE.cyan, PALETTE.amber, "#39ff88", PALETTE.purple, "#ff1f3d"];
 
 export const CREDITS = [
-  "Robot: RobotExpressive · Quaternius · CC0",
-  "Drone, súng, âm thanh: Kenney Starter Kit FPS · CC0",
+  "Nhân vật: Soldier, Xbot · Mixamo (Adobe)",
+  "Xe: “Car Concept” · Eric Chadwick, Darmstadt Graphics Group · CC-BY 4.0",
   "Server Vault: “Space Ship Hallway” · yeeyeeman (sketchfab.com/yeeyeeman) · CC-BY 4.0",
+  "Phố, biển neon, tàu điện: Polygonal Mind · CC0",
+  "Nóc nhà: KayKit Space Base · Kay Lousberg · CC0",
+  "Drone, súng, âm thanh: Kenney · CC0",
 ];
 
 export function CharacterCreator() {

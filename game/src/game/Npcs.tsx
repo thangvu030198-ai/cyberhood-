@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { models } from "./assets";
+import { fitCharacter } from "./Player";
 import { PALETTE } from "./config";
 import { fx } from "./Effects";
 import { activeShards, checkReach, interact, npcMarker, objectiveTarget, questProgress, VAULT_EXIT, VAULT_TERMINAL } from "./quests";
@@ -18,24 +19,29 @@ const SHARD_REACH = 1.9;
 
 function NpcBot({ id }: { id: NpcId }) {
   const npc = NPCS[id];
-  const gltf = use(models.robot);
+  const gltf = use(models.xbot);
   const group = useRef<THREE.Group>(null);
   const { scene, mixer } = useMemo(() => {
     const s = cloneSkinned(gltf.scene);
-    s.scale.setScalar(0.4);
+    fitCharacter(s, 1.8, 0);
     s.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       const m = (mesh.material as THREE.MeshStandardMaterial).clone();
-      if (m.name === "Main") {
-        m.color.set(npc.body);
+      // Android: thân tối bóng, các khớp phát sáng màu riêng của từng NPC
+      if (/Joints/i.test(m.name)) {
+        m.color.set(npc.glow);
         m.emissive.set(npc.glow);
-        m.emissiveIntensity = 0.45;
+        m.emissiveIntensity = 1.6;
+      } else {
+        m.color.set(npc.body).multiplyScalar(2.2);
+        m.metalness = 0.8;
+        m.roughness = 0.25;
       }
       mesh.material = m;
     });
     const mixer = new THREE.AnimationMixer(s);
-    const idle = gltf.animations.find((a) => a.name === "Idle");
+    const idle = gltf.animations.find((a) => a.name === "idle");
     if (idle) mixer.clipAction(idle).play();
     return { scene: s, mixer };
   }, [gltf, npc]);
@@ -47,7 +53,7 @@ function NpcBot({ id }: { id: NpcId }) {
 
   // Vẫy tay khi người chơi mở hội thoại với NPC này
   const talking = useGame((s) => s.dialogue?.npc === id);
-  const wave = useMemo(() => gltf.animations.find((a) => a.name === "Wave"), [gltf]);
+  const wave = useMemo(() => gltf.animations.find((a) => a.name === "agree"), [gltf]);
   useEffect(() => {
     if (!talking || !wave) return;
     mixer.clipAction(wave).reset().setLoop(THREE.LoopOnce, 1).fadeIn(0.2).play();

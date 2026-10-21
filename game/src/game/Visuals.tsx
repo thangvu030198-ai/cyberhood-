@@ -1,7 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
-import { Environment, Lightformer } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
 import { BUILDINGS } from "./City";
 import { CITY, CITY_PITCH, PALETTE, mulberry32 } from "./config";
 import { makeAdTexture } from "./textures";
@@ -9,20 +8,53 @@ import { useGame } from "./store";
 
 // Lớp hình ảnh trang trí: môi trường phản chiếu neon, biển quảng cáo hologram, máy bán hàng, hơi nước.
 
-/** Môi trường phản chiếu dựng từ các tấm sáng neon, render một lần, không tải HDRI ngoài */
+/**
+ * Môi trường phản chiếu neon: dựng một cảnh nhỏ riêng gồm các tấm phát sáng, nướng thành envmap
+ * bằng PMREMGenerator một lần. Cảnh này không bao giờ được thêm vào thế giới game.
+ */
 export function NeonEnvironment() {
   const quality = useGame((s) => s.quality);
-  if (quality !== "high") return null;
-  return (
-    <Environment resolution={256} frames={1} background={false}>
-      <color attach="background" args={["#06030d"]} />
-      <Lightformer form="rect" intensity={3} color={PALETTE.pink} position={[-8, 4, -6]} scale={[14, 1.2, 1]} />
-      <Lightformer form="rect" intensity={3} color={PALETTE.cyan} position={[8, 3, 6]} scale={[14, 1.2, 1]} />
-      <Lightformer form="rect" intensity={2} color={PALETTE.purple} position={[0, 9, 0]} rotation-x={Math.PI / 2} scale={[20, 20, 1]} />
-      <Lightformer form="ring" intensity={4} color={PALETTE.amber} position={[10, 6, -10]} scale={3} />
-      <Lightformer form="rect" intensity={1.5} color="#1a0b2e" position={[0, -4, 0]} rotation-x={-Math.PI / 2} scale={[40, 40, 1]} />
-    </Environment>
-  );
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  useEffect(() => {
+    if (quality !== "high") {
+      scene.environment = null;
+      return;
+    }
+    const env = new THREE.Scene();
+    env.background = new THREE.Color("#06030d");
+    const panel = (color: string, intensity: number, pos: [number, number, number], size: [number, number], rotX = 0) => {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(size[0], size[1]),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), side: THREE.DoubleSide }),
+      );
+      m.position.set(...pos);
+      m.lookAt(0, 0, 0);
+      if (rotX) m.rotation.x = rotX;
+      env.add(m);
+    };
+    panel(PALETTE.pink, 3, [-8, 4, -6], [14, 1.2]);
+    panel(PALETTE.cyan, 3, [8, 3, 6], [14, 1.2]);
+    panel(PALETTE.purple, 1.6, [0, 9, 0], [20, 20], Math.PI / 2);
+    panel(PALETTE.amber, 3, [10, 6, -10], [3, 3]);
+    panel("#1a0b2e", 1.5, [0, -4, 0], [40, 40], -Math.PI / 2);
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const target = pmrem.fromScene(env, 0.04);
+    scene.environment = target.texture;
+    return () => {
+      scene.environment = null;
+      target.dispose();
+      pmrem.dispose();
+      env.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) {
+          m.geometry.dispose();
+          (m.material as THREE.Material).dispose();
+        }
+      });
+    };
+  }, [quality, gl, scene]);
+  return null;
 }
 
 const AD_COPY: [string, string, string][] = [

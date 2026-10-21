@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useProgress } from "@react-three/drei";
 import { Joystick, VirtualButton } from "ecctrl/input";
 import { CARS } from "../game/Vehicles";
 import { MAX_WANTED, SHOP_ITEMS, districtAt, gridRef, useGame, type Emote, type ShopItemId } from "../game/store";
 import { Minimap } from "./Minimap";
 import { pointer } from "../game/pointer";
+import { loadProgress } from "../game/assets";
 import { CharacterCreator, DialoguePanel, InventoryPanel, QuestTracker, Toast, interactLabel } from "./Panels";
 
 const EMOTE_KEYS: Record<string, Emote> = { Digit1: "wave", Digit2: "dance", Digit3: "thumbsUp" };
@@ -47,14 +47,25 @@ function useNow(hz = 20) {
 }
 
 export function LoadingScreen() {
-  const { progress } = useProgress();
+  // Theo dõi số byte model lớn đã tải (model nhỏ nhúng sẵn trong bundle)
+  const [p, setP] = useState({ ...loadProgress });
+  useEffect(() => {
+    const id = setInterval(() => setP({ ...loadProgress }), 150);
+    return () => clearInterval(id);
+  }, []);
+  const pct = p.total ? Math.min(100, (p.loaded / p.total) * 100) : 0;
   return (
     <div className="screen">
-      <p className="screen__tag">JACKING IN…</p>
+      <p className="screen__tag">{p.error ? "SIGNAL LOST" : "JACKING IN…"}</p>
       <h1 className="screen__title glitch">CYBERHOOD</h1>
-      <div className="bar">
-        <div className="bar__fill" style={{ width: `${Math.max(8, progress)}%` }} />
+      <div className="bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+        <div className="bar__fill" style={{ width: `${Math.max(4, pct)}%` }} />
       </div>
+      <p className="screen__body">
+        {p.error
+          ? `${p.error}. Tải lại trang để thử lần nữa.`
+          : `Đang tải thành phố · ${(p.loaded / 1e6).toFixed(1)} / ${(p.total / 1e6).toFixed(1)} MB`}
+      </p>
     </div>
   );
 }
@@ -221,7 +232,7 @@ function Help({ mode }: { mode: "foot" | "drive" }) {
           <dt>Q · Tab</dt>
           <dd>Dùng Stim Pack · Túi đồ, cài đặt đồ hoạ</dd>
           <dt>1 2 3</dt>
-          <dd>Vẫy tay · Nhảy múa · Like</dd>
+          <dd>Gật đầu · Gật đầu · Lắc đầu</dd>
           <dt>H</dt>
           <dd>Ẩn/hiện bảng này</dd>
         </dl>

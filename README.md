@@ -48,11 +48,13 @@ npm run build    # bản production trong game/dist
 
 Chi tiết trong `game/src/assets/LICENSES.md`. Tóm tắt:
 
-- Nhân vật: RobotExpressive của Quaternius, CC0.
+- Người chơi: Soldier (Mixamo). NPC và hologram: Xbot (Mixamo).
+- Xe: "Car Concept" của Eric Chadwick / Darmstadt Graphics Group, **CC-BY 4.0** (đã bỏ logo Khronos).
 - Drone, súng, âm thanh: Kenney Starter Kit FPS, CC0.
 - Server Vault: "Space Ship Hallway" của yeeyeeman, **CC-BY 4.0, bắt buộc ghi công** (đã ghi trong màn tạo nhân vật và túi đồ).
   File đã được nén lượng tử hoá (KHR_mesh_quantization) bằng gltf-transform.
-- Mặt tiền phố Nhật, biển neon, đèn đường, máy bán hàng, tàu bay, cổng vault: Polygonal Mind, CC0
+- Nóc nhà (module mái, pin mặt trời, bãi đáp, tuabin): KayKit Space Base Bits, CC0.
+- Mặt tiền phố Nhật, ban công, biển neon, đèn đường, máy bán hàng, tàu bay, monorail, chậu cây, cổng vault: Polygonal Mind, CC0
   (github.com/ToxSam/cc0-models-Polygonal-Mind). 50 model gộp vào `pm-kit.glb`, nén từ 330 MB còn 2,1 MB.
 - Khối nhà, xe, mưa, hologram: sinh bằng code.
 
@@ -74,6 +76,13 @@ Chi tiết trong `game/src/assets/LICENSES.md`. Tóm tắt:
 - [ ] Giai đoạn 6: Root Protocol Hunt
 
 ## Ghi chú kỹ thuật
+
+- Model lớn nằm ở `game/public/models/` và được tải khi chạy (`fetchGlb` trong `assets.ts`), để file JS
+  dưới giới hạn và màn hình tải hiện được tiến độ thật. Model nhỏ (Kenney) nhúng thẳng trong bundle.
+- Toà nhà được gộp thành vài lưới theo vật liệu; thân xe, bánh xe, drone cũng gộp lưới theo vật liệu
+  để giảm lệnh vẽ. Nhóm instancing đông được chia theo 4 góc phần tư để camera loại phần khuất.
+- Môi trường phản chiếu neon được nướng bằng `PMREMGenerator` từ một cảnh riêng (không dùng
+  `Environment` của drei: các tấm sáng của nó bị lọt vào cảnh chính).
 
 - Bước vật lý do `PhysicsStepper` trong `App.tsx` điều khiển: mỗi frame một bước, tối đa 1/30 giây.
   ecctrl cộng lực theo từng frame, nên bước cố định (nhiều bước/frame) làm xe yếu, còn bước theo frame

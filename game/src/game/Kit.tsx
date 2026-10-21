@@ -3,10 +3,11 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { models } from "./assets";
-import { BUILDINGS, type Building } from "./City";
-import { BLOCK_CENTERS, CITY, CITY_HALF, mulberry32 } from "./config";
+import { BUILDINGS, buildingTier, type Building } from "./City";
+import { BLOCK_CENTERS, CITY, CITY_HALF, CITY_PITCH, mulberry32 } from "./config";
 import { NPCS, VAULT_DOOR } from "./story";
 import { SHOP_POS } from "./Shop";
+import { useGame } from "./store";
 
 // Dựng phố bằng bộ model Polygonal Mind (CC0): mặt tiền phố Nhật, biển hiệu neon, đèn đường,
 // máy bán hàng, tàu bay. Mọi thứ đều instancing: mỗi lưới của model là một InstancedMesh.
@@ -57,6 +58,27 @@ function useKitParts(name: KitName) {
 
 /** Vẽ một model tại nhiều vị trí bằng InstancedMesh */
 export function KitInstances({ name, matrices }: { name: KitName; matrices: THREE.Matrix4[] }) {
+  // Nhóm đông được chia theo 4 góc phần tư thành phố: phần nằm sau lưng camera bị loại khỏi lượt vẽ
+  const chunks = useMemo(() => {
+    if (matrices.length < 40) return [matrices];
+    const out: THREE.Matrix4[][] = [[], [], [], []];
+    const p = new THREE.Vector3();
+    for (const m of matrices) {
+      p.setFromMatrixPosition(m);
+      out[(p.x >= 0 ? 1 : 0) + (p.z >= 0 ? 2 : 0)].push(m);
+    }
+    return out.filter((c) => c.length > 0);
+  }, [matrices]);
+  return (
+    <>
+      {chunks.map((c, i) => (
+        <KitChunk key={i} name={name} matrices={c} cull={chunks.length > 1} />
+      ))}
+    </>
+  );
+}
+
+function KitChunk({ name, matrices, cull }: { name: KitName; matrices: THREE.Matrix4[]; cull: boolean }) {
   const parts = useKitParts(name);
   const refs = useRef<(THREE.InstancedMesh | null)[]>([]);
   useLayoutEffect(() => {
@@ -77,7 +99,7 @@ export function KitInstances({ name, matrices }: { name: KitName; matrices: THRE
           key={i}
           ref={(r) => void (refs.current[i] = r)}
           args={[p.geometry, p.material, matrices.length]}
-          frustumCulled={false}
+          frustumCulled={cull}
         />
       ))}
     </>
@@ -405,11 +427,203 @@ export function Airships({ count = 18 }) {
   );
 }
 
-/** Toàn bộ lớp trang trí bằng kit */
+
+// ---------------------------------------------------------------------------
+// Nóc nhà: module mái, pin mặt trời, bãi đáp, tuabin, đèn tín hiệu (KayKit Space Base, CC0)
+
+/** Đồ trên mái và tỉ lệ phóng to (KayKit dùng đơn vị nhỏ) */
+const ROOF_PROPS: [string, number][] = [
+  ["roofmodule_solarpanels", 4.5],
+  ["roofmodule_cargo_A", 4.5],
+  ["roofmodule_cargo_B", 4.5],
+  ["roofmodule_base", 4.5],
+  ["structure_low", 3.6],
+  ["windturbine_low", 3.4],
+  ["lights", 3.2],
+  ["solarpanel", 4],
+  ["cargo_A_stacked", 2.6],
+];
+
+function RoofTops() {
+  const groups = useMemo(() => {
+    const rand = mulberry32(404);
+    const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(
+      [...ROOF_PROPS.map(([n]) => n), "landingpad_small", "ElectricBox01_Art"].map((k) => [k, []]),
+    );
+    for (const b of BUILDINGS) {
+      const top = CITY.SIDEWALK_HEIGHT + b.h;
+      const tier = buildingTier(b);
+      // Toà thấp, không có tầng trên: có thể làm bãi đáp xe bay
+      if (!tier && b.h < 40 && rand() < 0.3) {
+        out.landingpad_small.push(place(b.x, top, b.z, 0, Math.min(b.w, b.d) / 2.4));
+        continue;
+      }
+      const n = 3 + Math.floor(rand() * 4);
+      for (let i = 0; i < n; i++) {
+        const [name, scale] = ROOF_PROPS[Math.floor(rand() * ROOF_PROPS.length)];
+        const x = b.x + (rand() - 0.5) * (b.w - 4);
+        const z = b.z + (rand() - 0.5) * (b.d - 4);
+        // Không đặt chồng lên tầng trên
+        if (tier && Math.abs(x - tier.x) < tier.w / 2 + 2 && Math.abs(z - tier.z) < tier.d / 2 + 2) continue;
+        out[name].push(place(x, top, z, Math.floor(rand() * 4) * (Math.PI / 2), scale));
+      }
+      if (rand() < 0.5) out.ElectricBox01_Art.push(place(b.x + b.w / 2 - 1.5, top, b.z + b.d / 2 - 1.5, rand() * 6, 1.2));
+    }
+    return out;
+  }, []);
+  return (
+    <>
+      {Object.entries(groups).map(([k, m]) => (
+        <KitInstances key={k} name={k} matrices={m} />
+      ))}
+    </>
+  );
+}
+
+/** Ban công và hộp cửa sổ rải trên các tầng phía trên tầng trệt */
+function UpperFloors() {
+  const groups = useMemo(() => {
+    const rand = mulberry32(606);
+    const names = ["Wall_Module_05", "Wall_Module_07", "Wall_Module_04"];
+    const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(names.map((k) => [k, []]));
+    for (const f of faces(BUILDINGS)) {
+      const cols = Math.floor((f.width - 0.4) / MODULE_W);
+      const floors = Math.floor((f.b.h - 9) / 3);
+      for (let c = 0; c < cols; c++) {
+        // Một số cột có dãy ban công chạy dọc vài tầng liền
+        if (rand() > 0.22) continue;
+        const name = names[Math.floor(rand() * names.length)];
+        const start = Math.floor(rand() * Math.max(1, floors - 3));
+        const run = 2 + Math.floor(rand() * 4);
+        const t = -((cols - 1) * MODULE_W) / 2 + c * MODULE_W;
+        for (let k = start; k < Math.min(floors, start + run); k++) {
+          const y = CITY.SIDEWALK_HEIGHT + 8.6 + k * 3;
+          out[name].push(place(f.cx + f.tx * t, y, f.cz + f.tz * t, yawZ(f.n)));
+        }
+      }
+    }
+    return out;
+  }, []);
+  return (
+    <>
+      {Object.entries(groups).map(([k, m]) => (
+        <KitInstances key={k} name={k} matrices={m} />
+      ))}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Monorail treo chạy dọc phố x = CITY_PITCH (ranh Neon Bazaar / Chrome Arena)
+
+const RAIL_X = CITY_PITCH;
+const RAIL_Y = 15;
+const RAIL_SEG = 16;
+
+function Monorail() {
+  const track = useMemo(() => {
+    const segs: THREE.Matrix4[] = [];
+    for (let z = -CITY_HALF; z <= CITY_HALF; z += RAIL_SEG) segs.push(place(RAIL_X, RAIL_Y, z, 0));
+    return segs;
+  }, []);
+  const pillars = useMemo(() => {
+    const out: number[] = [];
+    // Cột đỡ đặt giữa các ngã tư, tránh lòng đường giao nhau
+    for (let z = -CITY_HALF + RAIL_SEG; z < CITY_HALF; z += RAIL_SEG * 2) {
+      if (BLOCK_CENTERS.some((c) => Math.abs(c - z) < CITY.BLOCK / 2 - 4)) out.push(z);
+    }
+    return out;
+  }, []);
+  const pillarMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#1a1824", metalness: 0.8, roughness: 0.35 }), []);
+  return (
+    <>
+      <KitInstances name="Train_Track_01" matrices={track} />
+      {pillars.map((z) => (
+        <mesh key={z} position={[RAIL_X, RAIL_Y / 2, z]} material={pillarMat}>
+          <cylinderGeometry args={[0.55, 0.75, RAIL_Y, 12]} />
+        </mesh>
+      ))}
+      <RigidBody type="fixed" colliders={false}>
+        {pillars.map((z) => (
+          <CuboidCollider key={z} args={[0.7, RAIL_Y / 2, 0.7]} position={[RAIL_X, RAIL_Y / 2, z]} />
+        ))}
+      </RigidBody>
+      <Trains />
+    </>
+  );
+}
+
+/** Hai đoàn tàu chạy ngược chiều: một chạy trên ray, một treo dưới ray */
+function Trains() {
+  const top = useKitParts("Train_01_Art");
+  const hang = useKitParts("Train_02_Art");
+  const refs = useRef<(THREE.InstancedMesh | null)[]>([]);
+  const parts = useMemo(() => [...top.map((p) => ({ ...p, kind: 0 })), ...hang.map((p) => ({ ...p, kind: 1 }))], [top, hang]);
+  const m = useMemo(() => new THREE.Matrix4(), []);
+  const out = useMemo(() => new THREE.Matrix4(), []);
+  useFrame(({ clock }) => {
+    const span = CITY_HALF * 2;
+    const t = clock.elapsedTime;
+    parts.forEach((part, pi) => {
+      const mesh = refs.current[pi];
+      if (!mesh) return;
+      for (let car = 0; car < 3; car++) {
+        // Đoàn 3 toa, mỗi toa dài 16.6m
+        const base = part.kind === 0 ? t * 14 : -t * 11 + span / 2;
+        const z = ((((base - car * 17) % span) + span) % span) - CITY_HALF;
+        m.copy(place(RAIL_X, RAIL_Y + (part.kind === 0 ? 1.1 : 0), z, part.kind === 0 ? 0 : Math.PI, 1));
+        mesh.setMatrixAt(car, out.multiplyMatrices(m, part.matrix));
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    });
+  });
+  return (
+    <>
+      {parts.map((p, i) => (
+        <instancedMesh key={i} ref={(r) => void (refs.current[i] = r)} args={[p.geometry, p.material, 3]} frustumCulled={false} />
+      ))}
+    </>
+  );
+}
+
+/** Chậu cây neon và màn hình CRT trước cửa hàng */
+function SidewalkDecor() {
+  const groups = useMemo(() => {
+    const rand = mulberry32(321);
+    const items: [string, number][] = [
+      ["Pot_Vapor_01", 0.55],
+      ["Pot_Vapor_02", 0.45],
+      ["Pot_Retro_03", 0.35],
+      ["Screen_Retro_01", 0.5],
+      ["Screen_Retro_02", 0.45],
+    ];
+    const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(items.map(([k]) => [k, []]));
+    for (const sp of curbSpots(77, 3, 3.4)) {
+      if (rand() > 0.45 || nearReserved(sp.x, sp.z, 3) || blockedByBuilding(sp.x, sp.z, 0.8)) continue;
+      const [name, scale] = items[Math.floor(rand() * items.length)];
+      out[name].push(place(sp.x, CITY.SIDEWALK_HEIGHT, sp.z, yawZ(sp.n), scale));
+    }
+    return out;
+  }, []);
+  return (
+    <>
+      {Object.entries(groups).map(([k, m]) => (
+        <KitInstances key={k} name={k} matrices={m} />
+      ))}
+    </>
+  );
+}
+
+/** Toàn bộ lớp trang trí bằng kit; chế độ đồ hoạ Thấp bỏ bớt đồ phụ */
 export function KitDressing() {
+  const high = useGame((s) => s.quality === "high");
   return (
     <>
       <Storefronts />
+      {high && <UpperFloors />}
+      {high && <RoofTops />}
+      <Monorail />
+      {high && <SidewalkDecor />}
       <NeonSigns />
       <BigAds />
       <StreetFurniture />

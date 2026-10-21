@@ -6,6 +6,7 @@ import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, mulberry32 } from "./conf
 import { fx } from "./Effects";
 import { handles } from "./refs";
 import { useGame } from "./store";
+import { mergeByMaterial } from "./Vehicles";
 import { questProgress } from "./quests";
 import { lineOfSight, pushOutOfBuildings, raySphere } from "./world";
 
@@ -141,20 +142,23 @@ const _miss = new THREE.Vector3();
 function DroneModel({ index }: { index: number }) {
   const gltf = use(models.drone);
   const { scene, materials } = useMemo(() => {
-    const s = gltf.scene.clone(true);
-    const mats: THREE.MeshStandardMaterial[] = [];
-    s.traverse((o) => {
+    // Mọi phần của drone dùng chung texture colormap: gộp thành một lưới, một vật liệu riêng mỗi drone
+    const src = gltf.scene.clone(true);
+    let material: THREE.MeshStandardMaterial | null = null;
+    src.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      const m = (mesh.material as THREE.MeshStandardMaterial).clone();
-      // Tông thép tối của OMNI-DYNE, đèn đỏ khi trúng đạn
-      m.color.multiplyScalar(0.55);
-      m.emissive.set(PALETTE.pink);
-      m.emissiveIntensity = 0.08;
-      mesh.material = m;
-      mats.push(m);
+      if (!material) {
+        material = (mesh.material as THREE.MeshStandardMaterial).clone();
+        // Tông thép tối của OMNI-DYNE, đèn đỏ khi trúng đạn
+        material.color.multiplyScalar(0.55);
+        material.emissive.set(PALETTE.pink);
+        material.emissiveIntensity = 0.08;
+      }
+      mesh.material = material;
     });
-    return { scene: s, materials: mats };
+    const s = mergeByMaterial(src);
+    return { scene: s, materials: material ? [material as THREE.MeshStandardMaterial] : [] };
   }, [gltf]);
   const eye = useMemo(() => new THREE.Color("#ff1f3d").multiplyScalar(6), []);
   const ref = useRef<THREE.Group>(null);

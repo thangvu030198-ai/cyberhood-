@@ -14,89 +14,100 @@ import { Gun } from "./Weapons";
 
 const CAR_REACH = 3.6;
 
+// Animation của Soldier (Mixamo). Nhảy dùng tạm động tác chạy.
 const CLIP_FOR_STATE: Record<string, string> = {
   IDLE: "Idle",
-  WALK: "Walking",
-  RUN: "Running",
-  JUMP_START: "Jump",
-  JUMP_IDLE: "Jump",
-  JUMP_FALL: "Jump",
+  WALK: "Walk",
+  RUN: "Run",
+  JUMP_START: "Run",
+  JUMP_IDLE: "Run",
+  JUMP_FALL: "Run",
   JUMP_LAND: "Idle",
 };
 
+// Biểu cảm mượn từ Xbot: cùng khung xương Mixamo nên dùng chung được clip
 const CLIP_FOR_EMOTE: Record<Emote, string> = {
-  wave: "Wave",
-  dance: "Dance",
-  thumbsUp: "ThumbsUp",
+  wave: "agree",
+  dance: "agree",
+  thumbsUp: "headShake",
 };
 
 const _aimDir = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 const _worldQ = new THREE.Quaternion();
 const _parentQ = new THREE.Quaternion();
+const _white = new THREE.Color("#ffffff");
 
 const FEET_Y = -(PLAYER.capsuleHalfHeight + PLAYER.capsuleRadius + PLAYER.floatHeight);
 
-function RobotModel() {
-  const gltf = use(models.robot);
+/** Đặt model đứng trên đáy capsule và cao ~1.8m (Box3 của SkinnedMesh cần cập nhật skeleton trước) */
+export function fitCharacter(s: THREE.Object3D, height: number, feetY: number) {
+  s.updateMatrixWorld(true);
+  s.traverse((o) => {
+    const skinned = o as THREE.SkinnedMesh;
+    if (!skinned.isSkinnedMesh) return;
+    skinned.skeleton.update();
+    skinned.computeBoundingBox();
+  });
+  const box = new THREE.Box3().setFromObject(s, true);
+  const scale = height / (box.max.y - box.min.y);
+  s.scale.setScalar(scale);
+  s.position.y = feetY - box.min.y * scale;
+}
+
+function CharacterModel() {
+  const gltf = use(models.soldier);
+  const xbot = use(models.xbot);
   const group = useRef<THREE.Group>(null);
-  const bodyMaterials = useMemo<THREE.MeshStandardMaterial[]>(() => [], []);
-  const scene = useMemo(() => {
+  const pose = useRef<THREE.Group>(null);
+  const { scene, suit, visor } = useMemo(() => {
     const s = cloneSkinned(gltf.scene);
-    // Chuẩn hoá chiều cao model về ~1.8m, chân chạm đáy capsule.
-    // Box3 của SkinnedMesh chỉ đúng sau khi skeleton đã cập nhật theo tư thế gốc.
-    s.updateMatrixWorld(true);
-    s.traverse((o) => {
-      const skinned = o as THREE.SkinnedMesh;
-      if (!skinned.isSkinnedMesh) return;
-      skinned.skeleton.update();
-      skinned.computeBoundingBox();
-    });
-    const box = new THREE.Box3().setFromObject(s, true);
-    const scale = PLAYER.modelHeight / (box.max.y - box.min.y);
-    s.scale.setScalar(scale);
-    s.position.y = FEET_Y - box.min.y * scale;
+    fitCharacter(s, PLAYER.modelHeight, FEET_Y);
+    let suit: THREE.MeshStandardMaterial | null = null;
+    let visor: THREE.MeshStandardMaterial | null = null;
     s.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      // Đổi màu robot sang tông cyberpunk: thân tối, phần "Main" phát sáng hồng neon.
-      if (mat.name === "Main") {
-        mesh.material = mat.clone();
-        const m = mesh.material as THREE.MeshStandardMaterial;
-        m.color.set("#3a1a4a");
-        m.emissive.set("#ff2a6d");
-        m.emissiveIntensity = 0.35;
-        bodyMaterials.push(m);
-      } else if (mat.name === "Grey") {
-        mesh.material = mat.clone();
-        (mesh.material as THREE.MeshStandardMaterial).color.set("#6f7a8c");
-        (mesh.material as THREE.MeshStandardMaterial).metalness = 0.8;
-        (mesh.material as THREE.MeshStandardMaterial).roughness = 0.3;
-      }
+      const m = (mesh.material as THREE.MeshStandardMaterial).clone();
+      if (/Visor/i.test(m.name)) visor = m;
+      else suit = m;
+      mesh.material = m;
     });
-    return s;
-  }, [gltf, bodyMaterials]);
+    return { scene: s, suit: suit as THREE.MeshStandardMaterial | null, visor: visor as THREE.MeshStandardMaterial | null };
+  }, [gltf]);
 
-  // Màu theo Netrunner ID người chơi chọn
+  // Màu theo Netrunner ID: nhuộm bộ giáp theo màu vỏ, kính visor phát sáng màu neon
   const profile = useGame((s) => s.profile);
   useEffect(() => {
-    for (const m of bodyMaterials) {
-      m.color.set(profile?.body ?? "#3a1a4a");
-      m.emissive.set(profile?.glow ?? "#ff2a6d");
+    const body = new THREE.Color(profile?.body ?? "#3a1a4a").multiplyScalar(3.2);
+    if (suit) {
+      suit.color.copy(body).lerp(_white, 0.45);
+      suit.metalness = 0.45;
+      suit.roughness = 0.45;
     }
-  }, [profile, bodyMaterials]);
-  // Robot không có xương bàn tay: gắn súng vào cẳng tay phải, ở vị trí cổ tay (gốc xương ngón).
+    if (visor) {
+      visor.emissive.set(profile?.glow ?? "#ff2a6d");
+      visor.emissiveIntensity = 2.4;
+    }
+  }, [profile, suit, visor]);
+
+  // Súng cầm ở bàn tay phải; tư thế ngắm xoay cánh tay trên theo hướng camera
   const arm = useMemo(() => {
     const bones: Record<string, THREE.Bone> = {};
     scene.traverse((o) => {
       if ((o as THREE.Bone).isBone) bones[o.name] = o as THREE.Bone;
     });
-    const { UpperArmR: upper, LowerArmR: lower, Palm2R: palm } = bones;
-    return upper && lower && palm ? { upper, lower, wrist: palm.position.clone() } : null;
+    const upper = bones.mixamorigRightArm;
+    const lower = bones.mixamorigRightForeArm;
+    const hand = bones.mixamorigRightHand;
+    return upper && lower && hand ? { upper, lower, hand } : null;
   }, [scene]);
 
-  const { actions } = useAnimations(gltf.animations, group);
+  const clips = useMemo(
+    () => [...gltf.animations, ...xbot.animations.filter((a) => a.name === "agree" || a.name === "headShake")],
+    [gltf, xbot],
+  );
+  const { actions } = useAnimations(clips, group);
   const animationState = useEcctrlAnimationStore((s) => s.animationState);
   const emote = useGame((s) => s.emote);
   const setEmote = useGame((s) => s.setEmote);
@@ -106,7 +117,7 @@ function RobotModel() {
   useEffect(setReady, [setReady]);
 
   const clip = flatlined
-    ? "Death"
+    ? "Idle"
     : emote && animationState === "IDLE"
       ? CLIP_FOR_EMOTE[emote]
       : (CLIP_FOR_STATE[animationState] ?? "Idle");
@@ -121,38 +132,49 @@ function RobotModel() {
     const next = actions[clip];
     if (!next) return;
     const prev = current.current ? actions[current.current] : null;
-    const once = clip === "Jump" || clip === "Death" || Object.values(CLIP_FOR_EMOTE).includes(clip);
+    const once = Object.values(CLIP_FOR_EMOTE).includes(clip);
     next.reset();
-    next.setLoop(once && clip !== "Dance" ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
     next.clampWhenFinished = true;
-    next.fadeIn(0.18).play();
-    prev?.fadeOut(0.18);
+    next.fadeIn(0.2).play();
+    prev?.fadeOut(0.2);
     current.current = clip;
   }, [actions, clip]);
 
-  // Tư thế ngắm dựng bằng code: chạy sau mixer, ghi đè xoay cánh tay phải để chĩa súng theo camera.
   const camera = useThree((s) => s.camera);
-  useFrame(() => {
+  const fall = useRef(0);
+  useFrame((_, dt) => {
+    // Flatline: ngã ngửa ra sau (model không có clip chết)
+    fall.current = THREE.MathUtils.damp(fall.current, flatlined ? 1 : 0, 6, dt);
+    if (pose.current) {
+      pose.current.rotation.x = -fall.current * (Math.PI / 2);
+      pose.current.position.y = fall.current * (FEET_Y + 0.25);
+    }
     if (!arm || !handles.player || flatlined) return;
     const aimingNow = useGame.getState().aiming || handles.player.lockForward;
     if (!aimingNow || useGame.getState().mode !== "foot") return;
     camera.getWorldDirection(_aimDir);
-    _aimDir.y = THREE.MathUtils.clamp(_aimDir.y + 0.08, -0.6, 0.8);
+    _aimDir.y = THREE.MathUtils.clamp(_aimDir.y + 0.06, -0.6, 0.8);
     _aimDir.normalize();
-    // Xương hướng theo trục +Y của nó: quay +Y về hướng ngắm trong không gian thế giới
+    // Xương Mixamo hướng theo trục +Y: quay +Y của cánh tay trên về hướng ngắm
     _worldQ.setFromUnitVectors(_up, _aimDir);
     arm.upper.parent!.getWorldQuaternion(_parentQ);
     arm.upper.quaternion.copy(_parentQ.invert().multiply(_worldQ));
     arm.lower.quaternion.identity();
+    arm.hand.quaternion.identity();
   });
 
   return (
     <group ref={group}>
-      <primitive object={scene} />
-      {arm && <Gun hand={arm.lower} offset={arm.wrist} />}
+      <group ref={pose}>
+        <primitive object={scene} />
+      </group>
+      {arm && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
     </group>
   );
 }
+
+const GUN_OFFSET = new THREE.Vector3(0, 0, 0);
 
 /** Gom input bàn phím + joystick cảm ứng rồi đẩy vào Ecctrl mỗi frame. */
 function useDriveInput(ecctrl: React.RefObject<EcctrlHandle | null>) {
@@ -271,7 +293,7 @@ export function Player() {
         enabledRotations={[false, true, false]}
       >
         <group ref={model}>
-          <RobotModel />
+          <CharacterModel />
         </group>
       </Ecctrl>
     </>

@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { models } from "./assets";
+import { fitCharacter } from "./Player";
 import { PALETTE } from "./config";
 import { VAULT_EXIT, VAULT_TERMINAL } from "./quests";
 import { useGame } from "./store";
@@ -48,9 +49,9 @@ function Hallway() {
 }
 
 function Hologram() {
-  const gltf = use(models.robot);
+  const gltf = use(models.xbot);
   const ref = useRef<THREE.Group>(null);
-  const { scene, material } = useMemo(() => {
+  const { scene, material, mixer } = useMemo(() => {
     const s = cloneSkinned(gltf.scene);
     const mat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(PALETTE.cyan).multiplyScalar(1.6),
@@ -65,19 +66,23 @@ function Hologram() {
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) mesh.material = mat;
     });
-    s.scale.setScalar(0.46);
-    return { scene: s, material: mat };
+    fitCharacter(s, 2.1, 0);
+    const mixer = new THREE.AnimationMixer(s);
+    const idle = gltf.animations.find((a) => a.name === "idle");
+    if (idle) mixer.clipAction(idle).play();
+    return { scene: s, material: mat, mixer };
   }, [gltf]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
+    mixer.update(dt);
     const t = clock.elapsedTime;
     // Nhấp nháy như tín hiệu chập chờn
     material.opacity = 0.35 + Math.sin(t * 9) * 0.05 + (Math.random() < 0.04 ? -0.25 : 0);
-    if (ref.current) ref.current.rotation.y = Math.PI + Math.sin(t * 0.6) * 0.3;
+    if (ref.current) ref.current.rotation.y = Math.sin(t * 0.6) * 0.3;
   });
 
   return (
-    <group ref={ref} position={[0, 0.9, -1.4]}>
+    <group ref={ref} position={[0, 0.12, -1.4]}>
       <primitive object={scene} />
     </group>
   );

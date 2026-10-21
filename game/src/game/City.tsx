@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { MeshReflectorMaterial } from "@react-three/drei";
 import { useGame } from "./store";
@@ -15,7 +16,7 @@ import {
   mulberry32,
 } from "./config";
 import { NPCS, VAULT_DOOR } from "./story";
-import { SIGN_COUNT, makeLaneTexture, makeRoadTexture, makeFacadeTextures, makeSignTexture } from "./textures";
+import { SIGN_COUNT, makeLaneTexture, makeRoadTexture, makeFacadeTextures } from "./textures";
 
 export type Building = {
   x: number;
@@ -153,23 +154,54 @@ function useWindowMaterials() {
   );
 }
 
+/** Tầng thu nhỏ trên đỉnh toà cao: lệch về một góc, cao khoảng 1/4 thân nhà */
+export function buildingTier(b: Building) {
+  if (b.h < 32) return null;
+  const k = Math.abs(Math.sin(b.x * 12.9898 + b.z * 78.233)) % 1;
+  if (k < 0.25) return null;
+  const w = b.w * (0.5 + k * 0.2);
+  const d = b.d * (0.5 + (1 - k) * 0.2);
+  return {
+    w,
+    d,
+    h: b.h * (0.18 + k * 0.15),
+    x: b.x + (k < 0.6 ? -1 : 1) * (b.w - w) * 0.35,
+    z: b.z + (k < 0.45 || k > 0.8 ? -1 : 1) * (b.d - d) * 0.35,
+  };
+}
+
 function Buildings({ list, withColliders }: { list: Building[]; withColliders: boolean }) {
   const materials = useWindowMaterials();
   const meshes = useMemo(
     () => list.map((b) => ({ b, geo: buildingGeometry(b.w, b.h, b.d) })),
     [list],
   );
+  // Toà cao có thêm tầng thu nhỏ trên đỉnh để phá dáng hộp
+  const tiers = useMemo(
+    () =>
+      list
+        .map((b) => {
+          const t = buildingTier(b);
+          return t ? { b, t, geo: buildingGeometry(t.w, t.h, t.d) } : null;
+        })
+        .filter((x) => x !== null),
+    [list],
+  );
+  const base = withColliders ? CITY.SIDEWALK_HEIGHT : 0;
+  // Gộp mọi khối nhà cùng vật liệu thành một lưới: từ hàng trăm lệnh vẽ xuống còn vài lệnh
+  const merged = useMemo(() => {
+    const byVariant: THREE.BufferGeometry[][] = Array.from({ length: WINDOW_VARIANTS }, () => []);
+    for (const { b, geo } of meshes) byVariant[b.variant].push(geo.clone().translate(b.x, base, b.z));
+    for (const { b, t, geo } of tiers) {
+      byVariant[(b.variant + 1) % WINDOW_VARIANTS].push(geo.clone().translate(t.x, base + b.h, t.z));
+    }
+    return byVariant.map((list) => (list.length ? mergeGeometries(list, false) : null));
+  }, [meshes, tiers, base]);
   return (
     <>
-      {meshes.map(({ b, geo }, i) => (
-        <mesh
-          key={i}
-          geometry={geo}
-          material={materials[b.variant]}
-          position={[b.x, withColliders ? CITY.SIDEWALK_HEIGHT : 0, b.z]}
-          userData={{ cameraCollider: withColliders }}
-        />
-      ))}
+      {merged.map((geo, i) =>
+        geo ? <mesh key={i} geometry={geo} material={materials[i]} userData={{ cameraCollider: withColliders }} /> : null,
+      )}
       {withColliders && (
         <RigidBody type="fixed" colliders={false}>
           {list.map((b, i) => (
@@ -253,37 +285,6 @@ function InstancedBoxes({
   );
 }
 
-function Signs({ list }: { list: Building[] }) {
-  const signs = useMemo(() => {
-    const rand = mulberry32(99);
-    return list
-      .filter((b) => b.sign !== null)
-      .map((b) => {
-        const vertical = rand() < 0.55;
-        const idx = b.sign! % SIGN_COUNT;
-        const tex = makeSignTexture(idx, vertical);
-        const [nx, nz] = b.face;
-        const sw = vertical ? 2 : 8;
-        const sh = vertical ? 8 : 2;
-        const along = (rand() - 0.5) * 0.5;
-        const y = 5 + rand() * Math.min(18, b.h - 12);
-        const x = nx !== 0 ? b.x + nx * (b.w / 2 + 0.6) : b.x + along * b.w;
-        const z = nz !== 0 ? b.z + nz * (b.d / 2 + 0.6) : b.z + along * b.d;
-        const rotY = nx !== 0 ? (nx > 0 ? Math.PI / 2 : -Math.PI / 2) : nz > 0 ? 0 : Math.PI;
-        return { tex, pos: [x, y, z] as const, rotY, sw, sh };
-      });
-  }, [list]);
-  return (
-    <>
-      {signs.map((s, i) => (
-        <mesh key={i} position={s.pos as unknown as [number, number, number]} rotation={[0, s.rotY, 0]}>
-          <planeGeometry args={[s.sw, s.sh]} />
-          <meshBasicMaterial map={s.tex} color={[2.2, 2.2, 2.2]} toneMapped={false} side={THREE.DoubleSide} />
-        </mesh>
-      ))}
-    </>
-  );
-}
 
 function Ground() {
   const size = CITY_HALF * 2 + 600;
@@ -394,7 +395,6 @@ export function City() {
       <Buildings list={skyline} withColliders={false} />
       <NeonTrim list={buildings} />
       <NeonTrim list={skyline} />
-      <Signs list={buildings} />
     </>
   );
 }

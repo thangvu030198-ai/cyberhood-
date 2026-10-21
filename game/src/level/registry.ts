@@ -111,7 +111,7 @@ export const LEVELS: LevelEntry[] = [
     view: "snes",
     howTo: "Bay bắn tự cuộn kiểu Gradius 16-bit. W/A/S/D bay bốn hướng, K tăng tốc, J bắn.",
     looks: {
-      trooper: { base: "mx_wz_heavy", clips: { walk: "walk", idle: "walk", shoot: "walkshoot", death: "death" }, height: 1.95 },
+      trooper: { base: "mx_wz_heavy", clips: { walk: "walk", idle: "walk", shoot: "mx_legion_android_walkshoot", death: "mx_legion_android_death" }, height: 1.95 },
       zombie: zombieLook("mx_zmb_soldier"),
       boss: monster("mx_mon_cyborg_hound_rider", 3.4),
     },
@@ -120,7 +120,7 @@ export const LEVELS: LevelEntry[] = [
     props: [
       { name: "mx_wz_crystal", height: 6, at: [22, 0, -7], selfLit: 0.5 },
       { name: "mx_wz_artillery", height: 4, at: [34, 2, -3], rot: 0.5 },
-      { name: "mx_map_dropship", height: 9, at: [60, 4, -26], rot: -2.2 },
+      { name: "mx_map_dropship", height: 8, at: [60, 6, -70], rot: -2.2 },
       { name: "mx_wz_bridge", height: 7, at: [84, 0, -10] },
       { name: "mx_wz_comms", height: 12, at: [104, 0, -14] },
       { name: "mx_wz_ammo", height: 1.4, at: [110, 3, -2] },
@@ -142,7 +142,7 @@ export const LEVELS: LevelEntry[] = [
     view: "cinema",
     howTo: "Đột kích pháo đài kiểu Shinobi: camera điện ảnh, trận trùm có khung hình rộng.",
     looks: {
-      trooper: { base: "mx_ct_guard", clips: { walk: "walk", idle: "walk", shoot: "attack", death: "death" }, height: 1.95 },
+      trooper: { base: "mx_ct_guard", clips: { walk: "walk", idle: "walk", shoot: "mx_legion_officer_walkshoot", death: "mx_legion_officer_death" }, height: 1.95 },
       zombie: zombieLook("mx_zmb_cyborg"),
       boss: { base: "mx_vane_human", clips: { walk: "walk", run: "run", attack: "walkshoot", death: "death", scream: "talk", hit: "hit" }, height: 3.6 },
     },

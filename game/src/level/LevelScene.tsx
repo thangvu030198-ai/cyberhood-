@@ -15,14 +15,12 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Bloom,
   ChromaticAberration,
-  ColorDepth,
   EffectComposer,
   Noise,
   Pixelation,
-  Scanline,
   Vignette,
 } from "@react-three/postprocessing";
-import { GameBoyPalette } from "./retroEffects";
+import { GameBoyPalette, RetroGrade } from "./retroEffects";
 import { viewById } from "./views";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { extraModel, models, playSfx, type ExtraModel } from "../game/assets";
@@ -242,15 +240,9 @@ function PostFx({ sim }: { sim: PlatformerSim }) {
   if (post === "snes")
     return (
       <EffectComposer multisampling={0}>
-        <Bloom
-          mipmapBlur
-          intensity={0.6}
-          luminanceThreshold={1}
-          luminanceSmoothing={0.2}
-        />
-        <Pixelation granularity={4} />
-        <ColorDepth bits={12} />
-        <Scanline density={1.6} opacity={0.12} />
+        <Bloom mipmapBlur intensity={1.1} luminanceThreshold={0.95} luminanceSmoothing={0.25} />
+        <RetroGrade />
+        <Vignette eskil={false} offset={0.3} darkness={0.5} />
       </EffectComposer>
     );
   if (post === "cinema")
@@ -721,9 +713,8 @@ function Hoverbike({ sim }: { sim: PlatformerSim }) {
   });
   return (
     <group ref={ref}>
-      <group rotation-y={Math.PI / 2}>
-        <primitive object={root} />
-      </group>
+      {/* Model xe bay dài theo trục X sẵn: giữ nguyên hướng, nhìn ngang thấy cả thân xe */}
+      <primitive object={root} />
       <mesh ref={flame} position={[-1.5, 0.45, 0]} rotation-z={Math.PI / 2}>
         <coneGeometry args={[0.18, 0.9, 10]} />
         <meshBasicMaterial

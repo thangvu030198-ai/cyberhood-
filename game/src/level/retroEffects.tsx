@@ -1,7 +1,10 @@
-// Hiệu ứng hậu kỳ cho góc nhìn retro: bảng 4 màu xanh lá của Game Boy (DMG-01).
+// Hiệu ứng hậu kỳ màu retro (giữ nguyên hình 3D, chỉ chỉnh màu):
+// - RetroGrade: tách tông kiểu thập niên 90 / synthwave: bóng tối ngả tím, vùng sáng ngả cam ấm, màu đậm hơn
+// - GameBoyPalette: bảng 4 màu xanh lá của Game Boy (dành cho chế độ Thử thách tuần sau này)
 
 import { useMemo } from "react";
 import { BlendFunction, Effect } from "postprocessing";
+import { Uniform } from "three";
 
 const GAMEBOY_FRAG = /* glsl */ `
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
@@ -26,5 +29,34 @@ class GameBoyEffect extends Effect {
 
 export function GameBoyPalette() {
   const effect = useMemo(() => new GameBoyEffect(), []);
+  return <primitive object={effect} dispose={null} />;
+}
+
+const RETRO_FRAG = /* glsl */ `
+uniform float strength;
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec3 c = inputColor.rgb;
+  float l = dot(c, vec3(0.299, 0.587, 0.114));
+  // Tăng bão hoà
+  c = mix(vec3(l), c, 1.0 + 0.35 * strength);
+  // Tách tông: bóng tối tím, vùng sáng cam ấm
+  vec3 shadow = vec3(0.32, 0.12, 0.45);
+  vec3 highlight = vec3(1.0, 0.72, 0.42);
+  vec3 tone = mix(shadow, highlight, smoothstep(0.1, 0.85, l));
+  c = mix(c, c * (0.6 + tone * 0.8), 0.45 * strength);
+  // Tương phản kiểu đường cong S, nâng đáy đen một chút như phim cũ
+  c = mix(c, c * c * (3.0 - 2.0 * c), 0.35 * strength);
+  c = c * 0.94 + vec3(0.035, 0.02, 0.05);
+  outputColor = vec4(c, inputColor.a);
+}`;
+
+class RetroGradeEffect extends Effect {
+  constructor(strength: number) {
+    super("RetroGradeEffect", RETRO_FRAG, { blendFunction: BlendFunction.NORMAL, uniforms: new Map([["strength", new Uniform(strength)]]) });
+  }
+}
+
+export function RetroGrade({ strength = 1 }: { strength?: number }) {
+  const effect = useMemo(() => new RetroGradeEffect(strength), [strength]);
   return <primitive object={effect} dispose={null} />;
 }

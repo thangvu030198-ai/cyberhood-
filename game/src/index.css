@@ -1,0 +1,224 @@
+/* HUD nằm đè lên canvas toàn màn hình; mọi màu lấy từ token neon. */
+:root {
+  --ink: #0d0221;
+  --ink-2: rgba(13, 2, 33, 0.72);
+  --pink: #ff2a6d;
+  --cyan: #05d9e8;
+  --text: #e9e6f5;
+  --muted: #8f86ad;
+  --font-display: "Chakra Petch", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-mono);
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+canvas {
+  display: block;
+}
+
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+
+.hud__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(18px, 2.4vw, 26px);
+  letter-spacing: 0.18em;
+  color: var(--text);
+  text-shadow: 0 0 8px var(--pink), 0 0 22px rgba(255, 42, 109, 0.6), 0 2px 6px var(--ink);
+}
+
+.brand__build {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.loc {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 10px;
+  align-items: baseline;
+  padding: 8px 12px;
+  background: var(--ink-2);
+  border-left: 2px solid var(--cyan);
+  backdrop-filter: blur(4px);
+}
+
+.loc__label {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--cyan);
+}
+
+.loc__value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.loc__grid {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.help {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding: 12px 14px;
+  background: var(--ink-2);
+  border: 1px solid rgba(5, 217, 232, 0.25);
+  font-size: 12px;
+  backdrop-filter: blur(4px);
+}
+
+.help dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+.help dt {
+  color: var(--pink);
+  font-weight: 700;
+}
+
+.help dd {
+  margin: 0;
+  color: var(--text);
+}
+
+/* Điều khiển cảm ứng */
+.touch-stick {
+  pointer-events: auto;
+}
+
+.touch-buttons {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right, 0px));
+  bottom: max(28px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 14px;
+  pointer-events: auto;
+}
+
+.emote-btn {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right, 0px));
+  top: 96px;
+  pointer-events: auto;
+  font: 700 12px var(--font-mono);
+  color: var(--text);
+  background: var(--ink-2);
+  border: 1px solid var(--pink);
+  padding: 8px 12px;
+}
+
+/* Màn hình tải và lỗi */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+  background: radial-gradient(ellipse at 50% 120%, #5a1446 0%, var(--ink) 60%);
+  text-align: center;
+}
+
+.screen__tag {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--cyan);
+}
+
+.screen__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(28px, 8vw, 72px);
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 10px var(--pink), 0 0 40px rgba(255, 42, 109, 0.5);
+  text-wrap: balance;
+}
+
+.screen__body {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.screen__code {
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 12px;
+  color: var(--pink);
+}
+
+.bar {
+  width: min(320px, 80vw);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pink), var(--cyan));
+  transition: width 0.3s ease;
+}
+
+.glitch {
+  position: relative;
+  animation: flicker 3s infinite steps(1);
+}
+
+@keyframes flicker {
+  0%, 92%, 100% { opacity: 1; }
+  93% { opacity: 0.6; }
+  95% { opacity: 1; }
+  97% { opacity: 0.75; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glitch { animation: none; }
+}

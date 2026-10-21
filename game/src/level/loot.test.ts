@@ -68,11 +68,13 @@ describe("đồ rơi trong màn", () => {
     const before = sim.pickups.length;
     const drops: LootDrop[] = [{ kind: "cred", amount: 4 }, { kind: "chestKey" }];
     (sim as unknown as { spawnDrops: (x: number, y: number, d: LootDrop[]) => void }).spawnDrops(9, 3, drops);
-    expect(sim.pickups.length).toBe(before + 2);
+    // 4 CRED vỡ thành 2 đồng xu + 1 chìa
+    expect(sim.pickups.length).toBe(before + 3);
     run(sim, 30);
     for (const k of sim.pickups.slice(before)) expect(k.y).toBeGreaterThanOrEqual(1.99);
     run(sim, 90, { ...NO_INPUT, right: true });
-    expect(sim.collected.map((d) => d.kind).sort()).toEqual(["chestKey", "cred"]);
+    expect([...new Set(sim.collected.map((d) => d.kind))].sort()).toEqual(["chestKey", "cred"]);
+    expect(sim.collected.reduce((n, d) => n + (d.kind === "cred" ? d.amount : 0), 0)).toBe(4);
     expect(sim.chestKeys).toBe(1);
   });
 

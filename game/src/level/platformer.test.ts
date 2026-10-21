@@ -170,7 +170,7 @@ describe("platformer: bắn và địch", () => {
         ],
       }),
     );
-    sim.enemies.forEach((e) => (e.hp = T.shot.full.dmg));
+    sim.enemies.forEach((e) => ((e.hp = T.shot.full.dmg), (e.trait = "basic")));
     // Drone đứng yên để kiểm tra đường đạn
     for (const e of sim.enemies) e.homeY = 2.6;
     play(sim, Math.ceil(T.shot.chargeFull / T.step) + 5, { shoot: true });

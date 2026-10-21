@@ -24,6 +24,13 @@ function useTicker(hz: number) {
 
 const bossSeenRef: { sim: unknown; at: number } = { sim: null, at: 0 };
 
+/** CRED nhặt được trong màn tới giờ (đồng xu) */
+function levelCred(sim: { collected: { kind: string; amount?: number }[] }) {
+  let n = 0;
+  for (const d of sim.collected) if (d.kind === "cred") n += d.amount ?? 0;
+  return n;
+}
+
 export function LevelHud() {
   const sim = useLevel((s) => s.sim);
   const contract = useLevel((s) => s.contract);
@@ -66,7 +73,7 @@ export function LevelHud() {
   if (sim.bossActive && bossSeenRef.sim !== sim) bossSeenRef.sim = sim, bossSeenRef.at = sim.time;
   if (!sim.bossActive && bossSeenRef.sim === sim) bossSeenRef.sim = null;
   const bossSeen = bossSeenRef.at;
-  const showView = sim.time < 5;
+  const showView = sim.time < 4.5;
   return (
     <div className={`lv lv--${v.post}`}>
       {v.post === "cinema" && (
@@ -75,7 +82,7 @@ export function LevelHud() {
           <div className="lv__bars lv__bars--bottom" />
         </>
       )}
-      {sim.time < 7 && (
+      {sim.time > 4.5 && sim.time < 11 && (
         <div className="lv__story">
           <small>{entry.story.chapter}</small>
           <p>{entry.story.intro}</p>
@@ -109,6 +116,16 @@ export function LevelHud() {
           {boss.cue && <div className={`lv__cue ${boss.guard ? "" : "lv__cue--open"}`}>{boss.cue}</div>}
         </div>
       )}
+      {sim.callout && sim.time - sim.callout.at < 1.8 && sim.status === "playing" && (
+        <div className="lv__callout" key={sim.callout.at} style={{ color: sim.callout.color, textShadow: `0 0 18px ${sim.callout.color}` }}>
+          {sim.callout.text}
+        </div>
+      )}
+      <div className="lv__cred" aria-label="CRED nhặt trong màn">
+        <i />
+        <b key={levelCred(sim)}>{levelCred(sim)}</b>
+        <small>CRED</small>
+      </div>
       <div className="lv__top">
         <span className="lv__stage">{sim.def.name}</span>
         <span>
@@ -190,19 +207,19 @@ export function LevelHud() {
               <kbd>W</kbd>
               <kbd>A</kbd>
               <kbd>S</kbd>
-              <kbd>D</kbd> đi 8 hướng · <kbd>J</kbd> bắn theo hướng nhìn (giữ J để khoá hướng) · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
+              <kbd>D</kbd> đi 8 hướng · <kbd>J</kbd> bắn theo hướng nhìn (giữ J để khoá hướng) · <kbd>L</kbd> chém (bấm liên tiếp ra combo 3 nhát) · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
             </>
           ) : sim.mode === "shmup" ? (
             <>
               <kbd>W</kbd>
               <kbd>A</kbd>
               <kbd>S</kbd>
-              <kbd>D</kbd> bay · <kbd>J</kbd> bắn, giữ để nạp · <kbd>K</kbd> tăng tốc · <kbd>Esc</kbd> tạm dừng
+              <kbd>D</kbd> bay · <kbd>J</kbd> bắn, giữ để nạp · <kbd>L</kbd> chém · <kbd>K</kbd> tăng tốc · <kbd>Esc</kbd> tạm dừng
             </>
           ) : (
             <>
               <kbd>A</kbd>
-              <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (giữ Space sát tường để leo) · <kbd>J</kbd> bắn, giữ để nạp · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
+              <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (giữ sát tường để leo) · <kbd>J</kbd> bắn, giữ để nạp · <kbd>L</kbd> chém combo 3 nhát · <kbd>K</kbd> lướt · <kbd>S</kbd>+<kbd>Space</kbd> trên không: đập đất · <kbd>Esc</kbd> tạm dừng
             </>
           )}
         </div>
@@ -234,6 +251,7 @@ function TouchPad({ onPause, flying }: { onPause: () => void; flying: boolean })
       </div>
       <div className="lv__pad lv__pad--right">
         <button {...hold("dash")}>LƯỚT</button>
+        <button className="lv__melee" {...hold("melee")}>CHÉM</button>
         <button {...hold("shoot")}>BẮN</button>
         {!flying && (
           <button className="lv__jump" {...hold("jump")}>

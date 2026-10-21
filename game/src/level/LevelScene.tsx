@@ -36,6 +36,7 @@ import type { Enemy, PlatformerSim } from "./platformer";
 import { THEMES, type LevelTheme } from "./themes";
 import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } from "./registry";
 import { GearDrops, HeldWeapon, WeaponShots, WornArmor } from "./gearView";
+import { CombatFx } from "./combatFx";
 import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
 import { CityBlocks } from "./cityBlocks";
 import { SideScenery } from "./sideScenery";
@@ -143,6 +144,7 @@ export function LevelCanvas() {
         <Chests sim={sim} />
         {sim.mode === "climb" && <GhostFog sim={sim} />}
         <Fx sim={sim} />
+        <CombatFx sim={sim} />
         {!top && !matte && (
           <Suspense fallback={null}>
             <Backdrop
@@ -179,6 +181,7 @@ const feel = { stopUntil: 0, shake: 0 };
 /** Chạy mô phỏng theo thời gian thật, phát âm thanh theo sự kiện */
 function SimDriver({ sim }: { sim: PlatformerSim }) {
   const seen = useRef(0);
+  const lastCall = useRef<PlatformerSim["callout"]>(null);
   useFrame(({ clock }, dt) => {
     const now = clock.elapsedTime;
     if (!levelInput.paused && now >= feel.stopUntil) {
@@ -215,7 +218,8 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
     for (let i = seen.current; i < sim.fx.length; i++) {
       const f = sim.fx[i];
       // Khựng hình và rung theo độ nặng của cú đánh
-      const kick = f.kind === "boom" ? [0.06, 0.3] : f.kind === "slam" ? [0.08, 0.55] : f.kind === "hurt" ? [0.05, 0.4] : f.kind === "block" ? [0.02, 0.08] : f.kind === "hit" ? [0.015, 0.06] : null;
+      const kick =
+        f.kind === "bigboom" ? [0.14, 1.1] : f.kind === "crit" ? [0.09, 0.5] : f.kind === "boom" ? [0.06, 0.3] : f.kind === "slam" ? [0.08, 0.55] : f.kind === "hurt" ? [0.05, 0.4] : f.kind === "block" ? [0.02, 0.08] : f.kind === "hit" ? [0.015, 0.06] : null;
       if (kick) {
         feel.stopUntil = Math.max(feel.stopUntil, now + kick[0]);
         feel.shake = Math.max(feel.shake, kick[1]);
@@ -226,6 +230,15 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
       else if (f.kind === "pickup" || f.kind === "checkpoint")
         playSfx("pickup", 0.7);
       else if (f.kind === "hurt") playSfx("enemyAttack", 0.5);
+      else if (f.kind === "coin") playSfx("coin", 0.8);
+      else if (f.kind === "swing") playSfx("swing", 0.7);
+      else if (f.kind === "crit") playSfx("crit", 0.8);
+      else if (f.kind === "bigboom") (playSfx("enemyDestroy", 1), playSfx("crit", 1));
+    }
+    // Trùm hô chiêu mới: còi báo
+    if (sim.callout && sim.callout !== lastCall.current) {
+      lastCall.current = sim.callout;
+      playSfx("warn", 0.6);
     }
     // Giữ danh sách hiệu ứng ngắn: bỏ những cái đã quá 1 giây
     const cut = sim.fx.findIndex((f) => sim.time - f.at < 1);
@@ -1019,9 +1032,10 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
   const group = useRef<THREE.Group>(null);
   const geo = useMemo(
     () => ({
-      health: new THREE.CapsuleGeometry(0.16, 0.28, 4, 8),
-      part: new THREE.OctahedronGeometry(0.3),
-      cred: new THREE.CylinderGeometry(0.22, 0.22, 0.06, 20).rotateX(
+      health: new THREE.CapsuleGeometry(0.2, 0.34, 4, 10),
+      part: new THREE.OctahedronGeometry(0.34),
+      // Đồng xu: dày, có gờ (hai đĩa lồng nhau) cho dễ thấy khi xoay
+      cred: new THREE.CylinderGeometry(0.27, 0.27, 0.09, 24).rotateX(
         Math.PI / 2,
       ),
       chestKey: new THREE.TorusGeometry(0.14, 0.05, 8, 16)
@@ -1059,8 +1073,9 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
           ? zFloor(sim) + 0.5 + Math.sin(t * 3 + i) * 0.08
           : 0.2,
       );
-      body.rotation.y = t * 2.4;
       const d = k.drop;
+      // Xu xoay nhanh như đồng xu tung lên; đồ khác xoay chậm
+      body.rotation.y = t * (d.kind === "cred" ? 7 : 2.4) + i;
       body.geometry = geo[d.kind];
       const color =
         d.kind === "part"
@@ -1592,6 +1607,8 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     jump: use(extraModel(`${base}_jump`)),
     hit: use(extraModel(`${base}_hit`)),
     death: use(extraModel(`${base}_death`)),
+    // Bộ hoạt ảnh lớp nhân vật không có đòn chém: mượn clip đánh của lính gác Citadel (cùng tên xương Meshy)
+    melee: use(extraModel("mx_ct_guard_attack")),
   };
   const { rig, air, climb } = useMemo(() => {
     const rig = buildRig(
@@ -1604,6 +1621,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
         jump: g.jump.animations[0],
         hit: g.hit.animations[0],
         death: g.death.animations[0],
+        melee: g.melee.animations[0],
       },
       1.8,
       0.6,
@@ -1624,6 +1642,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
   const squash = useRef(1);
   const wasGround = useRef(true);
   const lastDust = useRef(0);
+  const lastMelee = useRef(-9);
   useFrame((_, dt) => {
     const p = sim.player;
     const o = group.current;
@@ -1661,8 +1680,20 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
 
     const shooting = sim.time - lastShotAt(sim) < 0.35;
     const jump = rig.actions.jump;
+    const meleeT = sim.time - p.meleeAt;
     if (sim.status === "dead") setAnim(rig, "death", 0.1);
     else if (p.knock > 0) setAnim(rig, "hit", 0.05);
+    else if (meleeT < 0.32 && rig.actions.melee) {
+      // Chém: mỗi nhát phát lại clip đánh từ đầu, tua nhanh cho dứt khoát (nhát kết liễu chậm hơn chút)
+      if (lastMelee.current !== p.meleeAt) {
+        lastMelee.current = p.meleeAt;
+        setAnim(rig, "melee", 0.04, true);
+        const a = rig.actions.melee;
+        const clip = a.getClip();
+        a.timeScale = (clip.duration / 0.36) * (p.meleeStep === 2 ? 0.85 : 1);
+        a.time = clip.duration * (p.meleeStep === 1 ? 0.15 : 0.05);
+      }
+    }
     else if (sim.mode === "shmup" && jump) {
       // Tư thế ngồi lái: khung giữa của clip nhảy (chân co)
       setAnim(rig, "jump", 0.1);

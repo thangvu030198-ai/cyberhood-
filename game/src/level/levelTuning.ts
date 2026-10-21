@@ -55,6 +55,69 @@ export const LEVEL_TUNING = {
     slamDamage: 4,
   },
 
+  /**
+   * Cận chiến (nút L / C): chuỗi 3 nhát. Sát thương mỗi nhát (súng tay thường: 1), hồi chiêu sau mỗi nhát,
+   * nhịp combo (bấm tiếp trong khoảng này thì ra nhát sau), lao tới khi chém, lực đánh bật, thời gian địch khựng.
+   * Cầm kiếm thì nhân thêm bladeMul.
+   */
+  melee: {
+    dmg: [2.4, 2.4, 4.5] as [number, number, number],
+    cd: [0.2, 0.2, 0.42] as [number, number, number],
+    window: 0.6,
+    reach: 1.05,
+    r: 1.2,
+    finR: 1.55,
+    life: 0.16,
+    lunge: [3, 3, 7] as [number, number, number],
+    knock: [3, 3, 10] as [number, number, number],
+    stagger: 0.32,
+    bladeMul: 1.45,
+  },
+
+  /** Biến thể quái (platformer.ts · Trait): thời gian báo trước, tầm, sát thương */
+  traits: {
+    /** Lính khiên: chịu mấy nhát chém thì vỡ khiên, tốc độ áp sát, tầm và thời gian gồng đập khiên */
+    shield: { hits: 2, walk: 1.3, bashRange: 1.8, bashTele: 0.55, bashDmg: 4, bashKnock: 9, fireEvery: 3.4 },
+    /** Lính bắn tỉa: tầm nhìn, thời gian ngắm (tia đỏ), lúc khoá điểm ngắm, tốc độ và sát thương đạn, nghỉ */
+    sniper: { hp: 3, sight: 17, aim: 1.15, lock: 0.85, speed: 34, dmg: 5, rest: 2.4 },
+    /** Lính lựu đạn: nhịp ném, thời gian bay, trọng lực lựu đạn, chờ nổ sau khi rơi, bán kính, sát thương */
+    grenadier: { every: 2.9, flight: 0.95, grav: 26, fuse: 0.95, r: 1.9, dmg: 4, range: 12 },
+    /** Zombie tự nổ: máu, tốc độ chạy, tầm kích nổ, thời gian nháy, bán kính, sát thương */
+    exploder: { hp: 3, run: 3.4, trigger: 1.7, fuse: 0.75, r: 2.4, dmg: 5 },
+    /** Zombie phun axit: giữ khoảng cách, thời gian gồng, nhịp phun, thời gian bay, vũng axit rộng / tồn tại / sát thương */
+    spitter: { keep: 5, tele: 0.55, every: 2.6, flight: 0.85, grav: 24, puddle: 1.8, puddleTime: 2.6, dmg: 2 },
+    /** Drone thả bom: bay cao trên đầu bao nhiêu, nhịp thả, trọng lực bom, bán kính nổ, sát thương */
+    bomber: { above: 5.5, every: 1.9, grav: 20, r: 1.5, dmg: 4, follow: 3.2 },
+    /** Drone laser: khoảng cách giữ, thời gian nạp (tia cảnh báo), độ dài / độ dày tia, thời gian bắn, sát thương, nghỉ */
+    laser: { keep: 6.5, tele: 0.95, length: 15, width: 0.55, dur: 0.35, dmg: 4, rest: 2.6 },
+  },
+
+  /**
+   * Chiêu riêng của từng trùm (ngoài mẹo phá thủ): nhịp ra chiêu, thời gian báo trước, sát thương.
+   * Giai đoạn 2 (máu dưới nửa): chiêu ra dày hơn (phase2Mul) và có chiêu mới.
+   */
+  bossKit: {
+    phase2Mul: 0.7,
+    /** Robot Reaper: mưa tên lửa (cột báo trước), mảnh vỡ khi đâm tường */
+    rain: { every: 5.5, cols: 4, gap: 2.9, warn: 1.05, dur: 0.35, dmg: 4, height: 7 },
+    /** La Madre: bàn tay ma trồi lên chỗ người chơi đứng (đuổi theo từng nhịp), cầu lệ đuổi người */
+    hands: { n: 3, every: 0.55, warn: 0.75, dur: 0.45, w: 1.6, h: 2.6, dmg: 4, orbEvery: 3.2, orbHome: 1.6, orbSpeed: 4.2 },
+    /** Rồng vàng: mưa pha lê (cột từ trên trời), tường đạn có một khe hở để bay lọt */
+    crystal: { every: 5, cols: 5, warn: 1.1, dur: 0.45, dmg: 3, w: 1.6 },
+    wall: { every: 6.5, gap: 3.4, speed: 7, dmg: 2, step: 0.9 },
+    /** Director Vane: tia laser quét sát sàn (nhảy qua), sàn điện xen kẽ (giai đoạn 2) */
+    beam: { every: 6, warn: 1.15, dur: 0.5, h: 1.5, dmg: 5 },
+    floor: { every: 7, warn: 1.3, dur: 1.6, segs: 4, dmg: 3 },
+    /** Goblin Hàm Sắt: đá rơi (vòng báo trước), lốc xoáy lao tới, giai đoạn 2 để lại vòng lửa sau cú đập */
+    rocks: { every: 4.5, n: 4, spread: 3.2, r: 1.25, warn: 1.1, dur: 0.3, dmg: 4 },
+    spin: { tele: 0.6, time: 0.85, speed: 12, dmg: 4 },
+    fire: { n: 3, r: 1.5, dur: 3, dmg: 2 },
+    /** Kẻ Canh Giữ: xoắn ốc đạn lúc nhắm mắt, tia mắt khi mở mắt, xúc tu trồi lên (giai đoạn 2) */
+    spiral: { every: 0.16, arms: 2, turn: 2.1, speed: 6.5, dmg: 2 },
+    eyeBeam: { tele: 0.8, length: 18, width: 0.9, dur: 0.5, dmg: 4 },
+    tentacle: { n: 3, every: 0.5, r: 1.2, warn: 0.85, dur: 0.5, dmg: 4 },
+  },
+
   /** Mẹo đánh trùm (platformer.ts · BossStyle) */
   boss: {
     /** Choáng / lộ điểm yếu bao lâu, nhận sát thương nhân bao nhiêu */
@@ -134,7 +197,12 @@ export const LEVEL_TUNING = {
   topdown: { speed: 6, dashMul: 2, dashTime: 0.22, body: 0.8, trooperRange: 8, cornerAssist: 0.4 },
 
   /** Đồ rơi: chờ một nhịp rồi mới nhặt được, gần thì tự bay về phía người chơi */
-  loot: { pickupDelay: 0.35, magnetRange: 2.6, magnetSpeed: 9 },
+  /**
+   * Đồ rơi: chờ bao lâu mới nhặt được, tầm hút (đồng xu hút xa hơn), tốc độ hút, nằm bao lâu thì tự bay về,
+   * số đồng xu mỗi lần hạ địch [ít nhất, nhiều nhất] và khi hạ trùm, độ nảy, tỉ lệ rơi viên máu (+ thêm khi máu thấp),
+   * thời gian mưa đồ sau khi hạ trùm trước khi qua màn
+   */
+  loot: { pickupDelay: 0.35, coinDelay: 0.7, magnetRange: 2.6, coinMagnet: 4, magnetSpeed: 9, autoCollect: 4, coins: [2, 5] as [number, number], bossCoins: 28, bounce: 0.45, bounceMin: 2.5, healthChance: 0.2, healthLowBonus: 0.35, bossOutro: 2.6 },
 
   enemy: {
     /** Địch chỉ hoạt động khi cách người chơi ít hơn mức này */

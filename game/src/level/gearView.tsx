@@ -205,7 +205,8 @@ export function WeaponShots({ sim, z }: { sim: PlatformerSim; z: number }) {
     let nr = 0;
     const zz = z + (sim.mode === "topdown" ? 1 : 0.2);
     for (const shot of sim.shots) {
-      if (shot.enemy || !shot.kind) continue;
+      // Nhát cận chiến có vệt chém riêng (combatFx.tsx)
+      if (shot.enemy || !shot.kind || shot.melee !== undefined) continue;
       const dirX = shot.dx ?? Math.sign(shot.vx || 1);
       const dirY = shot.dy ?? 0;
       const ang = Math.atan2(shot.vy || dirY, shot.vx || dirX);

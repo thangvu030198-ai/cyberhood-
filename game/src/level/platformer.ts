@@ -6,10 +6,10 @@ import type { ThemeId } from "./themes";
 import { chestContents, rollEnemyDrops, type ChestTier, type LootContext, type LootDrop } from "./loot";
 import { freshPity, type PityState } from "../sim/loot";
 import { createRng } from "../sim/rng";
-import { ARMORS, NO_STATS, WEAPONS, type ArmorId, type Stats, type WeaponId } from "./gear";
+import { ARMORS, GEAR, NO_STATS, WEAPONS, type ArmorId, type Stats, type WeaponId } from "./gear";
 
-export type Input = { left: boolean; right: boolean; up: boolean; down: boolean; jump: boolean; shoot: boolean; dash: boolean };
-export const NO_INPUT: Input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, dash: false };
+export type Input = { left: boolean; right: boolean; up: boolean; down: boolean; jump: boolean; shoot: boolean; dash: boolean; melee?: boolean };
+export const NO_INPUT: Input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, dash: false, melee: false };
 
 /**
  * Kiểu chơi của map:
@@ -23,6 +23,37 @@ export type PlayMode = "platform" | "climb" | "shmup" | "topdown";
 export type Box = { x: number; y: number; w: number; h: number };
 
 export type EnemyKind = "trooper" | "drone" | "zombie" | "boss";
+
+/**
+ * Biến thể quái (mỗi loại có vài kiểu đánh riêng, xen kẽ trong màn):
+ * - trooper: basic (bắn thường, nhảy né), shield (khiên chặn đạn phía trước, phải chém vỡ, đập khiên),
+ *   sniper (tia ngắm đỏ 1 giây rồi bắn một phát rất mạnh), grenadier (ném lựu đạn vòng cung, vòng nổ báo trước)
+ * - zombie: basic (vồ), exploder (chạy tới, nháy đỏ rồi tự nổ, nổ cả quái khác), spitter (phun axit thành vũng độc)
+ * - drone: basic (bổ nhào), bomber (bay trên đầu thả bom, cột cảnh báo), laser (nạp rồi quét tia laser ngang)
+ */
+export type Trait = "basic" | "shield" | "sniper" | "grenadier" | "exploder" | "spitter" | "bomber" | "laser";
+
+/** Vùng nguy hiểm có báo trước: hiện viền đỏ từ `warnAt`, gây sát thương từ `liveAt` tới `endAt` */
+export type HazardKind = "blast" | "fire" | "laser" | "hands" | "rock" | "elec" | "acid" | "crystal" | "tentacle" | "shock";
+export type Hazard = {
+  id: number;
+  kind: HazardKind;
+  shape: "rect" | "circle" | "line";
+  /** rect: góc dưới trái (x0, y0) → góc trên phải (x1, y1); circle: tâm (x0, y0) bán kính r; line: đoạn (x0, y0)–(x1, y1) dày r */
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  r: number;
+  warnAt: number;
+  liveAt: number;
+  endAt: number;
+  dmg: number;
+  /** Đã trúng người chơi (mỗi vùng chỉ trúng một lần) */
+  hit: boolean;
+  /** Vùng do người chơi gây ra (lựu đạn tự nổ của quái thì làm hại cả quái khác) */
+  hurtsEnemies?: boolean;
+};
 
 export type Enemy = {
   id: number;
@@ -67,6 +98,21 @@ export type Enemy = {
   skillAt: number;
   /** Lính do trùm gọi ra: không rơi đồ */
   minion: boolean;
+  /** Bị chém bật lùi: khựng lại, không ra đòn tới lúc này */
+  staggerUntil: number;
+  trait: Trait;
+  /** Đang báo trước đòn (ngắm, nạp, nháy) từ lúc này; -9 là không */
+  tele: number;
+  /** Điểm ngắm đã khoá khi báo trước (tia ngắm của lính bắn tỉa, laser của drone, tia mắt của trùm) */
+  aimX: number;
+  aimY: number;
+  /** Lính khiên: khiên còn chịu được bao nhiêu nhát chém */
+  shieldHp: number;
+  /** Trùm: giai đoạn 2 khi máu dưới một nửa (thêm chiêu, nhanh hơn) */
+  phase: 1 | 2;
+  /** Trùm: chiêu đặc biệt kế tiếp ra lúc này */
+  atkAt: number;
+  atkN: number;
 };
 
 /**
@@ -84,7 +130,7 @@ export type BossStyle = "brute" | "charger" | "phantom" | "dragon" | "overlord" 
 export type Difficulty = "easy" | "normal" | "hard" | "nightmare";
 
 /** Hình đạn để vẽ: viên thường, đạn chùm, tia ngắm, mũi tên, nhát chém, sóng kiếm */
-export type ShotKind = "bullet" | "pellet" | "rail" | "arrow" | "slash" | "wave";
+export type ShotKind = "bullet" | "pellet" | "rail" | "arrow" | "slash" | "wave" | "grenade" | "acid" | "bomb" | "orb" | "snipe" | "shard";
 
 export type Shot = {
   x: number;
@@ -106,6 +152,16 @@ export type Shot = {
   maxLife?: number;
   /** Tên lửa trùm: bắn hạ được, đuổi theo người chơi */
   missile?: boolean;
+  /** Nhát cận chiến: thứ tự trong chuỗi combo (0, 1, 2 = nhát kết liễu) */
+  melee?: 0 | 1 | 2;
+  /** Lực đánh bật địch khi trúng */
+  knock?: number;
+  /** Đạn rơi theo trọng lực (lựu đạn, axit, bom) */
+  grav?: number;
+  /** Chạm đất thì: lựu đạn nằm chờ nổ, axit thành vũng độc, bom nổ ngay */
+  lands?: "grenade" | "acid" | "bomb";
+  /** Đạn đuổi theo người chơi (độ bẻ lái mỗi giây) */
+  home?: number;
 };
 
 export type Pickup = { x: number; y: number; vx: number; vy: number; drop: LootDrop; taken: boolean; bornAt: number };
@@ -132,7 +188,9 @@ export type SimOptions = {
 
 export type SimEvent = "kill" | "checkpoint" | "cleared" | "loot" | "chest" | "chestLocked";
 
-export type FxEvent = { kind: "hit" | "boom" | "shot" | "charge" | "hurt" | "pickup" | "checkpoint" | "land" | "dash" | "dust" | "block" | "slam"; x: number; y: number; at: number };
+export type FxKind = "hit" | "boom" | "shot" | "charge" | "hurt" | "pickup" | "checkpoint" | "land" | "dash" | "dust" | "block" | "slam" | "swing" | "crit" | "text" | "coin" | "bigboom" | "warn";
+/** Sự kiện hình ảnh / âm thanh cho LevelScene. `n`: tham số phụ (nhát combo, cỡ nổ…), `text`/`color`: chữ bay lên */
+export type FxEvent = { kind: FxKind; x: number; y: number; at: number; n?: number; text?: string; color?: string };
 
 export type LevelDef = {
   id: string;
@@ -154,6 +212,14 @@ export type LevelDef = {
   bossFloor?: number;
   /** Kiểu trùm và mẹo hạ trùm */
   bossStyle?: BossStyle;
+  /** Biến thể quái xuất hiện trong màn, xoay vòng theo thứ tự từng loại (mặc định: DEFAULT_TRAITS) */
+  traits?: Partial<Record<Exclude<EnemyKind, "boss">, Trait[]>>;
+};
+
+export const DEFAULT_TRAITS: Record<Exclude<EnemyKind, "boss">, Trait[]> = {
+  trooper: ["basic", "shield", "sniper", "grenadier"],
+  zombie: ["basic", "exploder", "basic", "spitter"],
+  drone: ["basic", "bomber", "laser"],
 };
 
 export type Status = "intro" | "playing" | "dead" | "cleared";
@@ -200,6 +266,10 @@ export class PlatformerSim {
     aimY: 0,
     /** Vũ khí trang bị: còn bao lâu mới bắn / chém tiếp được */
     cooldown: 0,
+    /** Cận chiến: nhát thứ mấy trong combo, lúc ra đòn gần nhất, còn bao lâu mới chém tiếp */
+    meleeStep: 0 as 0 | 1 | 2,
+    meleeAt: -9,
+    meleeCd: 0,
   };
   readonly weapon: WeaponId;
   readonly armor: ArmorId;
@@ -211,6 +281,10 @@ export class PlatformerSim {
   shots: Shot[] = [];
   pickups: Pickup[] = [];
   fx: FxEvent[] = [];
+  hazards: Hazard[] = [];
+  private hazardId = 0;
+  /** Lời hô to giữa màn hình khi trùm ra chiêu lớn / nổi điên */
+  callout: { text: string; at: number; color: string } | null = null;
   checkpoint: [number, number];
   checkpointIndex = -1;
   bossActive = false;
@@ -238,11 +312,16 @@ export class PlatformerSim {
   /** Mọi thứ đã nhặt trong màn (trừ viên máu), để trao khi qua màn */
   collected: LootDrop[] = [];
   private loot: LootContext;
+  /** Ngẫu nhiên riêng cho hiệu ứng (hướng văng đồ…), không làm lệch bảng rơi đồ */
+  private fxRng: () => number;
+  /** Trùm vừa gục: chờ mưa đồ rơi xong mới qua màn */
+  clearAt = 0;
   private nextId = 0;
   private acc = 0;
 
   constructor(def: LevelDef, opts: SimOptions = {}) {
     this.loot = { rng: createRng(opts.seed ?? (Date.now() & 0xffffff)), pity: opts.pity ?? freshPity(), mapMultiplier: opts.mapMultiplier ?? 1 };
+    this.fxRng = createRng((opts.seed ?? 7) * 31 + 5);
     this.chestKeys = opts.chestKeys ?? 0;
     this.weapon = opts.weapon ?? "buster";
     this.armor = opts.armor ?? "none";
@@ -263,8 +342,21 @@ export class PlatformerSim {
     let id = 0;
     const D = T.difficulty[opts.difficulty ?? "normal"];
     this.loot.mapMultiplier *= D.reward * (1 + this.stats.luck);
+    const seen: Record<string, number> = {};
     this.enemies = def.enemies.map((e) => {
       const en = makeEnemy(id++, e.kind, e.x, e.y);
+      if (e.kind !== "boss") {
+        // Biến thể xoay vòng theo thứ tự xuất hiện; màn bay chỉ có drone laser bay được ngang
+        const list = def.traits?.[e.kind] ?? DEFAULT_TRAITS[e.kind];
+        const i = (seen[e.kind] = (seen[e.kind] ?? -1) + 1);
+        en.trait = list[i % list.length];
+        if (this.mode === "shmup" && en.trait !== "laser") en.trait = "basic";
+        const S = T.traits;
+        if (en.trait === "shield") en.shieldHp = S.shield.hits;
+        if (en.trait === "exploder") en.maxHp = S.exploder.hp;
+        if (en.trait === "sniper") en.maxHp = S.sniper.hp;
+        en.hp = en.maxHp;
+      }
       en.hp = en.maxHp = Math.round(en.maxHp * D.hp * 10) / 10;
       // Nhìn từ trên: thân địch là ô vuông trên mặt đất (chiều cao đứng không còn là chiều sâu)
       if (this.mode === "topdown") en.h = Math.min(en.h, en.w);
@@ -397,7 +489,7 @@ export class PlatformerSim {
   step(input: Input) {
     const dt = T.step;
     this.time += dt;
-    const pressed = (k: keyof Input) => input[k] && !this.prev[k];
+    const pressed = (k: keyof Input) => !!input[k] && !this.prev[k];
     if (this.status === "intro") {
       if (this.time > T.introTime) this.status = "playing";
       this.prev = input;
@@ -429,11 +521,17 @@ export class PlatformerSim {
           this.enemies = this.enemies.filter((e) => !e.minion);
         }
         this.shots = this.shots.filter((s) => !s.enemy);
+        this.hazards = [];
       }
       this.prev = input;
       return;
     }
 
+    if (this.clearAt && this.time >= this.clearAt) {
+      this.clear();
+      this.prev = input;
+      return;
+    }
     if (this.mode === "shmup") this.updateFlyer(dt, input, pressed);
     else if (this.mode === "topdown") this.updateWalker(dt, input, pressed);
     else this.updatePlayer(dt, input, pressed);
@@ -441,6 +539,7 @@ export class PlatformerSim {
     if (this.mode === "topdown") this.updateEnemiesTop(dt);
     else this.updateEnemies(dt);
     this.updateShots(dt);
+    this.updateHazards();
     this.updatePickups(dt);
     this.prev = input;
   }
@@ -621,6 +720,7 @@ export class PlatformerSim {
       if (boss) {
         boss.awake = true;
         boss.timer = 1.5;
+        boss.atkAt = this.time + 3.5;
       }
     }
   }
@@ -673,6 +773,7 @@ export class PlatformerSim {
       if (boss) {
         boss.awake = true;
         boss.timer = 1.5;
+        boss.atkAt = this.time + 3.5;
       }
     }
   }
@@ -749,6 +850,7 @@ export class PlatformerSim {
       if (boss) {
         boss.awake = true;
         boss.timer = 1.5;
+        boss.atkAt = this.time + 3.5;
       }
     }
   }
@@ -767,8 +869,18 @@ export class PlatformerSim {
       const d = Math.hypot(dx, dy) || 1;
       if (e.kind !== "boss") e.awake = d < E.wakeRange;
       if (!e.awake) continue;
+      if (this.time < e.staggerUntil) {
+        e.vx *= 0.88;
+        e.vy *= 0.88;
+        this.move(e, dt);
+        continue;
+      }
       e.timer -= dt;
       e.facing = dx > 0 ? 1 : -1;
+      if (e.trait !== "basic" && e.kind !== "boss" && this.updateTraitTop(e, dt, dx, dy, d)) {
+        if (overlap(p, e) && e.tele < 0) this.hurt(E.contactDamage, p.x < e.x ? -1 : 1);
+        continue;
+      }
       const shoot = (speed: number, dmg: number, spread = 0, r = 0.2, level: 0 | 1 | 2 = 0) => {
         const a = Math.atan2(dy, dx) + spread;
         this.shots.push({ x: e.x, y: e.y + e.h / 2, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, r, dmg, pierce: false, life: 3, enemy: true, level });
@@ -801,6 +913,7 @@ export class PlatformerSim {
         }
       } else if (e.kind === "boss" && this.def.bossStyle && this.def.bossStyle !== "brute") {
         this.bossTop(e, dt, dx, dy, d, shoot);
+        if (e.alive) this.bossSpecials(e);
       } else if (e.kind === "boss") {
         const B = E.boss;
         const rage = e.hp < e.maxHp / 2 ? B.rageSpeedup : 1;
@@ -835,6 +948,8 @@ export class PlatformerSim {
     const W = WEAPONS[this.weapon];
     p.shootTimer -= dt;
     p.cooldown -= dt;
+    p.meleeCd -= dt;
+    if (pressed("melee") && p.meleeCd <= 0) this.meleeStrike();
     if (W.style === "auto") {
       p.charge = 0;
       if (input.shoot && p.cooldown <= 0) this.fireWeapon(0, 0);
@@ -850,6 +965,48 @@ export class PlatformerSim {
       else if (level > 0) this.fireWeapon(level, 1);
       p.charge = 0;
     }
+  }
+
+  /**
+   * Cận chiến (nút riêng, dùng được với mọi vũ khí): chuỗi 3 nhát, bấm tiếp trong nhịp combo thì ra nhát sau.
+   * Nhát 3 là đòn kết liễu: vùng chém to, đánh bật địch ra xa, rung màn hình. Chém gần mạnh hơn bắn,
+   * chặt rơi đạn địch, cầm kiếm thì chém đau hơn nữa.
+   */
+  private meleeStrike() {
+    const p = this.player;
+    const M = T.melee;
+    const step = (this.time - p.meleeAt < M.window ? (p.meleeStep + 1) % 3 : 0) as 0 | 1 | 2;
+    p.meleeStep = step;
+    p.meleeAt = this.time;
+    p.meleeCd = M.cd[step];
+    const m = this.muzzle();
+    const top = this.mode === "topdown";
+    const blade = WEAPONS[this.weapon].style === "blade";
+    const finisher = step === 2;
+    // Lao nhẹ tới trước khi chém (đòn kết liễu lao xa hơn)
+    if (!top && this.mode !== "shmup" && p.knock <= 0) p.vx = m.dx * M.lunge[step];
+    const reach = finisher ? M.reach * 1.3 : M.reach;
+    this.shots.push({
+      x: p.x + m.dx * reach,
+      y: (top ? p.y + p.h / 2 : p.y + 1) + m.dy * reach,
+      vx: top ? p.vx : p.vx * 0.5,
+      vy: top ? p.vy : 0,
+      r: finisher ? M.finR : M.r,
+      dmg: M.dmg[step] * (blade ? M.bladeMul : 1),
+      pierce: true,
+      life: M.life,
+      enemy: false,
+      level: finisher ? 2 : 0,
+      kind: "slash",
+      dx: m.dx,
+      dy: m.dy,
+      hitIds: [],
+      maxLife: M.life,
+      melee: step,
+      knock: M.knock[step],
+      freeze: WEAPONS[this.weapon].freeze,
+    });
+    this.fx.push({ kind: "swing", x: p.x + m.dx * reach, y: top ? p.y + p.h / 2 : p.y + 1, at: this.time, n: step });
   }
 
   /** Điểm ra đạn và hướng bắn: đi ngang bắn theo hướng mặt (bám tường thì bắn ra ngoài), đi 8 hướng bắn theo hướng nhìn */
@@ -1007,8 +1164,22 @@ export class PlatformerSim {
       const dt = e.slowUntil > this.time ? frameDt * T.gear.frostSlow : frameDt;
       if (e.kind !== "boss") e.awake = Math.abs(e.x - p.x) < E.wakeRange;
       if (!e.awake) continue;
+      if (this.time < e.staggerUntil) {
+        // Bị chém khựng: trôi theo lực đánh bật, không ra đòn, không gây sát thương chạm
+        e.vx *= 0.9;
+        if (e.kind === "drone" || this.mode === "shmup") {
+          e.x += e.vx * dt;
+          e.y += e.vy * dt;
+          e.vy *= 0.9;
+        } else this.fall(e, dt);
+        continue;
+      }
       e.timer -= dt;
       const dx = p.x - e.x;
+      if (e.trait !== "basic" && e.kind !== "boss" && this.updateTrait(e, dt)) {
+        if (overlap(p, e) && e.tele < 0) this.hurt(E.contactDamage, p.x < e.x ? -1 : 1);
+        continue;
+      }
       if (e.kind === "trooper") {
         // Tuần tra quanh điểm gốc; thấy người chơi thì quay mặt lại và bắn
         const sees = Math.abs(dx) < E.trooper.sight && (this.mode === "shmup" || Math.abs(p.y - e.y) < 3);
@@ -1077,6 +1248,7 @@ export class PlatformerSim {
         }
       } else if (e.kind === "boss") {
         this.bossByStyle(e, dt);
+        if (e.alive) this.bossSpecials(e);
       }
       // Chạm thân địch. Trùm đang choáng thì vô hại: nó đổ sập lên chỗ mình đứng (vd. lao vào tường) thì đẩy mình ra
       if (overlap(p, e)) {
@@ -1084,6 +1256,333 @@ export class PlatformerSim {
         else this.hurt(e.kind === "boss" ? E.boss.contactDamage : E.contactDamage, p.x < e.x ? -1 : 1);
       }
     }
+  }
+
+  /** Ném vòng cung (lựu đạn, axit) từ (x, y) rơi trúng (tx, ty) sau `t` giây với trọng lực `g`; nhìn từ trên thì bay thẳng */
+  private lob(e: Enemy, x: number, y: number, tx: number, ty: number, t: number, g: number, kind: "grenade" | "acid", dmg: number) {
+    const top = this.mode === "topdown";
+    this.shots.push({
+      x,
+      y,
+      vx: (tx - x) / t,
+      vy: top ? (ty - y) / t : (ty - y + 0.5 * g * t * t) / t,
+      r: 0.22,
+      dmg,
+      pierce: false,
+      life: top ? t : 5,
+      maxLife: top ? t : 5,
+      enemy: true,
+      level: 1,
+      kind,
+      grav: top ? 0 : g,
+      lands: kind,
+    });
+    e.firedAt = this.time;
+  }
+
+  /** Biến thể quái khi đi ngang / bay. Trả về true nếu đã xử lý xong con quái này trong khung hình */
+  private updateTrait(e: Enemy, dt: number): boolean {
+    const p = this.player;
+    const R = T.traits;
+    const dx = p.x - e.x;
+    const adx = Math.abs(dx);
+    const level = this.mode === "shmup" || Math.abs(p.y - e.y) < 3;
+    const face = () => (e.facing = dx > 0 ? 1 : -1);
+    const walk = (speed: number, dir: 1 | -1) => {
+      e.facing = dir;
+      e.vx = dir * speed;
+      // Không bước ra khỏi mép, không đâm đầu vào tường
+      const ahead = Math.floor(e.x + dir * 0.7);
+      if ((!this.solid(ahead, Math.floor(e.y) - 1) && this.tile(ahead, Math.floor(e.y) - 1) !== "=") || this.solid(ahead, Math.floor(e.y))) e.vx = 0;
+    };
+    switch (e.trait) {
+      case "shield": {
+        if (e.shieldHp <= 0) return false;
+        const S = R.shield;
+        if (e.tele > 0) {
+          e.vx = 0;
+          if (this.time - e.tele > S.bashTele + 0.2) {
+            e.tele = -9;
+            e.skillAt = this.time;
+          }
+        } else if (adx < S.bashRange && level && this.time - e.skillAt > 1.3) {
+          face();
+          e.tele = this.time;
+          e.vx = 0;
+          // Gồng khiên rồi đập: vùng trước mặt báo đỏ
+          this.warnRect("shock", e.x + e.facing * 0.3, e.y, e.x + e.facing * (0.3 + S.bashRange + 0.4), e.y + 1.9, S.bashTele, 0.15, S.bashDmg);
+        } else {
+          if (level && adx < 14) walk(S.walk, dx > 0 ? 1 : -1);
+          else e.vx = 0;
+          if (level && adx < 11 && e.timer <= 0) {
+            e.timer = S.fireEvery;
+            e.firedAt = this.time;
+            this.shots.push({ x: e.x + e.facing * 0.7, y: e.y + 1.2, ...this.aim(e.x, e.y + 1.2, e.facing, T.enemy.trooper.shotSpeed), r: 0.18, dmg: T.enemy.trooper.shotDamage, pierce: false, life: 3, enemy: true, level: 0 });
+          }
+        }
+        this.fall(e, dt);
+        return true;
+      }
+      case "sniper": {
+        const S = R.sniper;
+        e.vx = 0;
+        const sees = adx < S.sight && (this.mode === "shmup" || Math.abs(p.y - e.y) < 6);
+        if (e.tele > 0) {
+          const k = this.time - e.tele;
+          if (k < S.lock) {
+            face();
+            e.aimX = p.x;
+            e.aimY = p.y + 1.1;
+          }
+          if (k >= S.aim) {
+            const ox = e.x + e.facing * 0.8;
+            const oy = e.y + 1.35;
+            const l = Math.hypot(e.aimX - ox, e.aimY - oy) || 1;
+            this.shots.push({ x: ox, y: oy, vx: ((e.aimX - ox) / l) * S.speed, vy: ((e.aimY - oy) / l) * S.speed, r: 0.16, dmg: S.dmg, pierce: false, life: 1.2, enemy: true, level: 2, kind: "snipe" });
+            e.firedAt = this.time;
+            e.tele = -9;
+            e.skillAt = this.time;
+            this.fx.push({ kind: "shot", x: ox, y: oy, at: this.time });
+          }
+        } else if (sees && this.time - e.skillAt > S.rest) {
+          face();
+          e.tele = this.time;
+          e.aimX = p.x;
+          e.aimY = p.y + 1.1;
+        }
+        if (this.mode !== "shmup") this.fall(e, dt);
+        return true;
+      }
+      case "grenadier": {
+        const S = R.grenadier;
+        if (level && adx < S.range) {
+          face();
+          e.vx = 0;
+          if (this.time - e.skillAt > S.every) {
+            e.skillAt = this.time;
+            const tx = p.x + p.vx * 0.35;
+            this.lob(e, e.x + e.facing * 0.5, e.y + 1.6, tx, this.groundBelow(tx, p.y + 0.5) + 0.2, S.flight, S.grav, "grenade", 3);
+          }
+        } else {
+          if (Math.abs(e.x - e.homeX) > T.enemy.trooper.patrol) e.facing = e.x > e.homeX ? -1 : 1;
+          walk(T.enemy.trooper.walk, e.facing);
+        }
+        this.fall(e, dt);
+        return true;
+      }
+      case "exploder": {
+        const S = R.exploder;
+        if (e.tele > 0) {
+          e.vx = 0;
+          if (this.time - e.tele >= S.fuse) {
+            // Tự nổ: vùng nổ đã báo trước lúc bắt đầu nháy
+            e.alive = false;
+            e.deadAt = this.time;
+            this.fx.push({ kind: "boom", x: e.x, y: e.y + 0.9, at: this.time, n: 2 });
+          }
+        } else if (adx < S.trigger && Math.abs(p.y - e.y) < 2) {
+          e.tele = this.time;
+          this.warnCircle("blast", e.x, e.y + 0.9, S.r, S.fuse, 0.25, S.dmg, true);
+        } else if (adx < T.enemy.zombie.sight + 3 && level) walk(S.run, dx > 0 ? 1 : -1);
+        else walk(T.enemy.zombie.walk, e.facing);
+        this.fall(e, dt);
+        return true;
+      }
+      case "spitter": {
+        const S = R.spitter;
+        if (e.tele > 0) {
+          e.vx = 0;
+          if (this.time - e.tele >= S.tele) {
+            e.tele = -9;
+            e.skillAt = this.time;
+            const tx = p.x + p.vx * 0.3;
+            this.lob(e, e.x + e.facing * 0.5, e.y + 1.5, tx, this.groundBelow(tx, p.y + 0.5) + 0.1, S.flight, S.grav, "acid", 2);
+          }
+        } else if (level && adx < 13) {
+          if (adx < S.keep - 1) walk(T.enemy.zombie.chase, dx > 0 ? -1 : 1);
+          else if (adx > S.keep + 2) walk(T.enemy.zombie.chase, dx > 0 ? 1 : -1);
+          else e.vx = 0;
+          if (this.time - e.skillAt > S.every) {
+            face();
+            e.tele = this.time;
+          }
+        } else walk(T.enemy.zombie.walk, e.facing);
+        this.fall(e, dt);
+        return true;
+      }
+      case "bomber": {
+        const S = R.bomber;
+        const t = this.time + e.id;
+        const tx = p.x + Math.sin(t * 0.9) * 1.5;
+        const ty = Math.min(this.height - 2, p.y + S.above);
+        if (adx < 16) {
+          e.x += THREE_clamp(tx - e.x, -S.follow * dt, S.follow * dt);
+          e.y += THREE_clamp(ty - e.y, -S.follow * dt, S.follow * dt);
+          // Không bay xuyên tường
+          if (this.solid(Math.floor(e.x), Math.floor(e.y))) e.y += S.follow * dt * 2;
+        }
+        face();
+        if (adx < 3.5 && this.time - e.skillAt > S.every) {
+          e.skillAt = this.time;
+          e.firedAt = this.time;
+          const gy = this.groundBelow(e.x, e.y);
+          const fallT = Math.sqrt((2 * Math.max(0.5, e.y - gy)) / S.grav);
+          this.shots.push({ x: e.x, y: e.y - 0.3, vx: 0, vy: 0, r: 0.25, dmg: 0, pierce: false, life: fallT, enemy: true, level: 1, kind: "bomb", grav: S.grav });
+          this.warnCircle("blast", e.x, gy + 0.6, S.r, fallT, 0.25, S.dmg, true);
+        }
+        return true;
+      }
+      case "laser": {
+        const S = R.laser;
+        if (e.tele > 0) {
+          if (this.time - e.tele > S.tele + S.dur) {
+            e.tele = -9;
+            e.skillAt = this.time;
+          }
+          return true;
+        }
+        if (this.mode !== "shmup" && adx < 18) {
+          // Bay ngang tầm ngực người chơi, giữ khoảng cách ở phía đang đứng
+          const side = e.x > p.x ? 1 : -1;
+          e.x += THREE_clamp(p.x + side * S.keep - e.x, -3 * dt, 3 * dt);
+          e.y += THREE_clamp(p.y + 0.8 - e.y, -3 * dt, 3 * dt);
+        } else if (this.mode === "shmup") {
+          const t = this.time + e.id;
+          e.x = e.homeX + Math.sin(t * 0.8) * T.enemy.drone.sway;
+          e.y = e.homeY + Math.sin(t * 2.1) * 0.6;
+        }
+        face();
+        if (adx < S.keep + 5 && this.time - e.skillAt > S.rest) {
+          e.tele = this.time;
+          const y = e.y + 0.4;
+          e.aimX = e.x + e.facing * S.length;
+          e.aimY = y;
+          this.warnLine("laser", e.x + e.facing * 0.6, y, e.aimX, y, S.width, S.tele, S.dur, S.dmg);
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Biến thể quái khi nhìn từ trên */
+  private updateTraitTop(e: Enemy, dt: number, dx: number, dy: number, d: number): boolean {
+    const p = this.player;
+    const R = T.traits;
+    const ux = dx / d;
+    const uy = dy / d;
+    const px = p.x;
+    const py = p.y + p.h / 2;
+    const ex = e.x;
+    const ey = e.y + e.h / 2;
+    const go = (speed: number, sx = ux, sy = uy) => {
+      e.vx = sx * speed;
+      e.vy = sy * speed;
+      this.move(e, dt);
+    };
+    switch (e.trait) {
+      case "shield": {
+        if (e.shieldHp <= 0) return false;
+        const S = R.shield;
+        e.aimX = ux;
+        e.aimY = uy;
+        if (e.tele > 0) {
+          if (this.time - e.tele > S.bashTele + 0.2) (e.tele = -9), (e.skillAt = this.time);
+        } else if (d < S.bashRange + 0.6 && this.time - e.skillAt > 1.3) {
+          e.tele = this.time;
+          this.warnCircle("shock", ex + ux * 1.3, ey + uy * 1.3, 1.2, S.bashTele, 0.15, S.bashDmg);
+        } else if (d < 12) go(S.walk);
+        return true;
+      }
+      case "sniper": {
+        const S = R.sniper;
+        if (e.tele > 0) {
+          const k = this.time - e.tele;
+          if (k < S.lock) {
+            e.aimX = px;
+            e.aimY = py;
+          }
+          if (k >= S.aim) {
+            const l = Math.hypot(e.aimX - ex, e.aimY - ey) || 1;
+            this.shots.push({ x: ex, y: ey, vx: ((e.aimX - ex) / l) * S.speed, vy: ((e.aimY - ey) / l) * S.speed, r: 0.16, dmg: S.dmg, pierce: false, life: 1.2, enemy: true, level: 2, kind: "snipe" });
+            e.firedAt = this.time;
+            e.tele = -9;
+            e.skillAt = this.time;
+          }
+        } else if (d < S.sight && this.time - e.skillAt > S.rest) {
+          e.tele = this.time;
+          e.aimX = px;
+          e.aimY = py;
+        } else if (d < 6) go(T.enemy.trooper.walk, -ux, -uy);
+        return true;
+      }
+      case "grenadier": {
+        const S = R.grenadier;
+        if (d < S.range && this.time - e.skillAt > S.every) {
+          e.skillAt = this.time;
+          this.lob(e, ex, ey, px + p.vx * 0.35, py + p.vy * 0.35, S.flight, 0, "grenade", 3);
+        } else if (d > S.range - 3) go(T.enemy.trooper.walk);
+        else if (d < 5) go(T.enemy.trooper.walk, -ux, -uy);
+        return true;
+      }
+      case "exploder": {
+        const S = R.exploder;
+        if (e.tele > 0) {
+          if (this.time - e.tele >= S.fuse) {
+            e.alive = false;
+            e.deadAt = this.time;
+            this.fx.push({ kind: "boom", x: e.x, y: ey, at: this.time, n: 2 });
+          }
+        } else if (d < S.trigger) {
+          e.tele = this.time;
+          this.warnCircle("blast", ex, ey, S.r, S.fuse, 0.25, S.dmg, true);
+        } else if (d < T.enemy.zombie.sight + 3) go(S.run * 0.85);
+        return true;
+      }
+      case "spitter": {
+        const S = R.spitter;
+        if (e.tele > 0) {
+          if (this.time - e.tele >= S.tele) {
+            e.tele = -9;
+            e.skillAt = this.time;
+            this.lob(e, ex, ey, px + p.vx * 0.3, py + p.vy * 0.3, S.flight, 0, "acid", 2);
+          }
+        } else if (d < 12) {
+          if (d < S.keep - 1) go(T.enemy.zombie.chase, -ux, -uy);
+          else if (d > S.keep + 2) go(T.enemy.zombie.chase);
+          if (this.time - e.skillAt > S.every) e.tele = this.time;
+        }
+        return true;
+      }
+      case "bomber": {
+        const S = R.bomber;
+        if (d < 16) go(S.follow * 0.9);
+        if (d < 2.5 && this.time - e.skillAt > S.every) {
+          e.skillAt = this.time;
+          e.firedAt = this.time;
+          this.shots.push({ x: ex, y: ey, vx: 0, vy: 0, r: 0.25, dmg: 0, pierce: false, life: 0.9, enemy: true, level: 1, kind: "bomb" });
+          this.warnCircle("blast", ex, ey, S.r, 0.9, 0.25, S.dmg, true);
+        }
+        return true;
+      }
+      case "laser": {
+        const S = R.laser;
+        if (e.tele > 0) {
+          if (this.time - e.tele > S.tele + S.dur) (e.tele = -9), (e.skillAt = this.time);
+          return true;
+        }
+        if (d > S.keep + 1) go(2.2);
+        else if (d < S.keep - 1.5) go(2.2, -ux, -uy);
+        if (d < S.keep + 5 && this.time - e.skillAt > S.rest) {
+          e.tele = this.time;
+          e.aimX = ex + ux * S.length;
+          e.aimY = ey + uy * S.length;
+          this.warnLine("laser", ex + ux * 0.6, ey + uy * 0.6, e.aimX, e.aimY, S.width, S.tele, S.dur, S.dmg);
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Hướng đạn địch: chế độ bay thì nhắm vào người chơi (người chơi bay trên cao), còn lại bắn ngang */
@@ -1146,6 +1645,92 @@ export class PlatformerSim {
     e.x = Math.max(ax + e.w / 2, Math.min(bx - e.w / 2 + 1, e.x));
   }
 
+  // ---------------------------------------------------------------------------
+  // Vùng nguy hiểm báo trước (vòng / cột / tia đỏ hiện lên rồi mới gây sát thương)
+
+  private addHazard(h: Omit<Hazard, "id" | "hit" | "warnAt">) {
+    const hz: Hazard = { ...h, id: this.hazardId++, hit: false, warnAt: this.time };
+    this.hazards.push(hz);
+    return hz;
+  }
+
+  /** Vùng chữ nhật (cột tên lửa, tia laser sát sàn, sàn điện) */
+  warnRect(kind: HazardKind, x0: number, y0: number, x1: number, y1: number, warn: number, dur: number, dmg: number, hurtsEnemies = false) {
+    return this.addHazard({ kind, shape: "rect", x0: Math.min(x0, x1), y0: Math.min(y0, y1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), r: 0, liveAt: this.time + warn, endAt: this.time + warn + dur, dmg, hurtsEnemies });
+  }
+
+  /** Vùng tròn (vụ nổ, đá rơi, xúc tu) */
+  warnCircle(kind: HazardKind, x: number, y: number, r: number, warn: number, dur: number, dmg: number, hurtsEnemies = false) {
+    return this.addHazard({ kind, shape: "circle", x0: x, y0: y, x1: x, y1: y, r, liveAt: this.time + warn, endAt: this.time + warn + dur, dmg, hurtsEnemies });
+  }
+
+  /** Tia thẳng (laser, tia mắt) dày `w` */
+  warnLine(kind: HazardKind, x0: number, y0: number, x1: number, y1: number, w: number, warn: number, dur: number, dmg: number) {
+    return this.addHazard({ kind, shape: "line", x0, y0, x1, y1, r: w / 2, liveAt: this.time + warn, endAt: this.time + warn + dur, dmg });
+  }
+
+  /** Mặt đất ngay dưới (x, y): hàng trên cùng của ô đặc gần nhất bên dưới */
+  groundBelow(x: number, y: number) {
+    for (let r = Math.floor(y); r >= 0; r--) if (this.solid(Math.floor(x), r - 1) || this.tile(Math.floor(x), r - 1) === "=") return r;
+    return 0;
+  }
+
+  private hazardTouches(h: Hazard, b: { x: number; y: number; w: number; h: number }) {
+    // Người chơi / địch: hộp chân tại (x, y); nhìn từ trên thì lấy tâm thân
+    const cx = b.x;
+    const cy = this.mode === "topdown" ? b.y + b.h / 2 : b.y + b.h / 2;
+    const hw = b.w / 2;
+    const hh = this.mode === "topdown" ? b.w / 2 : b.h / 2;
+    if (h.shape === "rect") return cx + hw > h.x0 && cx - hw < h.x1 && cy + hh > h.y0 && cy - hh < h.y1;
+    if (h.shape === "circle") {
+      const nx = Math.max(cx - hw, Math.min(h.x0, cx + hw));
+      const ny = Math.max(cy - hh, Math.min(h.y0, cy + hh));
+      return Math.hypot(nx - h.x0, ny - h.y0) < h.r;
+    }
+    return segDist(cx, cy, h.x0, h.y0, h.x1, h.y1) < h.r + Math.min(hw, hh);
+  }
+
+  private updateHazards() {
+    const p = this.player;
+    for (const h of this.hazards) {
+      if (this.time < h.liveAt || this.time > h.endAt) continue;
+      if (!h.hit && this.hazardTouches(h, p)) {
+        h.hit = true;
+        this.hurt(h.dmg, p.x < (h.x0 + h.x1) / 2 ? -1 : 1);
+      }
+      if (h.hurtsEnemies)
+        for (const e of this.enemies)
+          if (e.alive && e.awake && e.kind !== "boss" && this.hazardTouches(h, e) && this.time - e.hurtAt > 0.4) this.damageEnemy(e, h.dmg, e.x, e.y + e.h / 2);
+    }
+    this.hazards = this.hazards.filter((h) => this.time < h.endAt + 0.4);
+  }
+
+  /** Lựu đạn / axit / bom chạm đất */
+  private landShot(s: Shot) {
+    const R = T.traits;
+    const gy = this.mode === "topdown" ? s.y : Math.floor(s.y) + 1;
+    if (s.lands === "grenade") {
+      s.vx = 0;
+      s.vy = 0;
+      s.grav = 0;
+      s.lands = undefined;
+      s.y = this.mode === "topdown" ? s.y : gy + 0.2;
+      s.life = R.grenadier.fuse;
+      s.dmg = 0;
+      this.warnCircle("blast", s.x, this.mode === "topdown" ? s.y : gy + 0.4, R.grenadier.r, R.grenadier.fuse, 0.25, R.grenadier.dmg, true);
+      return;
+    }
+    s.life = 0;
+    if (s.lands === "acid") {
+      const w = R.spitter.puddle / 2;
+      if (this.mode === "topdown") this.warnCircle("acid", s.x, s.y, w, 0.15, R.spitter.puddleTime, R.spitter.dmg);
+      else this.warnRect("acid", s.x - w, gy, s.x + w, gy + 0.45, 0.15, R.spitter.puddleTime, R.spitter.dmg);
+    } else if (s.lands === "bomb") {
+      this.warnCircle("blast", s.x, this.mode === "topdown" ? s.y : gy + 0.5, R.bomber.r, 0, 0.25, R.bomber.dmg, true);
+      this.fx.push({ kind: "boom", x: s.x, y: gy + 0.5, at: this.time, n: 0.8 });
+    }
+  }
+
   /** Tên lửa trùm bị bắn/chém nổ: đủ số lần thì khiên vỡ, trùm choáng */
   private popMissile(m: Shot) {
     m.life = 0;
@@ -1187,14 +1772,36 @@ export class PlatformerSim {
         }
     }
     for (const s of this.shots) {
+      if (s.home && s.life > 0) {
+        // Cầu lệ / đạn đuổi: bẻ lái dần về phía người chơi, giữ tốc độ
+        const sp = Math.hypot(s.vx, s.vy) || 1;
+        const tx = p.x - s.x;
+        const ty = p.y + (this.mode === "topdown" ? p.h / 2 : 1) - s.y;
+        const l = Math.hypot(tx, ty) || 1;
+        s.vx += ((tx / l) * sp - s.vx) * Math.min(1, dt * s.home);
+        s.vy += ((ty / l) * sp - s.vy) * Math.min(1, dt * s.home);
+      }
+      if (s.grav) s.vy -= s.grav * dt;
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       s.life -= dt;
+      if (s.lands) {
+        // Rơi chạm đất (nhìn từ trên: hết thời gian bay là chạm đất)
+        const down = this.mode === "topdown" ? s.life <= 0.02 : s.vy < 0 && (this.solid(Math.floor(s.x), Math.floor(s.y)) || this.tile(Math.floor(s.x), Math.floor(s.y)) === "=");
+        if (down || (this.mode !== "topdown" && s.y < 0)) {
+          if (this.mode !== "topdown") s.y = Math.max(0, s.y);
+          this.landShot(s);
+          continue;
+        }
+      }
       // Đạn thường vỡ khi chạm tường; sóng chấn động đi sát đất
       if (this.solid(Math.floor(s.x), Math.floor(s.y)) && s.level !== 2 && s.kind !== "slash") s.life = 0;
       if (s.life <= 0) continue;
       if (s.enemy) {
-        if (Math.abs(s.x - p.x) < p.w / 2 + s.r && s.y > p.y - s.r && s.y < p.y + p.h + s.r) {
+        // Lựu đạn nằm chờ nổ (dmg 0) không tính va chạm, vụ nổ là vùng nguy hiểm riêng
+        if (s.dmg <= 0) continue;
+        const hitP = this.mode === "topdown" ? Math.hypot(s.x - p.x, s.y - (p.y + p.h / 2)) < p.w / 2 + s.r : Math.abs(s.x - p.x) < p.w / 2 + s.r && s.y > p.y - s.r && s.y < p.y + p.h + s.r;
+        if (hitP) {
           this.hurt(s.dmg, s.vx > 0 ? 1 : -1);
           s.life = 0;
         }
@@ -1205,6 +1812,21 @@ export class PlatformerSim {
         if (s.hitIds?.includes(e.id)) continue;
         if (Math.abs(s.x - e.x) < e.w / 2 + s.r && s.y > e.y - s.r && s.y < e.y + e.h + s.r) {
           s.hitIds?.push(e.id);
+          // Lính khiên: đạn bay vào mặt khiên bật ra; nhát chém (hoặc đạn nạp đầy) làm nứt rồi vỡ khiên
+          if (e.trait === "shield" && e.shieldHp > 0) {
+            const front = this.mode === "topdown" ? (s.x - e.x) * e.aimX + (s.y - (e.y + e.h / 2)) * e.aimY > 0 : Math.sign(s.x - e.x) === e.facing || Math.abs(s.x - e.x) < 0.2;
+            if (front) {
+              if (s.melee !== undefined || s.level === 2) {
+                e.shieldHp--;
+                e.hurtAt = this.time;
+                this.fx.push({ kind: e.shieldHp <= 0 ? "crit" : "block", x: s.x, y: s.y, at: this.time, text: e.shieldHp <= 0 ? "VỠ KHIÊN!" : undefined, color: "#7ff3ff" });
+                if (s.melee !== undefined) this.meleeImpact(e, s);
+              } else this.fx.push({ kind: "block", x: s.x, y: s.y, at: this.time });
+              if (!s.pierce || s.kind !== "slash") s.life = 0;
+              if (s.life <= 0) break;
+              continue;
+            }
+          }
           // Trùm đang có khiên / vảy / mắt nhắm: đạn bật ra
           if (e.guard) {
             this.fx.push({ kind: "block", x: s.x, y: s.y, at: this.time });
@@ -1213,6 +1835,7 @@ export class PlatformerSim {
           }
           if (s.freeze) e.slowUntil = this.time + T.gear.frostTime;
           this.damageEnemy(e, s.dmg, s.x, s.y);
+          if (s.melee !== undefined) this.meleeImpact(e, s);
           if (!s.pierce) {
             s.life = 0;
             break;
@@ -1224,10 +1847,33 @@ export class PlatformerSim {
   }
 
   /** Đồ bật ra từ địch / rương, toả hai bên rồi rơi xuống đất */
-  private spawnDrops(x: number, y: number, drops: LootDrop[]) {
-    drops.forEach((drop, i) => {
-      const spread = drops.length > 1 ? (i / (drops.length - 1) - 0.5) * 2 : 0;
-      this.pickups.push({ x, y, vx: spread * 2.2, vy: 6 + (i % 2) * 1.5, drop, taken: false, bornAt: this.time });
+  private spawnDrops(x: number, y: number, drops: LootDrop[], burst = 1) {
+    const L = T.loot;
+    const r = this.fxRng;
+    // CRED vỡ thành nhiều đồng xu văng tung toé (trùm: cả trận mưa xu)
+    const out: LootDrop[] = [];
+    for (const d of drops) {
+      if (d.kind !== "cred") {
+        out.push(d);
+        continue;
+      }
+      const n = Math.max(1, Math.min(burst > 1 ? L.bossCoins : L.coins[1], Math.max(L.coins[0], Math.ceil(d.amount / 2))));
+      let left = d.amount;
+      for (let i = 0; i < n; i++) {
+        const v = i === n - 1 ? left : Math.max(1, Math.floor(d.amount / n));
+        left -= v;
+        if (v > 0) out.push({ kind: "cred", amount: v });
+      }
+    }
+    const top = this.mode === "topdown";
+    out.forEach((drop) => {
+      const a = r() * Math.PI * 2;
+      const sp = (2 + r() * 3.5) * burst;
+      this.pickups.push(
+        top || this.mode === "shmup"
+          ? { x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drop, taken: false, bornAt: this.time }
+          : { x, y, vx: (r() - 0.5) * 7 * burst, vy: (5.5 + r() * 5) * Math.sqrt(burst), drop, taken: false, bornAt: this.time },
+      );
     });
   }
 
@@ -1242,9 +1888,17 @@ export class PlatformerSim {
       const d = Math.hypot(dx, dy);
       const age = this.time - k.bornAt;
       const flying = this.mode === "shmup" || this.mode === "topdown";
-      if (age > L.pickupDelay && d < L.magnetRange * (flying ? 2 : 1) && (k.drop.kind !== "health" || flying)) {
-        k.x += (dx / d) * L.magnetSpeed * dt;
-        k.y += (dy / d) * L.magnetSpeed * dt;
+      // Nằm lâu không nhặt (hoặc đang mưa đồ cuối trận) thì tự bay về người chơi; viên máu thì để dành
+      const homing = k.drop.kind !== "health" && (age > L.autoCollect || (this.clearAt > 0 && age > L.pickupDelay));
+      const range = (k.drop.kind === "cred" ? L.coinMagnet : L.magnetRange) * (flying ? 2 : 1);
+      // Đồng xu nảy tung toé một nhịp cho đã mắt rồi mới bị hút về
+      const delay = k.drop.kind === "cred" ? L.coinDelay : L.pickupDelay;
+      if (age > delay && (homing || (d < range && (k.drop.kind !== "health" || flying)))) {
+        const sp = L.magnetSpeed * (homing ? 2.2 : 1) * (1 + Math.max(0, 2 - d) * 0.5);
+        k.x += (dx / d) * Math.min(d, sp * dt);
+        k.y += (dy / d) * Math.min(d, sp * dt);
+        k.vx = 0;
+        k.vy = 0;
       } else if (flying) {
         // Bay: đồ lơ lửng tại chỗ, chỉ tản ra một chút rồi dừng
         k.x += k.vx * dt;
@@ -1254,14 +1908,23 @@ export class PlatformerSim {
       } else if (k.vx !== 0 || k.vy !== 0 || !this.hits(k.x, k.y - 0.05, 0.3, 0.05)) {
         k.vy = Math.max(-T.player.maxFall, k.vy - T.player.gravity * dt);
         const box = { x: k.x, y: k.y, vx: k.vx, vy: k.vy, w: 0.3, h: 0.3 };
+        const fallV = k.vy;
         const m = this.move(box, dt);
         k.x = box.x;
         k.y = box.y;
-        k.vx = m.ground ? 0 : box.vx * 0.99;
-        k.vy = box.vy;
+        // Chạm đất thì nảy lên vài lần (đồng xu leng keng) rồi nằm yên
+        if (m.ground && fallV < -L.bounceMin) {
+          k.vy = -fallV * L.bounce;
+          k.vx = box.vx * 0.6;
+        } else {
+          k.vx = m.ground ? 0 : box.vx * 0.99;
+          k.vy = box.vy;
+        }
+        if (m.wall !== 0) k.vx = -k.vx * 0.4;
         if (k.y < -3) k.taken = true;
       }
-      if (age > L.pickupDelay && Math.abs(k.x - p.x) < 0.8 && k.y > p.y - 0.5 && k.y < p.y + p.h) this.take(k);
+      const reach = flying ? Math.hypot(k.x - p.x, k.y - (p.y + p.h / 2)) < 0.8 : Math.abs(k.x - p.x) < 0.8 && k.y > p.y - 0.5 && k.y < p.y + p.h;
+      if (age > delay && reach) this.take(k);
     }
     // Rương: chạm vào khi có chìa thì mở, không có chìa thì nhắc
     for (const c of this.chests) {
@@ -1282,8 +1945,10 @@ export class PlatformerSim {
   private take(k: Pickup) {
     const p = this.player;
     k.taken = true;
-    this.fx.push({ kind: "pickup", x: k.x, y: k.y, at: this.time });
-    if (k.drop.kind === "health") {
+    const d = k.drop;
+    const [text, color] = dropLabel(d);
+    this.fx.push({ kind: d.kind === "cred" ? "coin" : "pickup", x: k.x, y: k.y, at: this.time, text, color });
+    if (d.kind === "health") {
       p.hp = Math.min(this.maxHp, p.hp + T.player.healthPickup);
       return;
     }
@@ -1319,19 +1984,44 @@ export class PlatformerSim {
     this.bestCombo = Math.max(this.bestCombo, this.combo);
     this.score += Math.round((e.kind === "boss" ? T.score.boss : T.score.kill) * Math.min(this.combo, T.score.comboCap) * T.difficulty[this.difficulty].reward);
     this.onEvent?.("kill", { enemy: e });
-    if (!e.minion) this.spawnDrops(e.x, e.y + e.h * 0.5, rollEnemyDrops(e.kind, this.loot));
-    this.fx.push({ kind: "boom", x: e.x, y: e.y + e.h / 2, at: this.time });
-    if (e.kind === "boss") this.clear();
-    // Thỉnh thoảng rơi viên máu
-    else if (this.kills % 3 === 0) this.spawnDrops(e.x, e.y + 0.6, [{ kind: "health" }]);
+    const boss = e.kind === "boss";
+    if (!e.minion) this.spawnDrops(e.x, e.y + e.h * 0.5, rollEnemyDrops(e.kind, this.loot), boss ? 1.8 : 1);
+    this.fx.push({ kind: boss ? "bigboom" : "boom", x: e.x, y: e.y + e.h / 2, at: this.time, n: e.kind === "drone" ? 0.7 : boss ? 3 : 1 });
+    if (boss) {
+      // Trùm gục: lính tan biến, mưa đồ rơi vài giây (tự bay về người chơi) rồi mới qua màn
+      for (const m of this.enemies) if (m.alive && m.minion) (m.alive = false, (m.deadAt = this.time));
+      this.shots = this.shots.filter((x) => !x.enemy);
+      this.player.invuln = 99;
+      this.clearAt = this.time + T.loot.bossOutro;
+      return;
+    }
+    // Viên máu: thỉnh thoảng rơi, máu càng thấp càng hay rơi
+    const low = this.player.hp < this.maxHp * 0.4;
+    if (this.fxRng() < T.loot.healthChance + (low ? T.loot.healthLowBonus : 0)) this.spawnDrops(e.x, e.y + 0.6, [{ kind: "health" }]);
+  }
+
+  /** Nhát chém trúng: địch thường khựng lại và bị đánh bật (nhát kết liễu bật xa), đòn kết liễu rung màn hình */
+  private meleeImpact(e: Enemy, s: Shot) {
+    const M = T.melee;
+    const k = s.knock ?? 0;
+    if (s.melee === 2) this.fx.push({ kind: "crit", x: e.x, y: e.y + e.h / 2, at: this.time });
+    if (!e.alive || e.kind === "boss") return;
+    e.staggerUntil = this.time + (s.melee === 2 ? M.stagger * 2 : M.stagger);
+    const dx = s.dx ?? Math.sign(e.x - this.player.x);
+    const dy = s.dy ?? 0;
+    e.vx = dx * k;
+    if (this.mode === "topdown") e.vy = dy * k;
+    else if (s.melee === 2 && e.kind !== "drone") e.vy = Math.max(e.vy, 6);
   }
 
   /** Trùm gọi lính (zombie / hồn ma) ra quanh mình */
-  private summon(e: Enemy, n: number) {
+  private summon(e: Enemy, n: number, kind: "zombie" | "drone" = "zombie") {
     const alive = this.enemies.filter((x) => x.minion && x.alive).length;
     for (let i = 0; i < Math.min(n, T.boss.maxMinions - alive); i++) {
-      const m = makeEnemy(this.nextId++, "zombie", e.x + (i % 2 ? 2.5 : -2.5), e.y + (this.mode === "topdown" ? (i % 2 ? 1.5 : -1.5) : 0.5));
+      const air = kind === "drone" && this.mode !== "topdown";
+      const m = makeEnemy(this.nextId++, kind, e.x + (i % 2 ? 2.5 : -2.5), e.y + (this.mode === "topdown" ? (i % 2 ? 1.5 : -1.5) : air ? 3 + i : 0.5));
       if (this.mode === "topdown") m.h = m.w;
+      if (air) m.trait = this.mode === "shmup" ? "basic" : "laser";
       m.minion = true;
       m.awake = true;
       m.hp = m.maxHp = 3;
@@ -1368,8 +2058,17 @@ export class PlatformerSim {
           e.timer = 3;
           e.vx = e.facing * B.chargeSpeed * rage;
         } else if (e.move === "charge") {
-          e.move = "walk";
-          e.timer = 2;
+          // Nổi điên: lao tiếp một lần nữa ngay sau cú lao hụt
+          if (e.phase === 2 && e.broken === 0) {
+            e.broken = 1;
+            e.move = "windup";
+            e.timer = (B.windup * 0.6) / rage;
+            e.facing = dx > 0 ? 1 : -1;
+          } else {
+            e.broken = 0;
+            e.move = "walk";
+            e.timer = 2;
+          }
         } else {
           e.move = "windup";
           e.timer = B.windup / rage;
@@ -1397,6 +2096,11 @@ export class PlatformerSim {
           e.move = "walk";
           e.timer = B.stunTime + 1.2;
           this.fx.push({ kind: "slam", x: e.x + e.facing * 1.2, y: e.y + 1, at: this.time });
+          e.broken = 0;
+          // Nổi điên: đâm tường bắn văng mảnh vỡ thành vòng cung
+          if (e.phase === 2)
+            for (let k = 0; k < 6; k++)
+              this.shots.push({ x: e.x, y: e.y + 2.6, vx: -e.facing * (1.5 + k * 1.1), vy: 9 + (k % 2) * 2, r: 0.26, dmg: 2, pierce: false, life: 3, enemy: true, level: 1, kind: "shard", grav: 22 });
         }
       }
       this.keepInArena(e);
@@ -1414,9 +2118,13 @@ export class PlatformerSim {
           e.timer = B.appearTime;
           e.firedAt = this.time;
           if (Math.floor(this.time) % 2 === 0) this.summon(e, 2);
+          const H = T.bossKit.hands;
           for (let k = 0; k < 5; k++) {
             const a = (k / 4 - 0.5) * 1.2 + (dx > 0 ? 0 : Math.PI);
-            this.shots.push({ x: e.x, y: e.y + 2, vx: Math.cos(a) * 8, vy: Math.sin(a) * 8, r: 0.3, dmg: T.enemy.boss.shotDamage, pierce: false, life: 2.5, enemy: true, level: 2 });
+            // Nổi điên: cầu lệ chậm mà đuổi theo người chơi
+            const orb = e.phase === 2 && k % 2 === 0;
+            const sp = orb ? H.orbSpeed : 8;
+            this.shots.push({ x: e.x, y: e.y + 2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: orb ? 0.38 : 0.3, dmg: T.enemy.boss.shotDamage, pierce: false, life: orb ? 4.5 : 2.5, enemy: true, level: 2, kind: "orb", home: orb ? H.orbHome : undefined });
           }
         } else {
           e.move = "vanish";
@@ -1450,7 +2158,7 @@ export class PlatformerSim {
       }
       if (e.move === "breath" && this.time - e.firedAt > 0.09) {
         e.firedAt = this.time;
-        const a = Math.atan2(p.y + 1 - (e.y + 1), p.x - e.x) + Math.sin(this.time * 9) * 0.25;
+        const a = Math.atan2(p.y + 1 - (e.y + 1), p.x - e.x) + Math.sin(this.time * (e.phase === 2 ? 5 : 9)) * (e.phase === 2 ? 0.5 : 0.25);
         this.shots.push({ x: e.x - 1.5, y: e.y + 1, vx: Math.cos(a) * 12, vy: Math.sin(a) * 12, r: 0.32, dmg: 2, pierce: false, life: 1.6, enemy: true, level: 2 });
       }
       return;
@@ -1484,7 +2192,30 @@ export class PlatformerSim {
       e.guard = !stunned;
       e.weakMul = stunned ? B.stunMul : 1;
       if (stunned) {
-        e.cue = "CHUỲ KẸT DƯỚI ĐẤT · ĐÁNH NGAY!";
+        e.cue = e.move === "idle" ? "ĐÂM TƯỜNG CHOÁNG · ĐÁNH NGAY!" : "CHUỲ KẸT DƯỚI ĐẤT · ĐÁNH NGAY!";
+        return;
+      }
+      if (e.move === "charge") {
+        // Lốc xoáy: gồng rồi lao theo đường đã báo; đâm vào tường thì choáng (dụ nó lao vào tường)
+        const S = T.bossKit.spin;
+        const k = this.time - e.tele;
+        e.cue = "LỐC XOÁY · LƯỚT SANG BÊN!";
+        if (k > S.tele && k < S.tele + S.time) {
+          e.vx = e.aimX * S.speed;
+          e.vy = e.aimY * S.speed;
+          this.move(e, dt);
+          if (e.vx === 0 && e.vy === 0) {
+            e.move = "idle";
+            e.tele = -9;
+            e.stunUntil = this.time + B.stunTime;
+            e.timer = B.stunTime + 1;
+            this.fx.push({ kind: "slam", x: e.x, y: e.y, at: this.time });
+          }
+        } else if (k >= S.tele + S.time) {
+          e.move = "walk";
+          e.tele = -9;
+          e.timer = 1.2;
+        }
         return;
       }
       if (e.move === "windup") {
@@ -1495,6 +2226,14 @@ export class PlatformerSim {
           e.stunUntil = this.time + B.stunTime + 0.8;
           this.fx.push({ kind: "slam", x: e.x, y: e.y, at: this.time });
           for (let k = 0; k < 14; k++) shoot(T.enemy.boss.waveSpeed, T.enemy.boss.waveDamage, (k / 14) * Math.PI * 2, 0.35, 2);
+          // Nổi điên: cú đập để lại vòng lửa quanh mình
+          if (e.phase === 2) {
+            const F = T.bossKit.fire;
+            for (let k = 0; k < F.n; k++) {
+              const a = (k / F.n) * Math.PI * 2 + this.time;
+              this.warnCircle("fire", e.x + Math.cos(a) * 3, e.y + e.h / 2 + Math.sin(a) * 3, F.r, 0.5, F.dur, F.dmg);
+            }
+          }
         }
         return;
       }
@@ -1516,24 +2255,208 @@ export class PlatformerSim {
     e.vx = (dx / d) * 0.8;
     e.vy = (dy / d) * 0.8;
     this.move(e, dt);
+    const K = T.bossKit;
+    const cx = e.x;
+    const cy = e.y + e.h / 2;
     if (e.timer <= 0) {
       if (e.move === "appear") {
         e.move = "rest";
         e.timer = B.eyeClosed / rage;
         this.summon(e, 2);
-        for (let k = 0; k < 12; k++) shoot(T.enemy.boss.waveSpeed * 0.7, T.enemy.boss.waveDamage, (k / 12) * Math.PI * 2, 0.3, 2);
       } else {
+        // Mở mắt: tia mắt khoá về phía người chơi, báo trước bằng vạch đỏ
         e.move = "appear";
         e.timer = B.eyeOpen;
+        const E = K.eyeBeam;
+        e.aimX = dx / d;
+        e.aimY = dy / d;
+        e.tele = this.time;
+        this.warnLine("laser", cx + e.aimX, cy + e.aimY, cx + e.aimX * E.length, cy + e.aimY * E.length, E.width, E.tele, E.dur, E.dmg);
       }
     }
     e.guard = e.move !== "appear";
     e.weakMul = e.move === "appear" ? B.eyeMul : 1;
-    e.cue = e.guard ? "Mắt nhắm · né đạn, chờ mắt mở" : "MẮT MỞ · BẮN VÀO MẮT (×2)!";
-    if (!e.guard && this.time - e.firedAt > 0.6) {
+    e.cue = e.guard ? "Mắt nhắm · xoắn ốc đạn, né khe hở" : "MẮT MỞ · NÉ TIA MẮT RỒI BẮN (×2)!";
+    if (e.guard && this.time - e.firedAt > K.spiral.every) {
+      // Mắt nhắm: xoắn ốc đạn quay đều (nổi điên thì thêm một nhánh)
       e.firedAt = this.time;
-      shoot(T.enemy.boss.shotSpeed, T.enemy.boss.shotDamage, 0, 0.3, 1);
+      const S = K.spiral;
+      const arms = S.arms + (e.phase === 2 ? 1 : 0);
+      for (let k = 0; k < arms; k++) {
+        const a = this.time * S.turn + (k / arms) * Math.PI * 2;
+        this.shots.push({ x: cx, y: cy, vx: Math.cos(a) * S.speed, vy: Math.sin(a) * S.speed, r: 0.28, dmg: S.dmg, pierce: false, life: 3.5, enemy: true, level: 2, kind: "orb" });
+      }
     }
+  }
+
+  private call(text: string, color = "#ff4a64") {
+    this.callout = { text, at: this.time, color };
+  }
+
+  /**
+   * Chiêu đặc trưng của từng trùm, ra xen giữa vòng đánh chính (khi trùm đang thủ, không phải lúc bị choáng):
+   * mọi chiêu đều báo trước bằng vùng đỏ để người chơi học cách né. Máu dưới nửa: nổi điên (giai đoạn 2).
+   */
+  private bossSpecials(e: Enemy) {
+    const K = T.bossKit;
+    const p = this.player;
+    const style = this.def.bossStyle ?? "brute";
+    const [ax, bx] = this.def.bossArena;
+    const r = this.fxRng;
+    if (e.phase === 1 && e.hp < e.maxHp / 2) {
+      e.phase = 2;
+      e.atkAt = this.time + 1.2;
+      this.call(`${this.bossTitle} NỔI ĐIÊN!`);
+      this.fx.push({ kind: "bigboom", x: e.x, y: e.y + e.h / 2, at: this.time, n: 0.6 });
+      if (style === "dragon" || style === "overlord") this.summon(e, 2, "drone");
+      return;
+    }
+    if (this.time < e.stunUntil || this.time < e.atkAt || e.atkAt === 0) return;
+    const mul = e.phase === 2 ? K.phase2Mul : 1;
+    const n = e.atkN++;
+    switch (style) {
+      case "brute":
+      case "charger": {
+        if (e.move === "windup" || e.move === "charge") {
+          e.atkAt = this.time + 0.4;
+          e.atkN--;
+          return;
+        }
+        // Mưa tên lửa: các cột đỏ quanh người chơi, đứng vào khe giữa hai cột
+        const R = K.rain;
+        const cols = R.cols + (e.phase === 2 ? 2 : 0);
+        const span = (cols - 1) * R.gap;
+        const x0 = THREE_clamp(p.x - span / 2 + (r() - 0.5) * R.gap, ax + 1, Math.max(ax + 1, bx - span));
+        for (let i = 0; i < cols; i++) {
+          const x = x0 + i * R.gap;
+          const gy = this.groundBelow(x, e.y + 4);
+          this.warnRect("rock", x - 0.6, gy, x + 0.6, gy + R.height, R.warn + i * 0.07, R.dur, R.dmg);
+        }
+        this.call("MƯA TÊN LỬA · ĐỨNG VÀO KHE HỞ!", "#ffb03d");
+        e.atkAt = this.time + R.every * mul;
+        return;
+      }
+      case "phantom": {
+        // Bàn tay ma trồi lên đúng chỗ người chơi đang đứng, từng nhịp một (phải chạy liên tục)
+        const H = K.hands;
+        const burst = H.n + (e.phase === 2 ? 2 : 0);
+        const k = n % (burst + 1);
+        if (k === burst) {
+          e.atkAt = this.time + 3.6 * mul;
+          return;
+        }
+        if (k === 0) this.call("BÀN TAY MA · CHẠY LIÊN TỤC!", "#c27dff");
+        const x = THREE_clamp(p.x + p.vx * 0.25, ax + 1, bx);
+        const gy = this.groundBelow(x, p.y + 1);
+        this.warnRect("hands", x - H.w / 2, gy, x + H.w / 2, gy + H.h, H.warn, H.dur, H.dmg);
+        e.atkAt = this.time + H.every;
+        return;
+      }
+      case "dragon": {
+        const half = T.shmup.viewHalf;
+        if (n % 2 === 0) {
+          // Mưa pha lê: cột từ trời xuống khắp khung hình, bay vào khe
+          const C = K.crystal;
+          const cols = C.cols + (e.phase === 2 ? 1 : 0);
+          const left = this.scrollX - half + 1.5;
+          const step = (half * 2 - 6) / cols;
+          const off = r() * step;
+          for (let i = 0; i < cols; i++) {
+            const x = left + off + i * step;
+            this.warnRect("crystal", x - C.w / 2, 0, x + C.w / 2, this.height, C.warn + i * 0.06, C.dur, C.dmg);
+          }
+          this.call("MƯA PHA LÊ · BAY VÀO KHE!", "#7ff3ff");
+          e.atkAt = this.time + C.every * mul;
+        } else {
+          // Tường đạn từ phía rồng: chừa một khe hở
+          const W = K.wall;
+          const gap0 = 1 + r() * Math.max(1, this.height - W.gap - 3);
+          for (let y = 0.8; y < this.height - 1.5; y += W.step) {
+            if (y > gap0 && y < gap0 + W.gap) continue;
+            this.shots.push({ x: e.x - 1.6, y, vx: -W.speed, vy: 0, r: 0.3, dmg: W.dmg, pierce: false, life: 5, enemy: true, level: 2, kind: "shard" });
+          }
+          this.call("TƯỜNG VẢY · TÌM KHE HỞ!", "#ffd23d");
+          e.atkAt = this.time + W.every * mul;
+        }
+        return;
+      }
+      case "overlord": {
+        const gy = this.groundBelow((ax + bx) / 2, e.y + 1);
+        if (e.phase === 2 && n % 2 === 1) {
+          // Sàn điện: nửa số ô sàn xen kẽ bị điện giật, đứng vào ô an toàn
+          const F = K.floor;
+          const w = (bx + 1 - ax) / F.segs;
+          const odd = Math.floor(r() * 2);
+          for (let i = 0; i < F.segs; i++) if (i % 2 === odd) this.warnRect("elec", ax + i * w, gy, ax + (i + 1) * w, gy + 0.8, F.warn, F.dur, F.dmg);
+          this.call("SÀN ĐIỆN · ĐỨNG VÀO Ô TỐI!", "#5ab4ff");
+          e.atkAt = this.time + F.every * mul;
+          if (n % 4 === 3) this.summon(e, 2, "drone");
+        } else {
+          // Tia laser quét sát sàn khắp phòng: nhảy qua đúng lúc
+          const B = K.beam;
+          this.warnRect("laser", ax, gy, bx + 1, gy + B.h, B.warn, B.dur, B.dmg);
+          this.call("LASER QUÉT SÀN · NHẢY!", "#ff2fd0");
+          e.atkAt = this.time + B.every * mul;
+        }
+        return;
+      }
+      case "armored": {
+        if (e.move === "windup" || e.move === "charge") {
+          e.atkAt = this.time + 0.4;
+          e.atkN--;
+          return;
+        }
+        if (n % 2 === 0) {
+          // Đá rơi: vòng đỏ quanh người chơi
+          const R = K.rocks;
+          const cnt = R.n + (e.phase === 2 ? 2 : 0);
+          for (let i = 0; i < cnt; i++) {
+            const a = r() * Math.PI * 2;
+            const d = i === 0 ? 0 : 1 + r() * R.spread;
+            this.warnCircle("rock", p.x + Math.cos(a) * d, p.y + p.h / 2 + Math.sin(a) * d, R.r, R.warn + i * 0.08, R.dur, R.dmg);
+          }
+          this.call("ĐÁ RƠI · NÉ VÒNG ĐỎ!", "#ffb03d");
+          e.atkAt = this.time + R.every * mul;
+        } else {
+          // Lốc xoáy: gồng rồi lao thẳng tới chỗ người chơi (giáp xoay, đạn bật ra)
+          e.move = "charge";
+          e.tele = this.time;
+          e.aimX = p.x - e.x;
+          e.aimY = p.y - e.y;
+          const l = Math.hypot(e.aimX, e.aimY) || 1;
+          e.aimX /= l;
+          e.aimY /= l;
+          const S = K.spin;
+          this.warnLine("shock", e.x, e.y + e.h / 2, e.x + e.aimX * S.speed * S.time, e.y + e.h / 2 + e.aimY * S.speed * S.time, 1.6, S.tele, S.time, S.dmg);
+          this.call("LỐC XOÁY · LƯỚT SANG BÊN!", "#ff6a2a");
+          e.atkAt = this.time + 4.5 * mul;
+        }
+        return;
+      }
+      case "watcher": {
+        if (e.phase === 1) {
+          e.atkAt = this.time + 999;
+          return;
+        }
+        // Giai đoạn 2: xúc tu trồi lên đuổi theo người chơi
+        const X = K.tentacle;
+        const burst = X.n + 1;
+        const k = n % (burst + 1);
+        if (k === burst) {
+          e.atkAt = this.time + 3.4;
+          return;
+        }
+        if (k === 0) this.call("XÚC TU · ĐỪNG ĐỨNG YÊN!", "#7dff5a");
+        this.warnCircle("tentacle", p.x + p.vx * 0.3, p.y + p.h / 2 + p.vy * 0.3, X.r, X.warn, X.dur, X.dmg);
+        e.atkAt = this.time + X.every;
+        return;
+      }
+    }
+  }
+
+  /** Tên trùm ngắn cho lời hô (HUD có tên đầy đủ) */
+  private get bossTitle() {
+    return { brute: "TRÙM", charger: "ROBOT REAPER", phantom: "LA MADRE", dragon: "RỒNG VÀNG", overlord: "DIRECTOR VANE", armored: "GOBLIN HÀM SẮT", watcher: "KẺ CANH GIỮ" }[this.def.bossStyle ?? "brute"];
   }
 
   private keepInArena(e: Enemy) {
@@ -1611,5 +2534,26 @@ export function makeEnemy(id: number, kind: EnemyKind, x: number, y: number): En
     broken: 0,
     skillAt: -9 + (id % 4),
     minion: false,
+    staggerUntil: -9,
+    trait: "basic",
+    tele: -9,
+    aimX: 0,
+    aimY: 0,
+    shieldHp: 0,
+    phase: 1,
+    atkAt: 0,
+    atkN: 0,
   };
 }
+
+/** Chữ bay lên khi nhặt đồ */
+function dropLabel(d: LootDrop): [string, string] {
+  if (d.kind === "cred") return [`+${d.amount}`, "#ffd23d"];
+  if (d.kind === "health") return [`+${T.player.healthPickup} HP`, "#7dff9a"];
+  if (d.kind === "chestKey") return ["+1 CHÌA RƯƠNG", "#7dffb0"];
+  if (d.kind === "keyShard") return ["+1 MẢNH CHÌA", "#e0a060"];
+  if (d.kind === "part") return [d.part.name.toUpperCase(), RARITY_COLOR[d.part.rarity]];
+  return [GEAR[d.gear].name.toUpperCase(), RARITY_COLOR[GEAR[d.gear].rarity]];
+}
+
+const RARITY_COLOR: Record<string, string> = { common: "#c9d0d8", rare: "#5ab4ff", epic: "#c27dff", legendary: "#ffc23d", mythic: "#ff4a64" };

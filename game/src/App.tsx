@@ -41,6 +41,8 @@ import { DuelCanvas, DuelHud } from "./level/DuelScene";
 import { useDuel } from "./level/duelSession";
 import { KartCanvas, KartHud, useKart } from "./level/KartScene";
 import { enterLevel, playLevel, useLevel } from "./level/session";
+import { levelInput } from "./level/levelInput";
+import { fxDebug } from "./level/combatFx";
 
 const KEYMAP = [
   { name: "forward", keys: ["ArrowUp", "KeyW"] },
@@ -103,7 +105,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel, playLevel },
+      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug },
     });
   }
   return null;

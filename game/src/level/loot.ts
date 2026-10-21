@@ -22,13 +22,13 @@ export type ChestTier = "bronze" | "silver" | "gold";
 export const LOOT = {
   /** Mỗi loại địch: xác suất rơi linh kiện, CRED, Chìa rương, mảnh Chìa mùa */
   enemy: {
-    trooper: { part: 0.14, cred: 0.55, chestKey: 0.07, keyShard: 0.05 },
-    drone: { part: 0.1, cred: 0.5, chestKey: 0.05, keyShard: 0.04 },
-    zombie: { part: 0.12, cred: 0.5, chestKey: 0.06, keyShard: 0.05 },
+    trooper: { part: 0.16, cred: 1, chestKey: 0.07, keyShard: 0.05 },
+    drone: { part: 0.12, cred: 1, chestKey: 0.05, keyShard: 0.04 },
+    zombie: { part: 0.14, cred: 1, chestKey: 0.06, keyShard: 0.05 },
     boss: { part: 1, cred: 1, chestKey: 1, keyShard: 1 },
   } satisfies Record<EnemyKind, { part: number; cred: number; chestKey: number; keyShard: number }>,
-  /** CRED rơi mỗi lần (trùm nhân 10) */
-  cred: [2, 6] as [number, number],
+  /** CRED rơi mỗi lần hạ địch (trùm nhân 10); vỡ ra thành nhiều đồng xu */
+  cred: [4, 9] as [number, number],
   /** Trùm: số linh kiện và độ hiếm tối thiểu */
   bossParts: 2,
   bossMinRarity: "epic" as Rarity,

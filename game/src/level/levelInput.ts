@@ -1,4 +1,4 @@
-// Bàn phím và nút cảm ứng cho màn đi ngang. A/D hoặc ←/→ chạy, Space nhảy, J bắn (giữ để nạp), K lướt.
+// Bàn phím và nút cảm ứng cho màn đi ngang. A/D hoặc ←/→ chạy, Space nhảy, J bắn (giữ để nạp), K lướt, L chém.
 
 import type { Input } from "./platformer";
 
@@ -10,17 +10,18 @@ const KEYS: Record<keyof Input, string[]> = {
   jump: ["Space", "KeyW", "ArrowUp"],
   shoot: ["KeyJ", "KeyX"],
   dash: ["KeyK", "ShiftLeft", "ShiftRight", "KeyZ"],
+  melee: ["KeyL", "KeyC"],
 };
 
 const down = new Set<string>();
 /** Nút cảm ứng đang giữ */
-const touch: Input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, dash: false };
+const touch: Input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, dash: false, melee: false };
 
 export const levelInput = {
   paused: false,
   state(): Input {
     const k = (name: keyof Input) => touch[name] || KEYS[name].some((c) => down.has(c));
-    return { left: k("left"), right: k("right"), up: k("up"), down: k("down"), jump: k("jump"), shoot: k("shoot"), dash: k("dash") };
+    return { left: k("left"), right: k("right"), up: k("up"), down: k("down"), jump: k("jump"), shoot: k("shoot"), dash: k("dash"), melee: k("melee") };
   },
   setTouch(name: keyof Input, on: boolean) {
     touch[name] = on;

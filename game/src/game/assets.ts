@@ -536,8 +536,8 @@ export const models = {
 // Âm thanh: WebAudio, chỉ bật sau tương tác đầu tiên của người chơi (chính sách autoplay).
 
 type SfxName = "blaster" | "repeater" | "enemyAttack" | "enemyDestroy" | "enemyHurt";
-/** Âm báo tổng hợp bằng oscillator, không cần file: nhặt đồ, biến hình */
-type SynthName = "pickup" | "transform";
+/** Âm báo tổng hợp bằng oscillator, không cần file: nhặt đồ, biến hình, đồng xu, vút chém, đòn kết liễu, còi báo chiêu */
+type SynthName = "pickup" | "transform" | "coin" | "swing" | "crit" | "warn";
 
 const SFX_SOURCES: Record<SfxName, string> = {
   blaster: sfxBlaster,
@@ -578,7 +578,7 @@ if (typeof window !== "undefined") {
 
 /** Phát hiệu ứng âm thanh; `volume` giảm dần theo khoảng cách do nơi gọi tự tính. */
 export function playSfx(name: SfxName | SynthName, volume = 1) {
-  if (name === "pickup" || name === "transform") return playSynth(name, volume);
+  if (name === "pickup" || name === "transform" || name === "coin" || name === "swing" || name === "crit" || name === "warn") return playSynth(name, volume);
   const ctx = audio;
   const buffer = buffers.get(name);
   if (!ctx || !buffer || volume <= 0.01) return;
@@ -596,6 +596,26 @@ function playSynth(name: SynthName, volume: number) {
   const ctx = audio;
   if (!ctx || volume <= 0.01) return;
   const t0 = ctx.currentTime;
+  if (name === "swing" || name === "crit") return playSweep(ctx, t0, name, volume);
+  if (name === "coin" || name === "warn") {
+    // Xu: hai nốt cao leng keng; còi: hai tiếng bíp trầm báo chiêu
+    const seq = name === "coin" ? [1976 + Math.random() * 120, 2637] : [440, 330, 440, 330];
+    const step = name === "coin" ? 0.05 : 0.11;
+    seq.forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = name === "coin" ? "square" : "sawtooth";
+      const start = t0 + i * step;
+      osc.frequency.setValueAtTime(f, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(Math.min(1, volume) * (name === "coin" ? 0.05 : 0.06), start + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + step * 1.8);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + step * 2);
+    });
+    return;
+  }
   const notes = name === "pickup" ? [880, 1175, 1568] : [110, 165, 220, 330, 440];
   const step = name === "pickup" ? 0.07 : 0.22;
   notes.forEach((f, i) => {
@@ -611,4 +631,38 @@ function playSynth(name: SynthName, volume: number) {
     osc.start(start);
     osc.stop(start + step * 2.4);
   });
+}
+
+/** Tiếng vút (chém) và tiếng nện trầm (đòn kết liễu): nhiễu trắng lọc dải quét tần số */
+function playSweep(ctx: AudioContext, t0: number, name: "swing" | "crit", volume: number) {
+  const len = name === "swing" ? 0.16 : 0.32;
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * len), ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.Q.value = name === "swing" ? 1.4 : 0.8;
+  filter.frequency.setValueAtTime(name === "swing" ? 900 : 300, t0);
+  filter.frequency.exponentialRampToValueAtTime(name === "swing" ? 3800 : 80, t0 + len);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(Math.min(1, volume) * (name === "swing" ? 0.22 : 0.5), t0 + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start(t0);
+  src.stop(t0 + len);
+  if (name === "crit") {
+    const osc = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(140, t0);
+    osc.frequency.exponentialRampToValueAtTime(40, t0 + 0.25);
+    g2.gain.setValueAtTime(Math.min(1, volume) * 0.5, t0);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+    osc.connect(g2).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.32);
+  }
 }

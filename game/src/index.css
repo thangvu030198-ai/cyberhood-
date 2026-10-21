@@ -1913,10 +1913,22 @@ canvas {
 .svc--story li.is-done b { color: #7dffb0; }
 @media (max-width: 600px) { .svc { grid-template-columns: 1fr; } .spin { width: 220px; height: 220px; } }
 
-.lv__story { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); width: min(640px, 90vw); padding: 12px 18px; background: #0a0618dd; border-left: 3px solid #ff2fd0; color: #e8dcff; font-size: 15px; line-height: 1.45; animation: story-in 0.6s ease-out; }
+.lv__story { position: absolute; left: 50%; top: 46px; transform: translateX(-50%); width: min(640px, 90vw); padding: 12px 18px; background: #0a0618dd; border-left: 3px solid #ff2fd0; color: #e8dcff; font-size: 15px; line-height: 1.45; animation: story-in 0.6s ease-out; }
 .lv__story small { display: block; color: #ff8ae8; font: 700 12px var(--font-mono, monospace); letter-spacing: 0.08em; margin-bottom: 4px; }
 .lv__story p { margin: 0; }
 .lv__bossline { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); font: 900 22px/1.3 var(--font-display, sans-serif); color: #ff4a64; text-shadow: 0 0 14px #ff0040; text-align: center; width: min(720px, 92vw); animation: story-in 0.4s ease-out; }
 .lv__outro { color: #9fe8ff; font-style: italic; }
 @keyframes story-in { from { opacity: 0; transform: translate(-50%, 10px); } }
 .gbag__grid { align-content: start; align-self: start; grid-auto-rows: min-content; }
+
+/* Lời hô chiêu của trùm: chữ to giữa màn hình, bật vào rồi mờ dần */
+.lv__callout { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font: 900 clamp(20px, 3.4vw, 40px)/1.1 var(--font-display, "Bai Jamjuree", sans-serif); letter-spacing: 0.06em; white-space: nowrap; pointer-events: none; animation: callout-in 1.8s ease-out forwards; -webkit-text-stroke: 1px #0a0618; }
+@keyframes callout-in { 0% { opacity: 0; transform: translateX(-50%) scale(1.6); } 10% { opacity: 1; transform: translateX(-50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
+/* Bộ đếm CRED nhặt trong màn: đồng xu vàng, số nảy lên mỗi lần tăng */
+.lv__cred { position: absolute; left: 64px; top: 46px; display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 6px; background: linear-gradient(90deg, #0a0618dd, #0a061800); border-left: 2px solid #ffd23d; pointer-events: none; }
+.lv__cred i { width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff6b0, #ffd23d 45%, #b07800); box-shadow: 0 0 10px #ffb000; animation: coin-spin 1.6s linear infinite; }
+.lv__cred b { font: 800 20px/1 var(--font-mono, monospace); color: #ffe27a; text-shadow: 0 0 8px #ffb000; animation: cred-pop 0.35s ease-out; }
+.lv__cred small { font: 600 11px/1 var(--font-mono, monospace); color: #ffd23d99; letter-spacing: 0.1em; }
+@keyframes coin-spin { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.15); } }
+@keyframes cred-pop { 0% { transform: scale(1.6); color: #fff; } 100% { transform: scale(1); } }
+.lv__melee { background: #ff6a2a33 !important; border-color: #ff6a2a !important; }

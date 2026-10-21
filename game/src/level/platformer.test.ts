@@ -51,7 +51,7 @@ describe("platformer: di chuyển", () => {
       top = Math.max(top, sim.player.y);
       return { jump: f < 3 };
     });
-    expect(top - 2).toBeLessThan(1.2);
+    expect(top - 2).toBeLessThan(1.5);
   });
 
   it("nhảy qua vực rộng 3 ô khi chạy, lướt rồi nhảy qua vực 6 ô", () => {
@@ -108,6 +108,21 @@ describe("platformer: di chuyển", () => {
     play(s2, 30, { left: true });
     expect(s2.player.wall).toBe(-1);
     expect(s2.player.vy).toBeCloseTo(-T.player.wallSlide, 3);
+  });
+
+  it("giữ hướng vào một bức tường và bấm nhảy liên tục thì leo lên được chính bức tường đó", () => {
+    const sim = ready(testLevel((b) => b.ground(10, 11, 13)));
+    sim.player.x = 12.6;
+    let top = 0;
+    let pressedAt = -99;
+    play(sim, 600, (f) => {
+      const p = sim.player;
+      top = Math.max(top, p.y);
+      if ((p.wall !== 0 || f === 0) && f - pressedAt > 12) pressedAt = f;
+      return { left: true, jump: f - pressedAt < 10 };
+    });
+    // Leo qua đỉnh tường cao 13 rồi đứng trên đó
+    expect(top).toBeGreaterThan(12.9);
   });
 
   it("đứng được trên bậc một chiều và nhảy xuyên từ dưới lên", () => {

@@ -2,6 +2,7 @@
 // Đơn vị: 1 ô = 1 mét. Trục x sang phải, trục y lên trên. Hiển thị 3D nằm ở LevelScene.tsx.
 
 import { LEVEL_TUNING as T } from "./levelTuning";
+import type { ThemeId } from "./themes";
 
 export type Input = { left: boolean; right: boolean; jump: boolean; shoot: boolean; dash: boolean };
 export const NO_INPUT: Input = { left: false, right: false, jump: false, shoot: false, dash: false };
@@ -54,8 +55,8 @@ export type LevelDef = {
   pickups: [number, number][];
   /** Vùng đấu trùm: [xMin, xMax]; đi vào thì cửa đóng lại */
   bossArena: [number, number];
-  /** Màu / bối cảnh để LevelScene trang trí */
-  theme: "quarantine";
+  /** Bảng màu / bối cảnh để LevelScene trang trí (themes.ts) */
+  theme: ThemeId;
 };
 
 export type Status = "intro" | "playing" | "dead" | "cleared";
@@ -201,8 +202,8 @@ export class PlatformerSim {
     return { ground, wall };
   }
 
-  private touchingWall(x: number, y: number, w: number, h: number, dir: -1 | 1) {
-    return this.hits(x + dir * 0.06, y + 0.2, w, h - 0.4);
+  private touchingWall(x: number, y: number, w: number, h: number, dir: -1 | 1, reach = 0.06) {
+    return this.hits(x + dir * reach, y + 0.2, w, h - 0.4);
   }
 
   private standing(x: number, y: number, w: number) {
@@ -327,11 +328,14 @@ export class PlatformerSim {
         p.jumpBuffer = 0;
         p.dashCarry = dashing || input.dash;
         p.dashTime = 0;
-      } else if (p.wall !== 0 || this.touchingWall(p.x, p.y, p.w, p.h, -1) || this.touchingWall(p.x, p.y, p.w, p.h, 1)) {
-        const side = p.wall !== 0 ? p.wall : this.touchingWall(p.x, p.y, p.w, p.h, 1) ? 1 : -1;
+      } else if (p.wall !== 0 || this.touchingWall(p.x, p.y, p.w, p.h, -1, P.wallGrace) || this.touchingWall(p.x, p.y, p.w, p.h, 1, P.wallGrace)) {
+        // Cách tường một chút vẫn nhảy tường được (đỡ trượt tay)
+        const side = p.wall !== 0 ? p.wall : this.touchingWall(p.x, p.y, p.w, p.h, 1, P.wallGrace) ? 1 : -1;
         p.vy = P.wallJumpVel;
         const dashJump = input.dash;
-        p.vx = -side * (dashJump ? P.dashSpeed : P.wallKick);
+        // Giữ hướng vào tường: bật ra ít để leo tiếp chính bức tường đó; bấm hướng ngược lại: bật xa
+        const away = dir === -side;
+        p.vx = -side * (dashJump ? P.dashSpeed : away ? P.wallKickAway : P.wallKick);
         p.facing = -side as 1 | -1;
         p.wallJumpLock = P.wallJumpLock;
         p.jumpBuffer = 0;
@@ -339,7 +343,12 @@ export class PlatformerSim {
       }
     }
     // Nhả nút nhảy sớm thì nhảy thấp (điều khiển độ cao)
-    if (!input.jump && p.vy > P.jumpCut) p.vy = P.jumpCut;
+    // Độ cao nhảy theo thời gian giữ nút: nhả sớm thì trọng lực tăng (hãm dần, không khựng),
+    // gần đỉnh nhảy thì trọng lực giảm để lơ lửng một nhịp, rơi xuống nhanh hơn một chút cho dứt khoát
+    let g = P.gravity;
+    if (p.vy > 0 && !input.jump) g *= P.releaseGravity;
+    else if (input.jump && Math.abs(p.vy) < P.apexBand) g *= P.apexGravity;
+    else if (p.vy < 0) g *= P.fallGravity;
 
     // Lướt trên mặt đất mà rơi khỏi mép: thôi lướt nhưng giữ đà. Lướt trên không: bay ngang
     if (p.dashTime > 0 && !p.onGround && !p.airDashUsed) {
@@ -347,7 +356,7 @@ export class PlatformerSim {
       p.dashCarry = true;
     }
     if (p.dashTime > 0 && !p.onGround) p.vy = 0;
-    else p.vy -= P.gravity * dt;
+    else p.vy -= g * dt;
     p.vy = Math.max(p.wall !== 0 ? -P.wallSlide : -P.maxFall, p.vy);
 
     const wasGround = p.onGround;

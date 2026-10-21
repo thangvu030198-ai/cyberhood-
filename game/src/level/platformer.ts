@@ -7,8 +7,16 @@ import { chestContents, rollEnemyDrops, type ChestTier, type LootContext, type L
 import { freshPity, type PityState } from "../sim/loot";
 import { createRng } from "../sim/rng";
 
-export type Input = { left: boolean; right: boolean; jump: boolean; shoot: boolean; dash: boolean };
-export const NO_INPUT: Input = { left: false, right: false, jump: false, shoot: false, dash: false };
+export type Input = { left: boolean; right: boolean; up: boolean; down: boolean; jump: boolean; shoot: boolean; dash: boolean };
+export const NO_INPUT: Input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, dash: false };
+
+/**
+ * Kiểu chơi của map:
+ * - platform: chạy, nhảy, bắn ngang (Mega Man X)
+ * - climb: leo ngược lên tháp, sương ma dâng từ dưới, chạm sương là mất mạng (Ice Climber / Kid Icarus)
+ * - shmup: cưỡi xe bay, màn hình tự cuộn sang phải, bay tự do bốn hướng, chạm địa hình bị thương (Gradius / Metal Slug)
+ */
+export type PlayMode = "platform" | "climb" | "shmup";
 
 export type Box = { x: number; y: number; w: number; h: number };
 
@@ -77,6 +85,9 @@ export type LevelDef = {
   bossArena: [number, number];
   /** Bảng màu / bối cảnh để LevelScene trang trí (themes.ts) */
   theme: ThemeId;
+  mode?: PlayMode;
+  /** Chế độ leo: phòng trùm chỉ kích hoạt khi lên tới độ cao này */
+  bossFloor?: number;
 };
 
 export type Status = "intro" | "playing" | "dead" | "cleared";
@@ -132,6 +143,12 @@ export class PlatformerSim {
   chests: Chest[] = [];
   /** Chìa rương đang có (mang vào + nhặt được − đã dùng) */
   chestKeys = 0;
+  readonly mode: PlayMode;
+  /** Chế độ leo: mặt sương ma (y); dưới mức này là mất mạng */
+  fogY = -99;
+  private fogFrom = 0;
+  /** Chế độ bay: tâm màn hình đang cuộn tới (x) */
+  scrollX = 0;
   /** Mọi thứ đã nhặt trong màn (trừ viên máu), để trao khi qua màn */
   collected: LootDrop[] = [];
   private loot: LootContext;
@@ -140,6 +157,7 @@ export class PlatformerSim {
   constructor(def: LevelDef, opts: SimOptions = {}) {
     this.loot = { rng: createRng(opts.seed ?? (Date.now() & 0xffffff)), pity: opts.pity ?? freshPity(), mapMultiplier: opts.mapMultiplier ?? 1 };
     this.chestKeys = opts.chestKeys ?? 0;
+    this.mode = def.mode ?? "platform";
     this.chests = (def.chests ?? []).map((c) => ({ ...c, opened: false, lockedHintAt: -99 }));
     this.def = def;
     this.grid = def.rows;
@@ -147,6 +165,7 @@ export class PlatformerSim {
     this.width = Math.max(...def.rows.map((r) => r.length));
     this.checkpoint = def.start;
     this.reset(def.start);
+    this.scrollX = def.start[0] + T.shmup.viewHalf - 3;
     let id = 0;
     this.enemies = def.enemies.map((e) => makeEnemy(id++, e.kind, e.x, e.y));
     this.pickups = def.pickups.map(([x, y]) => ({ x, y, vx: 0, vy: 0, drop: { kind: "health" as const }, taken: false, bornAt: -99 }));
@@ -163,6 +182,10 @@ export class PlatformerSim {
     p.charge = 0;
     p.dashTime = 0;
     p.wall = 0;
+    // Sương ma lùi xuống dưới chỗ hồi sinh, nghỉ một nhịp rồi mới dâng tiếp
+    this.fogY = y - T.climb.startBelow;
+    this.fogFrom = this.time + T.climb.delay;
+    if (this.mode === "shmup") this.scrollX = Math.max(x + T.shmup.viewHalf - 3, this.scrollX - T.shmup.viewHalf);
   }
 
   /** Ô tại cột c, hàng-từ-dưới-lên r */
@@ -291,7 +314,9 @@ export class PlatformerSim {
       return;
     }
 
-    this.updatePlayer(dt, input, pressed);
+    if (this.mode === "shmup") this.updateFlyer(dt, input, pressed);
+    else this.updatePlayer(dt, input, pressed);
+    if (this.mode === "climb") this.updateFog(dt);
     this.updateEnemies(dt);
     this.updateShots(dt);
     this.updatePickups(dt);
@@ -443,6 +468,65 @@ export class PlatformerSim {
 
     // Vào phòng trùm
     const [ax, bx] = this.def.bossArena;
+    if (!this.bossActive && p.x > ax + 1 && p.x < bx && p.y >= (this.def.bossFloor ?? -99)) {
+      this.bossActive = true;
+      const boss = this.enemies.find((e) => e.kind === "boss");
+      if (boss) {
+        boss.awake = true;
+        boss.timer = 1.5;
+      }
+    }
+  }
+
+  /** Leo tháp: sương dâng đều, tụt quá xa thì dâng nhanh hơn để giữ nhịp; vào phòng trùm thì dừng */
+  private updateFog(dt: number) {
+    const C = T.climb;
+    if (this.bossActive || this.time < this.fogFrom) return;
+    const gap = this.player.y - this.fogY;
+    this.fogY += C.speed * (gap > C.catchUpGap ? C.catchUpMul : 1) * dt;
+    if (this.player.y + 0.2 < this.fogY) this.kill();
+  }
+
+  /** Bay: màn hình tự cuộn, bay tự do trong khung hình, chạm địa hình bị thương (không bị kẹt) */
+  private updateFlyer(dt: number, input: Input, pressed: (k: keyof Input) => boolean) {
+    const p = this.player;
+    const S = T.shmup;
+    const [ax, bx] = this.def.bossArena;
+    const stopAt = (ax + bx + 1) / 2;
+    const scrolling = this.scrollX < stopAt;
+    if (scrolling) this.scrollX = Math.min(stopAt, this.scrollX + S.scrollSpeed * dt);
+    const dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const dy = (input.up || input.jump ? 1 : 0) - (input.down ? 1 : 0);
+    const boost = input.dash ? S.boost : 1;
+    p.facing = 1;
+    p.vx = dx * S.speed * boost + (scrolling ? S.scrollSpeed : 0);
+    p.vy = dy * S.speed * boost;
+    p.x = Math.min(this.scrollX + S.viewHalf - 1.5, Math.max(this.scrollX - S.viewHalf + 1, p.x + p.vx * dt));
+    p.y = Math.min(this.height - 2.5, Math.max(0.5, p.y + p.vy * dt));
+    p.onGround = false;
+    p.wall = 0;
+    p.wallNear = 0;
+    p.dashTime = 0;
+    p.knock -= dt;
+    p.invuln -= dt;
+    if (this.hits(p.x, p.y + 0.3, p.w, p.h - 0.6)) this.hurt(S.crashDamage, -1);
+    // Bắn giống chế độ đi bộ: nhấn bắn thường, giữ để nạp
+    p.shootTimer -= dt;
+    if (pressed("shoot")) this.fire(0);
+    if (input.shoot) p.charge += dt;
+    else if (this.prev.shoot) {
+      if (p.charge >= T.shot.chargeFull) this.fire(2);
+      else if (p.charge >= T.shot.chargeMid) this.fire(1);
+      p.charge = 0;
+    }
+    this.def.checkpoints.forEach(([cx, cy], i) => {
+      if (i > this.checkpointIndex && p.x > cx) {
+        this.checkpointIndex = i;
+        this.checkpoint = [cx, Math.max(cy, p.y)];
+        this.fx.push({ kind: "checkpoint", x: cx, y: cy, at: this.time });
+        this.onEvent?.("checkpoint");
+      }
+    });
     if (!this.bossActive && p.x > ax + 1 && p.x < bx) {
       this.bossActive = true;
       const boss = this.enemies.find((e) => e.kind === "boss");
@@ -515,14 +599,14 @@ export class PlatformerSim {
       const dx = p.x - e.x;
       if (e.kind === "trooper") {
         // Tuần tra quanh điểm gốc; thấy người chơi thì quay mặt lại và bắn
-        const sees = Math.abs(dx) < E.trooper.sight && Math.abs(p.y - e.y) < 3;
+        const sees = Math.abs(dx) < E.trooper.sight && (this.mode === "shmup" || Math.abs(p.y - e.y) < 3);
         if (sees) {
           e.facing = dx > 0 ? 1 : -1;
           e.vx = 0;
           if (e.timer <= 0) {
             e.timer = E.trooper.fireEvery;
             e.firedAt = this.time;
-            this.shots.push({ x: e.x + e.facing * 0.7, y: e.y + 1.2, vx: e.facing * E.trooper.shotSpeed, vy: 0, r: 0.18, dmg: E.trooper.shotDamage, pierce: false, life: 3, enemy: true, level: 0 });
+            this.shots.push({ x: e.x + e.facing * 0.7, y: e.y + 1.2, ...this.aim(e.x, e.y + 1.2, e.facing, E.trooper.shotSpeed), r: 0.18, dmg: E.trooper.shotDamage, pierce: false, life: 3, enemy: true, level: 0 });
           }
         } else {
           if (Math.abs(e.x - e.homeX) > E.trooper.patrol) e.facing = e.x > e.homeX ? -1 : 1;
@@ -564,6 +648,15 @@ export class PlatformerSim {
     }
   }
 
+  /** Hướng đạn địch: chế độ bay thì nhắm vào người chơi (người chơi bay trên cao), còn lại bắn ngang */
+  private aim(x: number, y: number, facing: 1 | -1, speed: number) {
+    if (this.mode !== "shmup") return { vx: facing * speed, vy: 0 };
+    const dx = this.player.x - x;
+    const dy = this.player.y + this.player.h / 2 - y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { vx: (dx / len) * speed, vy: (dy / len) * speed };
+  }
+
   private fall(e: Enemy, dt: number) {
     e.vy = Math.max(-T.player.maxFall, e.vy - T.player.gravity * dt);
     const r = this.move(e, dt);
@@ -599,7 +692,7 @@ export class PlatformerSim {
       if (k >= 0 && k < 3 && this.time - e.firedAt > 0.4 / rage) {
         e.firedAt = this.time;
         const y = e.y + (k === 1 ? 0.6 : 1.9);
-        this.shots.push({ x: e.x + e.facing * 1.4, y, vx: e.facing * B.shotSpeed, vy: 0, r: 0.3, dmg: B.shotDamage, pierce: false, life: 3, enemy: true, level: 1 });
+        this.shots.push({ x: e.x + e.facing * 1.4, y, ...this.aim(e.x, y, e.facing, B.shotSpeed), r: 0.3, dmg: B.shotDamage, pierce: false, life: 3, enemy: true, level: 1 });
       }
     }
     const wasAir = !e.onGround;
@@ -676,9 +769,16 @@ export class PlatformerSim {
       const dy = p.y + p.h / 2 - k.y;
       const d = Math.hypot(dx, dy);
       const age = this.time - k.bornAt;
-      if (age > L.pickupDelay && d < L.magnetRange && k.drop.kind !== "health") {
+      const flying = this.mode === "shmup";
+      if (age > L.pickupDelay && d < L.magnetRange * (flying ? 2 : 1) && (k.drop.kind !== "health" || flying)) {
         k.x += (dx / d) * L.magnetSpeed * dt;
         k.y += (dy / d) * L.magnetSpeed * dt;
+      } else if (flying) {
+        // Bay: đồ lơ lửng tại chỗ, chỉ tản ra một chút rồi dừng
+        k.x += k.vx * dt;
+        k.y += k.vy * dt * 0.3;
+        k.vx *= 0.9;
+        k.vy *= 0.9;
       } else if (k.vx !== 0 || k.vy !== 0 || !this.hits(k.x, k.y - 0.05, 0.3, 0.05)) {
         k.vy = Math.max(-T.player.maxFall, k.vy - T.player.gravity * dt);
         const box = { x: k.x, y: k.y, vx: k.vx, vy: k.vy, w: 0.3, h: 0.3 };

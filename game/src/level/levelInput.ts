@@ -5,6 +5,8 @@ import type { Input } from "./platformer";
 const KEYS: Record<keyof Input, string[]> = {
   left: ["KeyA", "ArrowLeft"],
   right: ["KeyD", "ArrowRight"],
+  up: ["KeyW", "ArrowUp"],
+  down: ["KeyS", "ArrowDown"],
   jump: ["Space", "KeyW", "ArrowUp"],
   shoot: ["KeyJ", "KeyX"],
   dash: ["KeyK", "ShiftLeft", "ShiftRight", "KeyZ"],
@@ -12,13 +14,13 @@ const KEYS: Record<keyof Input, string[]> = {
 
 const down = new Set<string>();
 /** Nút cảm ứng đang giữ */
-const touch: Input = { left: false, right: false, jump: false, shoot: false, dash: false };
+const touch: Input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, dash: false };
 
 export const levelInput = {
   paused: false,
   state(): Input {
     const k = (name: keyof Input) => touch[name] || KEYS[name].some((c) => down.has(c));
-    return { left: k("left"), right: k("right"), jump: k("jump"), shoot: k("shoot"), dash: k("dash") };
+    return { left: k("left"), right: k("right"), up: k("up"), down: k("down"), jump: k("jump"), shoot: k("shoot"), dash: k("dash") };
   },
   setTouch(name: keyof Input, on: boolean) {
     touch[name] = on;

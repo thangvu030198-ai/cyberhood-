@@ -35,7 +35,7 @@ import { HUB_PEACEFUL } from "./game/config";
 import { LedBoards } from "./game/LedBoards";
 import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
-import { enterLevel, useLevel } from "./level/session";
+import { enterLevel, playLevel, useLevel } from "./level/session";
 
 const KEYMAP = [
   { name: "forward", keys: ["ArrowUp", "KeyW"] },
@@ -98,7 +98,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel },
+      __level: { useLevel, enterLevel, playLevel },
     });
   }
   return null;

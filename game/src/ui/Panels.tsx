@@ -267,7 +267,7 @@ const INTERACT_LABEL = {
   exit: "Rời Server Vault",
   terminal: "Kích hoạt terminal GHOST_0",
   board: "Mở bảng hợp đồng",
-  gate: "Qua cổng: vào màn VÙNG CÁCH LY",
+  gate: "Qua cổng nhiệm vụ: chọn map",
   missions: "Xem nhiệm vụ ngày · tuần · tháng",
 } as const;
 

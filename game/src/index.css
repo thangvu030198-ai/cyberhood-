@@ -1733,3 +1733,31 @@ canvas {
 .lv__views { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .lv__views .lv__btn { padding: 6px 10px; font-size: 13px; }
 .lv--gameboy .lv__hp, .lv--gameboy .lv__top { filter: sepia(1) hue-rotate(40deg) saturate(2.5); }
+
+/* Bảng chọn map ở cổng nhiệm vụ */
+.map-select { width: min(680px, calc(100vw - 32px)); border-color: rgba(176, 92, 255, 0.6); z-index: 30; }
+.map-select__note { margin: 0; font-size: 11px; color: var(--muted); max-width: 220px; text-align: right; }
+.map-select__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.map-select__list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(176, 92, 255, 0.35);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.map-select__list button:hover:not(:disabled) { background: rgba(176, 92, 255, 0.15); border-color: #b05cff; }
+.map-select__list li.locked button { opacity: 0.45; cursor: default; }
+.map-select__num { font: 700 26px var(--font-display); color: #b05cff; width: 28px; text-align: center; }
+.map-select__body { display: grid; gap: 3px; }
+.map-select__body b { font: 700 16px var(--font-display); letter-spacing: 0.08em; }
+.map-select__body em { margin-left: 6px; font-style: normal; font-size: 10px; color: #7dffb0; }
+.map-select__body span { font-size: 12px; }
+.map-select__body small { font-size: 11px; color: var(--muted); }
+.map-select__state { font: 700 12px var(--font-display); color: #ffd23d; white-space: nowrap; }

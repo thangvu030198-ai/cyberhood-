@@ -1,7 +1,7 @@
 // Bảng màu từng màn đi ngang. Màn mới chỉ cần chọn một theme (hoặc thêm theme mới ở đây).
 // Nguyên tắc: nền sáng, ít bão hoà và có sương; nhân vật chính có viền sáng nên luôn nổi lên trên nền.
 
-export type ThemeId = "quarantine" | "harbor" | "skyline";
+export type ThemeId = "quarantine" | "harbor" | "skyline" | "hotel" | "warzone";
 
 export type LevelTheme = {
   /** Dải màu trời từ trên xuống */
@@ -58,6 +58,40 @@ export const THEMES: Record<ThemeId, LevelTheme> = {
     backFloor: "#a8cfd2",
     backSelfLit: 0.2,
     heroOutline: "#ff5fa8",
+  },
+  // Hollow Hotel: sảnh khách sạn sang trọng, ngọc bích + vàng, đèn ấm
+  hotel: {
+    sky: ["#1f6f6a", "#3fb7a3", "#ffd9a8", "#fff1d6"],
+    sun: [3, 2.4, 1.4],
+    fog: "#e9d9c4",
+    fogNear: 30,
+    fogFar: 130,
+    hemi: { sky: "#fff7e8", ground: "#5f7f70", intensity: 1.8 },
+    key: { color: "#ffe6c0", intensity: 2.2 },
+    rim: { color: "#5fffd8", intensity: 1.5 },
+    tile: "#e7dcc6",
+    edge: [2.8, 2, 0.6],
+    ledge: "#2fd6a8",
+    backFloor: "#7a4b52",
+    backSelfLit: 0.3,
+    heroOutline: "#7dfff0",
+  },
+  // Warzone: hành tinh chiến tranh, cát cam dưới trời xanh ngọc, pha lê xanh dương
+  warzone: {
+    sky: ["#1e88c8", "#69c4e8", "#ffd6a0", "#ffb070"],
+    sun: [3, 2, 1],
+    fog: "#f2c9a0",
+    fogNear: 34,
+    fogFar: 160,
+    hemi: { sky: "#ffffff", ground: "#a0704a", intensity: 1.8 },
+    key: { color: "#fff0d8", intensity: 2.5 },
+    rim: { color: "#6fd0ff", intensity: 1.5 },
+    tile: "#e8c9a0",
+    edge: [0.5, 2, 3],
+    ledge: "#ff9a3d",
+    backFloor: "#d6a676",
+    backSelfLit: 0.18,
+    heroOutline: "#fff3a0",
   },
   // Đỉnh toà tháp giữa mây: trắng xanh, viền tím
   skyline: {

@@ -7,6 +7,7 @@ import { pointer } from "../game/pointer";
 import { loadProgress } from "../game/assets";
 import { ContractHud, DropBanner, HunterPanels, MechMeter } from "./HunterUi";
 import { MissionPanel } from "./MissionPanel";
+import { MapSelect } from "./MapSelect";
 import { useMissions } from "../game/missionStore";
 import { useHunter } from "../game/hunter";
 import { HUB_PEACEFUL, inSafeZone, inQuarantine } from "../game/config";
@@ -496,6 +497,7 @@ export function Hud() {
       <InventoryPanel />
       <HunterPanels />
       <MissionPanel />
+      <MapSelect />
       <CharacterCreator />
       <Flatline />
     </div>

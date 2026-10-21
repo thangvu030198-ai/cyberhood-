@@ -59,6 +59,12 @@ export const LEVEL_TUNING = {
     full: { speed: 24, r: 0.65, dmg: 6 },
   },
 
+  /** Leo tháp (Hollow Hotel): sương ma dâng từ dưới */
+  climb: { speed: 0.75, delay: 3, startBelow: 7, catchUpGap: 11, catchUpMul: 2.2 },
+
+  /** Bay tự cuộn (Warzone): tốc độ cuộn, tốc độ bay, nửa bề ngang khung hình gameplay */
+  shmup: { scrollSpeed: 4, speed: 7, boost: 1.6, viewHalf: 13, crashDamage: 4 },
+
   /** Đồ rơi: chờ một nhịp rồi mới nhặt được, gần thì tự bay về phía người chơi */
   loot: { pickupDelay: 0.35, magnetRange: 2.6, magnetSpeed: 9 },
 

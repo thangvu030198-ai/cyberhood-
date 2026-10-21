@@ -6,7 +6,8 @@ import { LEVEL_TUNING as T } from "./levelTuning";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { LEVEL_REWARD, useLevel } from "./session";
 import type { Input } from "./platformer";
-import { VIEWS, useLevelView, viewById } from "./views";
+import { viewById } from "./views";
+import { levelById } from "./registry";
 
 const touchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 
@@ -24,8 +25,7 @@ export function LevelHud() {
   const contract = useLevel((s) => s.contract);
   const leave = useLevel((s) => s.leave);
   const feed = useLevel((s) => s.feed);
-  const view = useLevelView((s) => s.view);
-  const viewChangedAt = useLevelView((s) => s.changedAt);
+
   const [paused, setPaused] = useState(false);
   useTicker(20);
 
@@ -46,7 +46,6 @@ export function LevelHud() {
   // Qua màn: Enter để về thành phố; V đổi góc nhìn
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === "KeyV" && !e.repeat) useLevelView.getState().next();
       if (e.code === "Enter" && useLevel.getState().sim?.status === "cleared") useLevel.getState().leave();
     };
     window.addEventListener("keydown", onKey);
@@ -57,8 +56,9 @@ export function LevelHud() {
   const p = sim.player;
   const boss = sim.boss;
   const cred = LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill;
-  const v = viewById(view);
-  const showView = performance.now() - viewChangedAt < 2200;
+  const entry = levelById(sim.def.id);
+  const v = viewById(entry.view);
+  const showView = sim.time < 5;
   return (
     <div className={`lv lv--${v.post}`}>
       {v.post === "cinema" && (
@@ -69,8 +69,10 @@ export function LevelHud() {
       )}
       {showView && (
         <div className="lv__view">
-          <b>{v.label}</b>
-          <span>học từ {v.inspired}</span>
+          <b>{entry.howTo}</b>
+          <span>
+            Dạng 2D: {v.label} · học từ {v.inspired}
+          </span>
         </div>
       )}
       <div className="lv__hp" aria-label={`Máu ${p.hp}/${T.player.maxHp}`}>
@@ -116,7 +118,7 @@ export function LevelHud() {
       {sim.status === "cleared" && (
         <div className="lv__panel">
           <p className="lv__panel-tag">MISSION COMPLETE</p>
-          <h2>Đã hạ trùm Redbot Reaper</h2>
+          <h2>Đã hạ trùm {entry.bossName}</h2>
           <p>
             +{cred} CRED · {sim.kills} địch bị hạ · chết {sim.deaths} lần
           </p>
@@ -146,30 +148,33 @@ export function LevelHud() {
             Bỏ nhiệm vụ, về thành phố
           </button>
           {contract && <p className="lv__note">Bỏ dở thì hợp đồng tính là thất bại.</p>}
-          <p className="lv__panel-tag">GÓC NHÌN (phím V)</p>
-          <div className="lv__views">
-            {VIEWS.map((x) => (
-              <button key={x.id} className={`lv__btn ${x.id === view ? "" : "lv__btn--ghost"}`} onClick={() => useLevelView.getState().set(x.id)}>
-                {x.label}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
       {touchDevice ? (
-        <TouchPad onPause={() => setPaused((x) => !x)} />
+        <TouchPad flying={sim.mode === "shmup"} onPause={() => setPaused((x) => !x)} />
       ) : (
         <div className="lv__help">
-          <kbd>A</kbd>
-          <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (bám tường + nhảy tiếp) · <kbd>J</kbd> bắn, giữ để nạp · <kbd>K</kbd> lướt · <kbd>V</kbd> góc nhìn · <kbd>Esc</kbd> tạm dừng
+          {sim.mode === "shmup" ? (
+            <>
+              <kbd>W</kbd>
+              <kbd>A</kbd>
+              <kbd>S</kbd>
+              <kbd>D</kbd> bay · <kbd>J</kbd> bắn, giữ để nạp · <kbd>K</kbd> tăng tốc · <kbd>Esc</kbd> tạm dừng
+            </>
+          ) : (
+            <>
+              <kbd>A</kbd>
+              <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (giữ Space sát tường để leo) · <kbd>J</kbd> bắn, giữ để nạp · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function TouchPad({ onPause }: { onPause: () => void }) {
+function TouchPad({ onPause, flying }: { onPause: () => void; flying: boolean }) {
   const hold = (name: keyof Input) => ({
     onPointerDown: (e: React.PointerEvent) => {
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -183,13 +188,21 @@ function TouchPad({ onPause }: { onPause: () => void }) {
       <div className="lv__pad lv__pad--left">
         <button {...hold("left")}>◀</button>
         <button {...hold("right")}>▶</button>
+        {flying && (
+          <>
+            <button {...hold("up")}>▲</button>
+            <button {...hold("down")}>▼</button>
+          </>
+        )}
       </div>
       <div className="lv__pad lv__pad--right">
         <button {...hold("dash")}>LƯỚT</button>
         <button {...hold("shoot")}>BẮN</button>
-        <button className="lv__jump" {...hold("jump")}>
-          NHẢY
-        </button>
+        {!flying && (
+          <button className="lv__jump" {...hold("jump")}>
+            NHẢY
+          </button>
+        )}
       </div>
       <button className="lv__pause" onClick={onPause}>
         II

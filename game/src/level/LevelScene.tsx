@@ -1,12 +1,29 @@
 // Màn đi ngang hiển thị bằng chính các model 3D của thành phố: camera nhìn ngang, nền là toà nhà Meshy,
 // nhân vật và địch là model đã rig. Toàn bộ luật chơi nằm trong PlatformerSim (platformer.ts).
 
-import { Suspense, use, useEffect, useMemo, useRef } from "react";
+import {
+  Component,
+  Suspense,
+  use,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Bloom, ChromaticAberration, ColorDepth, EffectComposer, Noise, Pixelation, Scanline, Vignette } from "@react-three/postprocessing";
+import {
+  Bloom,
+  ChromaticAberration,
+  ColorDepth,
+  EffectComposer,
+  Noise,
+  Pixelation,
+  Scanline,
+  Vignette,
+} from "@react-three/postprocessing";
 import { GameBoyPalette } from "./retroEffects";
-import { useLevelView, viewById } from "./views";
+import { viewById } from "./views";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { extraModel, models, playSfx, type ExtraModel } from "../game/assets";
 import { inPlace, once } from "../game/meshyAnim";
@@ -18,10 +35,30 @@ import { levelInput } from "./levelInput";
 import { useLevel } from "./session";
 import type { Enemy, PlatformerSim } from "./platformer";
 import { THEMES, type LevelTheme } from "./themes";
+import { levelById, type LevelEntry, type RigLook } from "./registry";
+
+/** Model tải lỗi (mạng, file thiếu) chỉ làm món đó biến mất, không làm sập cả màn */
+class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 /** Bề sâu khối nền (trục z), nhân vật đứng ở z = 0 */
 const DEPTH = 4;
-const CAM = { distance: 18.5, height: 2.4, fov: 40, lookAhead: 2.2, damp: 5, minY: 5.4, maxY: 12 };
+const CAM = {
+  distance: 18.5,
+  height: 2.4,
+  fov: 40,
+  lookAhead: 2.2,
+  damp: 5,
+  minY: 5.4,
+  maxY: 12,
+};
 
 export function LevelCanvas() {
   const sim = useLevel((s) => s.sim);
@@ -33,15 +70,30 @@ export function LevelCanvas() {
       className="level-canvas"
       dpr={quality === "high" ? [1, 1.25] : 1}
       gl={{ antialias: false, powerPreference: "high-performance" }}
-      camera={{ fov: CAM.fov, near: 0.5, far: 600, position: [sim.player.x, CAM.minY, CAM.distance] }}
+      camera={{
+        fov: CAM.fov,
+        near: 0.5,
+        far: 600,
+        position: [sim.player.x, CAM.minY, CAM.distance],
+      }}
     >
       <color attach="background" args={[th.fog]} />
       <fog attach="fog" args={[th.fog, th.fogNear, th.fogFar]} />
       <SimDriver sim={sim} />
       <LevelCamera sim={sim} theme={th} />
-      <hemisphereLight args={[th.hemi.sky, th.hemi.ground, th.hemi.intensity]} />
-      <directionalLight position={[-20, 30, 25]} intensity={th.key.intensity} color={th.key.color} />
-      <directionalLight position={[30, 10, -30]} intensity={th.rim.intensity} color={th.rim.color} />
+      <hemisphereLight
+        args={[th.hemi.sky, th.hemi.ground, th.hemi.intensity]}
+      />
+      <directionalLight
+        position={[-20, 30, 25]}
+        intensity={th.key.intensity}
+        color={th.key.color}
+      />
+      <directionalLight
+        position={[30, 10, -30]}
+        intensity={th.rim.intensity}
+        color={th.rim.color}
+      />
       <Sky theme={th} />
       <Tiles sim={sim} theme={th} />
       <Checkpoints sim={sim} />
@@ -49,19 +101,27 @@ export function LevelCanvas() {
       <Shots sim={sim} />
       <Pickups sim={sim} />
       <Chests sim={sim} />
+      {sim.mode === "climb" && <GhostFog sim={sim} />}
       <Fx sim={sim} />
       <Suspense fallback={null}>
-        <Backdrop width={sim.width} theme={th} />
+        <Backdrop width={sim.width} theme={th} entry={levelById(sim.def.id)} />
       </Suspense>
       <Suspense fallback={<PlaceholderHero sim={sim} />}>
         <Hero sim={sim} theme={th} />
       </Suspense>
-      {sim.enemies.map((e) => (
-        <Suspense key={e.id} fallback={null}>
-          <EnemyModel sim={sim} enemy={e} />
+      {sim.mode === "shmup" && (
+        <Suspense fallback={null}>
+          <Hoverbike sim={sim} />
         </Suspense>
+      )}
+      {sim.enemies.map((e) => (
+        <Quiet key={e.id}>
+          <Suspense fallback={null}>
+            <EnemyModel sim={sim} enemy={e} />
+          </Suspense>
+        </Quiet>
       ))}
-      <PostFx />
+      <PostFx sim={sim} />
     </Canvas>
   );
 }
@@ -76,7 +136,8 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
       if (f.kind === "shot") playSfx("blaster", 0.35);
       else if (f.kind === "hit") playSfx("enemyHurt", 0.4);
       else if (f.kind === "boom") playSfx("enemyDestroy", 0.6);
-      else if (f.kind === "pickup" || f.kind === "checkpoint") playSfx("pickup", 0.7);
+      else if (f.kind === "pickup" || f.kind === "checkpoint")
+        playSfx("pickup", 0.7);
       else if (f.kind === "hurt") playSfx("enemyAttack", 0.5);
     }
     // Giữ danh sách hiệu ứng ngắn: bỏ những cái đã quá 1 giây
@@ -88,14 +149,25 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
   return null;
 }
 
-function LevelCamera({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
+function LevelCamera({
+  sim,
+  theme,
+}: {
+  sim: PlatformerSim;
+  theme: LevelTheme;
+}) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const scene = useThree((s) => s.scene);
   const look = useRef(new THREE.Vector3(sim.player.x, CAM.minY, 0));
   const zoom = useRef(1);
-  const blend = useRef({ fov: CAM.fov, distance: CAM.distance, yaw: 0, rise: 1.2 });
+  const blend = useRef({
+    fov: CAM.fov,
+    distance: CAM.distance,
+    yaw: 0,
+    rise: 1.2,
+  });
   const aspect = useThree((s) => s.size.width / s.size.height);
-  const viewId = useLevelView((s) => s.view);
+  const viewId = levelById(sim.def.id).view;
   useFrame((_, dt) => {
     dt = Math.min(dt, 0.1);
     const v = viewById(viewId);
@@ -109,7 +181,8 @@ function LevelCamera({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) 
     b.rise += (v.rise - b.rise) * kb;
     // Điện ảnh: đứng yên thì sát lại, lướt / chạy thì lùi ra
     const speedK = Math.min(1, Math.abs(p.vx) / T.player.dashSpeed);
-    const zt = v.post === "cinema" ? (sim.bossActive ? 1.35 : 0.85 + speedK * 0.35) : 1;
+    const zt =
+      v.post === "cinema" ? (sim.bossActive ? 1.35 : 0.85 + speedK * 0.35) : 1;
     zoom.current += (zt - zoom.current) * (1 - Math.exp(-1.5 * dt));
     const dist = b.distance * zoom.current;
     if (Math.abs(camera.fov - b.fov) > 0.01) {
@@ -122,22 +195,42 @@ function LevelCamera({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) 
       scene.fog.far = theme.fogFar + (dist - CAM.distance);
     }
     const halfW = Math.tan(THREE.MathUtils.degToRad(b.fov / 2)) * dist * aspect;
+    // Đi ngang: bám người chơi, nhìn trước theo hướng chạy. Leo tháp: giữ giữa tháp, bám theo chiều cao.
+    // Bay: tâm màn hình chạy theo cuộn tự động
     let tx = p.x + p.facing * v.lookAhead;
-    if (sim.bossActive) tx = (sim.def.bossArena[0] + sim.def.bossArena[1] + 1) / 2;
-    tx = THREE.MathUtils.clamp(tx, halfW, Math.max(halfW, sim.width - halfW));
-    const ty = THREE.MathUtils.clamp(p.y + CAM.height, CAM.minY, CAM.maxY);
+    let ty = p.y + CAM.height;
+    if (sim.mode === "climb") {
+      tx = sim.width / 2;
+      ty = p.y + 2;
+    } else if (sim.mode === "shmup") {
+      tx = sim.scrollX;
+      ty = sim.height / 2;
+    }
+    if (sim.bossActive && sim.mode !== "climb")
+      tx = (sim.def.bossArena[0] + sim.def.bossArena[1] + 1) / 2;
+    if (sim.mode !== "climb")
+      tx = THREE.MathUtils.clamp(tx, halfW, Math.max(halfW, sim.width - halfW));
+    ty = THREE.MathUtils.clamp(
+      ty,
+      CAM.minY,
+      Math.max(CAM.minY, sim.height - 6),
+    );
     const k = 1 - Math.exp(-v.damp * dt);
     look.current.x += (tx - look.current.x) * k;
     look.current.y += (ty - look.current.y) * k;
-    camera.position.set(look.current.x + Math.sin(b.yaw) * dist, look.current.y + b.rise, Math.cos(b.yaw) * dist);
+    camera.position.set(
+      look.current.x + Math.sin(b.yaw) * dist,
+      look.current.y + b.rise,
+      Math.cos(b.yaw) * dist,
+    );
     camera.lookAt(look.current.x, look.current.y, 0);
   });
   return null;
 }
 
 /** Hậu kỳ theo góc nhìn: 16-bit (vỡ hạt + giảm màu), Game Boy (4 sắc xanh), điện ảnh (hạt phim + quang sai) */
-function PostFx() {
-  const viewId = useLevelView((s) => s.view);
+function PostFx({ sim }: { sim: PlatformerSim }) {
+  const viewId = levelById(sim.def.id).view;
   const post = viewById(viewId).post;
   if (post === "gameboy")
     return (
@@ -149,7 +242,12 @@ function PostFx() {
   if (post === "snes")
     return (
       <EffectComposer multisampling={0}>
-        <Bloom mipmapBlur intensity={0.6} luminanceThreshold={1} luminanceSmoothing={0.2} />
+        <Bloom
+          mipmapBlur
+          intensity={0.6}
+          luminanceThreshold={1}
+          luminanceSmoothing={0.2}
+        />
         <Pixelation granularity={4} />
         <ColorDepth bits={12} />
         <Scanline density={1.6} opacity={0.12} />
@@ -158,7 +256,12 @@ function PostFx() {
   if (post === "cinema")
     return (
       <EffectComposer multisampling={0}>
-        <Bloom mipmapBlur intensity={1.2} luminanceThreshold={0.95} luminanceSmoothing={0.25} />
+        <Bloom
+          mipmapBlur
+          intensity={1.2}
+          luminanceThreshold={0.95}
+          luminanceSmoothing={0.25}
+        />
         <ChromaticAberration offset={new THREE.Vector2(0.0009, 0.0006)} />
         <Noise opacity={0.06} />
         <Vignette eskil={false} offset={0.25} darkness={0.6} />
@@ -166,7 +269,12 @@ function PostFx() {
     );
   return (
     <EffectComposer multisampling={0}>
-      <Bloom mipmapBlur intensity={1.0} luminanceThreshold={1} luminanceSmoothing={0.2} />
+      <Bloom
+        mipmapBlur
+        intensity={1.0}
+        luminanceThreshold={1}
+        luminanceSmoothing={0.2}
+      />
       <Vignette eskil={false} offset={0.3} darkness={0.35} />
     </EffectComposer>
   );
@@ -180,7 +288,9 @@ function Sky({ theme }: { theme: LevelTheme }) {
     c.height = 256;
     const g = c.getContext("2d")!;
     const grad = g.createLinearGradient(0, 0, 0, 256);
-    theme.sky.forEach((c, i) => grad.addColorStop(i / (theme.sky.length - 1), c));
+    theme.sky.forEach((c, i) =>
+      grad.addColorStop(i / (theme.sky.length - 1), c),
+    );
     g.fillStyle = grad;
     g.fillRect(0, 0, 4, 256);
     const t = new THREE.CanvasTexture(c);
@@ -255,9 +365,15 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
   };
   useEffect(() => {
     const m = new THREE.Matrix4();
-    const place = (mesh: THREE.InstancedMesh | null, list: [number, number][], dy: number) => {
+    const place = (
+      mesh: THREE.InstancedMesh | null,
+      list: [number, number][],
+      dy: number,
+    ) => {
       if (!mesh) return;
-      list.forEach(([c, r], i) => mesh.setMatrixAt(i, m.makeTranslation(c + 0.5, r + dy, 0)));
+      list.forEach(([c, r], i) =>
+        mesh.setMatrixAt(i, m.makeTranslation(c + 0.5, r + dy, 0)),
+      );
       mesh.instanceMatrix.needsUpdate = true;
     };
     place(refs.solid.current, data.solid, 0.5);
@@ -270,21 +386,50 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
   }, [data]);
   return (
     <group>
-      <instancedMesh ref={refs.solid} args={[undefined, undefined, data.solid.length]} frustumCulled={false}>
+      <instancedMesh
+        ref={refs.solid}
+        args={[undefined, undefined, data.solid.length]}
+        frustumCulled={false}
+      >
         <boxGeometry args={[1, 1, DEPTH]} />
-        <meshStandardMaterial map={tex} color={theme.tile} roughness={0.7} metalness={0.15} />
+        <meshStandardMaterial
+          map={tex}
+          color={theme.tile}
+          roughness={0.7}
+          metalness={0.15}
+        />
       </instancedMesh>
-      <instancedMesh ref={refs.edges} args={[undefined, undefined, data.edges.length]} frustumCulled={false}>
+      <instancedMesh
+        ref={refs.edges}
+        args={[undefined, undefined, data.edges.length]}
+        frustumCulled={false}
+      >
         <boxGeometry args={[1.001, 0.08, 0.08]} />
         <meshBasicMaterial color={theme.edge} toneMapped={false} />
       </instancedMesh>
-      <instancedMesh ref={refs.ledges} args={[undefined, undefined, data.ledges.length]} frustumCulled={false}>
+      <instancedMesh
+        ref={refs.ledges}
+        args={[undefined, undefined, data.ledges.length]}
+        frustumCulled={false}
+      >
         <boxGeometry args={[1, 0.22, DEPTH * 0.7]} />
-        <meshStandardMaterial color={theme.ledge} emissive={theme.ledge} emissiveIntensity={0.9} />
+        <meshStandardMaterial
+          color={theme.ledge}
+          emissive={theme.ledge}
+          emissiveIntensity={0.9}
+        />
       </instancedMesh>
-      <instancedMesh ref={refs.spikes} args={[undefined, undefined, data.spikes.length]} frustumCulled={false}>
+      <instancedMesh
+        ref={refs.spikes}
+        args={[undefined, undefined, data.spikes.length]}
+        frustumCulled={false}
+      >
         <coneGeometry args={[0.38, 0.6, 4]} />
-        <meshStandardMaterial color="#5a0f1c" emissive="#ff2a4d" emissiveIntensity={2.2} />
+        <meshStandardMaterial
+          color="#5a0f1c"
+          emissive="#ff2a4d"
+          emissiveIntensity={2.2}
+        />
       </instancedMesh>
     </group>
   );
@@ -295,7 +440,14 @@ function Checkpoints({ sim }: { sim: PlatformerSim }) {
   useFrame(() => {
     sim.def.checkpoints.forEach((_, i) => {
       const m = mats.current[i];
-      if (m) m.color.setRGB(...((i <= sim.checkpointIndex ? [0.4, 3, 1.2] : [2.4, 1.2, 0.2]) as [number, number, number]));
+      if (m)
+        m.color.setRGB(
+          ...((i <= sim.checkpointIndex ? [0.4, 3, 1.2] : [2.4, 1.2, 0.2]) as [
+            number,
+            number,
+            number,
+          ]),
+        );
     });
   });
   return (
@@ -308,7 +460,10 @@ function Checkpoints({ sim }: { sim: PlatformerSim }) {
           </mesh>
           <mesh position={[0, 2.9, 0]}>
             <sphereGeometry args={[0.22, 12, 8]} />
-            <meshBasicMaterial ref={(m) => void (mats.current[i] = m)} toneMapped={false} />
+            <meshBasicMaterial
+              ref={(m) => void (mats.current[i] = m)}
+              toneMapped={false}
+            />
           </mesh>
         </group>
       ))}
@@ -322,7 +477,11 @@ function BossDoors({ sim }: { sim: PlatformerSim }) {
   useFrame(({ clock }) => {
     if (!group.current) return;
     group.current.visible = sim.bossActive && sim.status !== "cleared";
-    group.current.children.forEach((c) => ((c as THREE.Mesh).scale.x = 0.8 + Math.sin(clock.elapsedTime * 20) * 0.2));
+    group.current.children.forEach(
+      (c) =>
+        ((c as THREE.Mesh).scale.x =
+          0.8 + Math.sin(clock.elapsedTime * 20) * 0.2),
+    );
   });
   const [a, b] = sim.def.bossArena;
   return (
@@ -330,7 +489,12 @@ function BossDoors({ sim }: { sim: PlatformerSim }) {
       {[a - 0.5, b + 1.5].map((x) => (
         <mesh key={x} position={[x, sim.height / 2, 0]}>
           <boxGeometry args={[0.25, sim.height, 0.6]} />
-          <meshBasicMaterial color={[3, 0.3, 0.5]} transparent opacity={0.4} toneMapped={false} />
+          <meshBasicMaterial
+            color={[3, 0.3, 0.5]}
+            transparent
+            opacity={0.4}
+            toneMapped={false}
+          />
         </mesh>
       ))}
     </group>
@@ -339,8 +503,16 @@ function BossDoors({ sim }: { sim: PlatformerSim }) {
 
 const SHOT_POOL = 40;
 const SHOT_COLORS = {
-  player: [new THREE.Color(1.2, 2.6, 3), new THREE.Color(0.6, 3, 1.4), new THREE.Color(3, 1.2, 3)],
-  enemy: [new THREE.Color(3, 1.2, 0.3), new THREE.Color(3, 0.4, 0.4), new THREE.Color(2.6, 0.3, 2.2)],
+  player: [
+    new THREE.Color(1.2, 2.6, 3),
+    new THREE.Color(0.6, 3, 1.4),
+    new THREE.Color(3, 1.2, 3),
+  ],
+  enemy: [
+    new THREE.Color(3, 1.2, 0.3),
+    new THREE.Color(3, 0.4, 0.4),
+    new THREE.Color(2.6, 0.3, 2.2),
+  ],
 };
 
 function Shots({ sim }: { sim: PlatformerSim }) {
@@ -354,16 +526,25 @@ function Shots({ sim }: { sim: PlatformerSim }) {
       const s = sim.shots[i];
       // Đạn kéo dài theo hướng bay
       const stretch = s.enemy ? 1 : 1.8;
-      mat.makeScale(s.r * 2 * stretch, s.r * 2, s.r * 2).setPosition(s.x, s.y, 0.2);
+      mat
+        .makeScale(s.r * 2 * stretch, s.r * 2, s.r * 2)
+        .setPosition(s.x, s.y, 0.2);
       m.setMatrixAt(i, mat);
-      m.setColorAt(i, (s.enemy ? SHOT_COLORS.enemy : SHOT_COLORS.player)[s.level]);
+      m.setColorAt(
+        i,
+        (s.enemy ? SHOT_COLORS.enemy : SHOT_COLORS.player)[s.level],
+      );
     }
     m.count = n;
     m.instanceMatrix.needsUpdate = true;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   });
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, SHOT_POOL]} frustumCulled={false}>
+    <instancedMesh
+      ref={mesh}
+      args={[undefined, undefined, SHOT_POOL]}
+      frustumCulled={false}
+    >
       <sphereGeometry args={[0.5, 12, 8]} />
       <meshBasicMaterial toneMapped={false} />
     </instancedMesh>
@@ -387,10 +568,18 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
     () => ({
       health: new THREE.CapsuleGeometry(0.16, 0.28, 4, 8),
       part: new THREE.OctahedronGeometry(0.3),
-      cred: new THREE.CylinderGeometry(0.22, 0.22, 0.06, 20).rotateX(Math.PI / 2),
-      chestKey: new THREE.TorusGeometry(0.14, 0.05, 8, 16).translate(0, 0.16, 0).rotateZ(0),
+      cred: new THREE.CylinderGeometry(0.22, 0.22, 0.06, 20).rotateX(
+        Math.PI / 2,
+      ),
+      chestKey: new THREE.TorusGeometry(0.14, 0.05, 8, 16)
+        .translate(0, 0.16, 0)
+        .rotateZ(0),
       keyShard: new THREE.TetrahedronGeometry(0.26),
-      beam: new THREE.CylinderGeometry(0.06, 0.18, 3, 10, 1, true).translate(0, 1.5, 0),
+      beam: new THREE.CylinderGeometry(0.06, 0.18, 3, 10, 1, true).translate(
+        0,
+        1.5,
+        0,
+      ),
     }),
     [],
   );
@@ -406,15 +595,36 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
       const beam = slot.children[1] as THREE.Mesh;
       slot.visible = true;
       const resting = k.vx === 0 && k.vy === 0;
-      slot.position.set(k.x, k.y + (resting ? 0.35 + Math.sin(t * 3 + i) * 0.08 : 0.15), 0.2);
+      slot.position.set(
+        k.x,
+        k.y + (resting ? 0.35 + Math.sin(t * 3 + i) * 0.08 : 0.15),
+        0.2,
+      );
       body.rotation.y = t * 2.4;
       const d = k.drop;
       body.geometry = geo[d.kind];
       const color =
-        d.kind === "part" ? RARITY_GLOW[d.part.rarity] : d.kind === "cred" ? [3, 2.2, 0.4] : d.kind === "chestKey" ? [0.4, 3, 1.8] : d.kind === "keyShard" ? [2.4, 1.2, 0.5] : [0.4, 3, 1];
-      (body.material as THREE.MeshBasicMaterial).color.setRGB(color[0], color[1], color[2]);
+        d.kind === "part"
+          ? RARITY_GLOW[d.part.rarity]
+          : d.kind === "cred"
+            ? [3, 2.2, 0.4]
+            : d.kind === "chestKey"
+              ? [0.4, 3, 1.8]
+              : d.kind === "keyShard"
+                ? [2.4, 1.2, 0.5]
+                : [0.4, 3, 1];
+      (body.material as THREE.MeshBasicMaterial).color.setRGB(
+        color[0],
+        color[1],
+        color[2],
+      );
       // Cột sáng chỉ cho linh kiện từ Hiếm trở lên, cao dần theo độ hiếm
-      const tall = d.kind === "part" ? ["common", "rare", "epic", "legendary", "mythic"].indexOf(d.part.rarity) : -1;
+      const tall =
+        d.kind === "part"
+          ? ["common", "rare", "epic", "legendary", "mythic"].indexOf(
+              d.part.rarity,
+            )
+          : -1;
       beam.visible = tall >= 1;
       if (beam.visible) {
         beam.scale.set(1, 0.6 + tall * 0.35, 1);
@@ -433,7 +643,12 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
             <meshBasicMaterial toneMapped={false} />
           </mesh>
           <mesh geometry={geo.beam}>
-            <meshBasicMaterial transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+            <meshBasicMaterial
+              transparent
+              depthWrite={false}
+              toneMapped={false}
+              side={THREE.DoubleSide}
+            />
           </mesh>
         </group>
       ))}
@@ -441,16 +656,101 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
   );
 }
 
-const CHEST_TINT = { bronze: "#e09a5a", silver: "#dfe8f5", gold: "#ffd23d" } as const;
+/** Sương ma dâng từ dưới tháp: khối mờ tím ngọc, mặt trên gợn sóng sáng */
+function GhostFog({ sim }: { sim: PlatformerSim }) {
+  const group = useRef<THREE.Group>(null);
+  const surface = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.position.y = sim.fogY;
+    group.current.visible = !sim.bossActive;
+    if (surface.current) {
+      const m = surface.current.material as THREE.MeshBasicMaterial;
+      m.opacity = 0.55 + Math.sin(clock.elapsedTime * 3) * 0.1;
+    }
+  });
+  const w = sim.width + 40;
+  return (
+    <group ref={group}>
+      <mesh position={[sim.width / 2, -20, 0]}>
+        <boxGeometry args={[w, 40, DEPTH + 6]} />
+        <meshBasicMaterial
+          color={[0.35, 0.15, 0.55]}
+          transparent
+          opacity={0.72}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh
+        ref={surface}
+        position={[sim.width / 2, 0.05, 0]}
+        rotation-x={-Math.PI / 2}
+      >
+        <planeGeometry args={[w, DEPTH + 6]} />
+        <meshBasicMaterial
+          color={[1.2, 2.6, 2.2]}
+          transparent
+          opacity={0.6}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/** Xe bay hoverbike dưới chân người chơi ở chế độ bay */
+function Hoverbike({ sim }: { sim: PlatformerSim }) {
+  const { root } = useFitted("mx_veh_hoverbike", 2.8, "longest", 0.35);
+  const ref = useRef<THREE.Group>(null);
+  const flame = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    const p = sim.player;
+    const o = ref.current;
+    if (!o) return;
+    o.position.set(
+      p.x - 0.1,
+      p.y - 0.05 + Math.sin(clock.elapsedTime * 6) * 0.05,
+      0,
+    );
+    // Nghiêng theo hướng bay
+    o.rotation.z = THREE.MathUtils.damp(o.rotation.z, p.vy * 0.04, 8, 1 / 60);
+    if (flame.current) flame.current.scale.x = 0.8 + Math.random() * 0.5;
+  });
+  return (
+    <group ref={ref}>
+      <group rotation-y={Math.PI / 2}>
+        <primitive object={root} />
+      </group>
+      <mesh ref={flame} position={[-1.5, 0.45, 0]} rotation-z={Math.PI / 2}>
+        <coneGeometry args={[0.18, 0.9, 10]} />
+        <meshBasicMaterial
+          color={[0.6, 2.4, 3]}
+          toneMapped={false}
+          transparent
+          opacity={0.85}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+const CHEST_TINT = {
+  bronze: "#e09a5a",
+  silver: "#dfe8f5",
+  gold: "#ffd23d",
+} as const;
 
 /** Rương giấu: hòm tiếp tế Meshy nhuộm theo bậc, viền sáng khi còn khoá, tắt sáng khi đã mở */
 function Chests({ sim }: { sim: PlatformerSim }) {
   return (
     <>
       {sim.chests.map((_, i) => (
-        <Suspense key={i} fallback={null}>
-          <ChestModel sim={sim} index={i} />
-        </Suspense>
+        <Quiet key={i}>
+          <Suspense fallback={null}>
+            <ChestModel sim={sim} index={i} />
+          </Suspense>
+        </Quiet>
       ))}
     </>
   );
@@ -458,7 +758,12 @@ function Chests({ sim }: { sim: PlatformerSim }) {
 
 function ChestModel({ sim, index }: { sim: PlatformerSim; index: number }) {
   const c = sim.chests[index];
-  const { root } = useFitted("mx_supply_crate", c.tier === "gold" ? 1.3 : 1.05, "height", 0.3);
+  const { root } = useFitted(
+    "mx_supply_crate",
+    c.tier === "gold" ? 1.3 : 1.05,
+    "height",
+    0.3,
+  );
   const glow = useRef<THREE.Mesh>(null);
   const group = useRef<THREE.Group>(null);
   useMemo(() => {
@@ -473,7 +778,9 @@ function ChestModel({ sim, index }: { sim: PlatformerSim; index: number }) {
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
     if (group.current) {
-      group.current.rotation.y = c.opened ? 0.4 : Math.sin(t * 1.5 + index) * 0.15;
+      group.current.rotation.y = c.opened
+        ? 0.4
+        : Math.sin(t * 1.5 + index) * 0.15;
       group.current.scale.setScalar(c.opened ? 0.9 : 1);
     }
     if (glow.current) {
@@ -489,7 +796,13 @@ function ChestModel({ sim, index }: { sim: PlatformerSim; index: number }) {
       </group>
       <mesh ref={glow} position={[0, 0.03, 0]} rotation-x={-Math.PI / 2}>
         <ringGeometry args={[0.7, 0.9, 32]} />
-        <meshBasicMaterial color={tint} transparent opacity={0.7} toneMapped={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          color={tint}
+          transparent
+          opacity={0.7}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
     </group>
   );
@@ -507,30 +820,69 @@ function Fx({ sim }: { sim: PlatformerSim }) {
     let i = 0;
     for (let k = sim.fx.length - 1; k >= 0 && i < FX_POOL; k--) {
       const f = sim.fx[k];
-      const life = f.kind === "boom" ? 0.55 : f.kind === "hit" ? 0.18 : f.kind === "land" ? 0.25 : f.kind === "dust" ? 0.35 : 0;
+      const life =
+        f.kind === "boom"
+          ? 0.55
+          : f.kind === "hit"
+            ? 0.18
+            : f.kind === "land"
+              ? 0.25
+              : f.kind === "dust"
+                ? 0.35
+                : 0;
       const age = sim.time - f.at;
       if (!life || age > life) continue;
       const o = g.children[i++] as THREE.Mesh;
       const u = age / life;
-      const size = f.kind === "boom" ? 0.4 + u * 2.4 : f.kind === "land" ? 0.3 + u * 1.2 : f.kind === "dust" ? 0.12 + u * 0.3 : 0.25 + u * 0.5;
+      const size =
+        f.kind === "boom"
+          ? 0.4 + u * 2.4
+          : f.kind === "land"
+            ? 0.3 + u * 1.2
+            : f.kind === "dust"
+              ? 0.12 + u * 0.3
+              : 0.25 + u * 0.5;
       o.visible = true;
-      o.position.set(f.x, f.y + (f.kind === "land" ? 0.1 : f.kind === "dust" ? u * 0.4 : 0), 0.4);
+      o.position.set(
+        f.x,
+        f.y + (f.kind === "land" ? 0.1 : f.kind === "dust" ? u * 0.4 : 0),
+        0.4,
+      );
       o.scale.set(size, f.kind === "land" ? size * 0.25 : size, size);
       const mat = o.material as THREE.MeshBasicMaterial;
       mat.opacity = (1 - u) * (f.kind === "dust" ? 0.5 : 1);
-      mat.color.setRGB(...((f.kind === "boom" ? [3, 1.4, 0.4] : f.kind === "land" ? [1, 1, 1.4] : f.kind === "dust" ? [0.75, 0.72, 0.8] : [2.6, 2.6, 3]) as [number, number, number]));
+      mat.color.setRGB(
+        ...((f.kind === "boom"
+          ? [3, 1.4, 0.4]
+          : f.kind === "land"
+            ? [1, 1, 1.4]
+            : f.kind === "dust"
+              ? [0.75, 0.72, 0.8]
+              : [2.6, 2.6, 3]) as [number, number, number]),
+      );
     }
     for (; i < FX_POOL; i++) g.children[i].visible = false;
     // Quầng nạp đạn quanh nhân vật
     const c = charge.current;
     if (c) {
       const p = sim.player;
-      const lvl = p.charge >= T.shot.chargeFull ? 2 : p.charge >= T.shot.chargeMid ? 1 : 0;
+      const lvl =
+        p.charge >= T.shot.chargeFull
+          ? 2
+          : p.charge >= T.shot.chargeMid
+            ? 1
+            : 0;
       c.visible = lvl > 0 && sim.status === "playing";
       c.position.set(p.x, p.y + 1, 0.3);
       const pulse = 1 + Math.sin(sim.time * (lvl === 2 ? 40 : 22)) * 0.15;
       c.scale.setScalar((lvl === 2 ? 1.3 : 0.95) * pulse);
-      (c.material as THREE.MeshBasicMaterial).color.setRGB(...((lvl === 2 ? [3, 1, 3] : [0.6, 3, 1.4]) as [number, number, number]));
+      (c.material as THREE.MeshBasicMaterial).color.setRGB(
+        ...((lvl === 2 ? [3, 1, 3] : [0.6, 3, 1.4]) as [
+          number,
+          number,
+          number,
+        ]),
+      );
     }
   });
   return (
@@ -539,13 +891,22 @@ function Fx({ sim }: { sim: PlatformerSim }) {
         {Array.from({ length: FX_POOL }, (_, i) => (
           <mesh key={i} visible={false}>
             <sphereGeometry args={[0.5, 12, 8]} />
-            <meshBasicMaterial transparent depthWrite={false} toneMapped={false} />
+            <meshBasicMaterial
+              transparent
+              depthWrite={false}
+              toneMapped={false}
+            />
           </mesh>
         ))}
       </group>
       <mesh ref={charge} visible={false}>
         <sphereGeometry args={[0.9, 16, 12]} />
-        <meshBasicMaterial transparent opacity={0.28} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial
+          transparent
+          opacity={0.28}
+          depthWrite={false}
+          toneMapped={false}
+        />
       </mesh>
     </>
   );
@@ -554,27 +915,29 @@ function Fx({ sim }: { sim: PlatformerSim }) {
 // ---------------------------------------------------------------------------
 // Nền: toà nhà và đạo cụ Meshy xếp thành ba lớp xa dần để có cảm giác thị sai khi camera chạy ngang
 
-const BACK_BUILDINGS: ExtraModel[] = [
-  "mx_bld_factory",
-  "mx_bld_apartment",
-  "mx_bld_clinic",
-  "mx_bld_tower_round",
-  "mx_bld_police_station",
-  "mx_bld_skyscraper",
-  "mx_bld_hotel",
-  "mx_bld_capsule_hotel",
-];
-
-function Backdrop({ width, theme }: { width: number; theme: LevelTheme }) {
+function Backdrop({
+  width,
+  theme,
+  entry,
+}: {
+  width: number;
+  theme: LevelTheme;
+  entry: LevelEntry;
+}) {
   const back = useMemo(() => {
     const list: { name: ExtraModel; x: number; h: number; z: number }[] = [];
     let i = 0;
     for (let x = 6; x < width + 30; x += 24) {
-      list.push({ name: BACK_BUILDINGS[i % BACK_BUILDINGS.length], x, h: 22 + ((i * 7) % 4) * 5, z: -64 - (i % 2) * 16 });
+      list.push({
+        name: entry.backBuildings[i % entry.backBuildings.length],
+        x,
+        h: 22 + ((i * 7) % 4) * 5,
+        z: -64 - (i % 2) * 16,
+      });
       i++;
     }
     return list;
-  }, [width]);
+  }, [width, entry]);
   return (
     <group>
       {/* Nền đất phía sau làn chơi */}
@@ -583,46 +946,71 @@ function Backdrop({ width, theme }: { width: number; theme: LevelTheme }) {
         <meshStandardMaterial color={theme.backFloor} roughness={0.95} />
       </mesh>
       {back.map((b, i) => (
-        <Suspense key={i} fallback={null}>
-          <Prop name={b.name} height={b.h} position={[b.x, 0, b.z]} rotationY={0} selfLit={theme.backSelfLit} />
-        </Suspense>
+        <Quiet key={i}>
+          <Suspense fallback={null}>
+            <Prop
+              name={b.name}
+              height={b.h}
+              position={[b.x, 0, b.z]}
+              rotationY={0}
+              selfLit={theme.backSelfLit}
+            />
+          </Suspense>
+        </Quiet>
       ))}
-      {/* Lớp giữa: dấu tích vùng cách ly */}
-      <Suspense fallback={null}>
-        <Prop name="mx_map_watchtower" height={10} position={[24, 0, -34]} rotationY={0.3} />
-        <Prop name="mx_map_crashed_mech" height={6} position={[46, 0, -28]} rotationY={-0.6} />
-                <Prop name="mx_map_radio_tower" height={22} position={[125, 0, -44]} rotationY={0} />
-        <Prop name="mx_veh_tank" height={3.2} position={[136, 0, -22]} rotationY={1.2} />
-        <Prop name="mx_car_armored" height={2.4} position={[150, 0, -20]} rotationY={-0.4} />
-        <Prop name="mx_map_watchtower" height={10} position={[160, 0, -34]} rotationY={-0.3} />
-        <Prop name="mx_map_shield_gen" height={14} position={[178, 0, -34]} rotationY={0} selfLit={0.6} />
-      </Suspense>
-      <Suspense fallback={null}>
-        <Prop name="mx_prop_trash_pile" height={1.6} position={[9, 2, -1.5]} rotationY={0.4} />
-        <Prop name="mx_prop_trash_pile" height={1.6} position={[56, 2, -1.5]} rotationY={2} />
-        <Prop name="mx_prop_trash_pile" height={1.6} position={[105, 2, -1.5]} rotationY={1} />
-        <Prop name="mx_supply_crate" height={1.1} position={[38, 3, -1.5]} rotationY={0.3} />
-        <Prop name="mx_supply_crate" height={1.1} position={[147, 2, -1.5]} rotationY={-0.2} />
-      </Suspense>
-      {/* Thành trì của Vane mờ xa phía cuối màn */}
-      <Suspense fallback={null}>
-        <Prop name="mx_map_citadel" height={90} position={[210, -4, -150]} rotationY={0} selfLit={0.4} />
-      </Suspense>
+      {/* Đạo cụ lớp giữa và sát làn chơi của từng map; mỗi món tải riêng để món nào xong hiện món đó */}
+      {entry.props.map((pr, i) => (
+        <Quiet key={`p${i}`}>
+          <Suspense fallback={null}>
+            <Prop
+              name={pr.name}
+              height={pr.height}
+              position={pr.at}
+              rotationY={pr.rot ?? 0}
+              selfLit={pr.selfLit}
+            />
+          </Suspense>
+        </Quiet>
+      ))}
     </group>
   );
 }
 
-function Prop({ name, height, position, rotationY, selfLit = 0.3 }: { name: ExtraModel; height: number; position: [number, number, number]; rotationY: number; selfLit?: number }) {
+function Prop({
+  name,
+  height,
+  position,
+  rotationY,
+  selfLit = 0.3,
+}: {
+  name: ExtraModel;
+  height: number;
+  position: [number, number, number];
+  rotationY: number;
+  selfLit?: number;
+}) {
   const { root } = useFitted(name, height, "height", selfLit);
-  return <primitive object={root} position={position} rotation={[0, rotationY, 0]} />;
+  return (
+    <primitive object={root} position={position} rotation={[0, rotationY, 0]} />
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Nhân vật có xương: dựng một lần, đổi clip bằng crossfade
 
-type Rig = { scene: THREE.Object3D; mixer: THREE.AnimationMixer; actions: Record<string, THREE.AnimationAction>; current: string };
+type Rig = {
+  scene: THREE.Object3D;
+  mixer: THREE.AnimationMixer;
+  actions: Record<string, THREE.AnimationAction>;
+  current: string;
+};
 
-function buildRig(base: THREE.Object3D, clips: Record<string, THREE.AnimationClip | undefined>, height: number, selfLit = 0.25): Rig {
+function buildRig(
+  base: THREE.Object3D,
+  clips: Record<string, THREE.AnimationClip | undefined>,
+  height: number,
+  selfLit = 0.25,
+): Rig {
   const scene = cloneSkinned(base);
   fitCharacter(scene, height, 0);
   scene.traverse((o) => {
@@ -651,10 +1039,18 @@ function buildRig(base: THREE.Object3D, clips: Record<string, THREE.AnimationCli
       }
     actions[name] = mixer.clipAction(c);
   }
-  for (const n of ["death", "jump", "hit", "attack"]) if (actions[n]) once(actions[n]);
+  for (const n of ["death", "jump", "hit", "attack"])
+    if (actions[n]) once(actions[n]);
   const first = actions.idle ?? actions.walk ?? Object.values(actions)[0];
   first?.play();
-  return { scene, mixer, actions, current: first ? Object.keys(actions).find((k) => actions[k] === first)! : "" };
+  return {
+    scene,
+    mixer,
+    actions,
+    current: first
+      ? Object.keys(actions).find((k) => actions[k] === first)!
+      : "",
+  };
 }
 
 function setAnim(rig: Rig, name: string, fade = 0.15, restart = false) {
@@ -672,8 +1068,17 @@ function flash(scene: THREE.Object3D, amount: number, color: THREE.Color) {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
     const mat = m.material as THREE.MeshStandardMaterial;
-    if (!mat.userData.baseEmissive) mat.userData.baseEmissive = { c: mat.emissive.clone(), i: mat.emissiveIntensity, map: mat.emissiveMap };
-    const b = mat.userData.baseEmissive as { c: THREE.Color; i: number; map: THREE.Texture | null };
+    if (!mat.userData.baseEmissive)
+      mat.userData.baseEmissive = {
+        c: mat.emissive.clone(),
+        i: mat.emissiveIntensity,
+        map: mat.emissiveMap,
+      };
+    const b = mat.userData.baseEmissive as {
+      c: THREE.Color;
+      i: number;
+      map: THREE.Texture | null;
+    };
     if (amount > 0) {
       mat.emissive.copy(color);
       mat.emissiveIntensity = amount * 2;
@@ -721,7 +1126,11 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       0.6,
     );
     addOutline(rig.scene, theme.heroOutline, 0.022);
-    return { rig, air: airWindow(g.jump.animations[0]), climb: new ClimbPose(rig.scene) };
+    return {
+      rig,
+      air: airWindow(g.jump.animations[0]),
+      climb: new ClimbPose(rig.scene),
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walk, theme, ...Object.values(g)]);
   const group = useRef<THREE.Group>(null);
@@ -737,48 +1146,82 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     const o = group.current;
     if (!o) return;
     dt = Math.min(dt, 0.1);
-    o.position.set(p.x, p.y, 0);
+    // Cưỡi xe bay: ngồi cao hơn mặt xe một chút
+    o.position.set(p.x, p.y + (sim.mode === "shmup" ? 0.55 : 0), 0);
     // Sát tường trên không: quay mặt vào tường để bám/leo; còn lại quay theo hướng chạy
     const onWall = p.wallNear !== 0 && sim.status === "playing" && p.knock <= 0;
-    yaw.current = THREE.MathUtils.damp(yaw.current, faceYaw(onWall ? p.wallNear : p.facing), 16, dt);
+    yaw.current = THREE.MathUtils.damp(
+      yaw.current,
+      faceYaw(onWall ? p.wallNear : p.facing),
+      16,
+      dt,
+    );
     o.rotation.y = yaw.current;
     // Lướt: chúi người về trước; bám tường: ngả nhẹ ra khỏi tường. Đổi dần cho mượt
-    const leanTarget = p.dashTime > 0 ? -p.facing * 0.22 : onWall ? -p.wallNear * 0.08 : 0;
+    const leanTarget =
+      p.dashTime > 0 ? -p.facing * 0.22 : onWall ? -p.wallNear * 0.08 : 0;
     lean.current = THREE.MathUtils.damp(lean.current, leanTarget, 14, dt);
     o.rotation.z = lean.current;
     // Chạm đất: nén nhẹ rồi bật lại
     if (p.onGround && !wasGround.current) squash.current = 0.86;
     wasGround.current = p.onGround;
     squash.current = THREE.MathUtils.damp(squash.current, 1, 12, dt);
-    o.scale.set(1 / Math.sqrt(squash.current), squash.current, 1 / Math.sqrt(squash.current));
+    o.scale.set(
+      1 / Math.sqrt(squash.current),
+      squash.current,
+      1 / Math.sqrt(squash.current),
+    );
 
     const shooting = sim.time - lastShotAt(sim) < 0.35;
     const jump = rig.actions.jump;
     if (sim.status === "dead") setAnim(rig, "death", 0.1);
     else if (p.knock > 0) setAnim(rig, "hit", 0.05);
-    else if (!p.onGround && jump) {
+    else if (sim.mode === "shmup" && jump) {
+      // Tư thế ngồi lái: khung giữa của clip nhảy (chân co)
+      setAnim(rig, "jump", 0.1);
+      jump.time = THREE.MathUtils.lerp(air.start, air.end, 0.5);
+      jump.timeScale = 0;
+    } else if (!p.onGround && jump) {
       // Trên không: tư thế nhảy chọn theo vận tốc dọc (lên → đỉnh → rơi), không phát cả clip
       setAnim(rig, "jump", 0.1);
       const P = T.player;
-      const u = p.vy > 0 ? 0.5 * (1 - Math.min(1, p.vy / P.jumpVel)) : 0.5 + 0.5 * Math.min(1, -p.vy / P.maxFall);
-      const t = THREE.MathUtils.lerp(air.start, air.end, p.wall !== 0 ? 0.45 : u);
+      const u =
+        p.vy > 0
+          ? 0.5 * (1 - Math.min(1, p.vy / P.jumpVel))
+          : 0.5 + 0.5 * Math.min(1, -p.vy / P.maxFall);
+      const t = THREE.MathUtils.lerp(
+        air.start,
+        air.end,
+        p.wall !== 0 ? 0.45 : u,
+      );
       jump.time = THREE.MathUtils.damp(jump.time, t, 20, dt);
       jump.timeScale = 0;
-    } else if (Math.abs(p.vx) > 0.5) setAnim(rig, shooting || p.dashTime > 0 ? "runshoot" : "run", 0.12);
+    } else if (Math.abs(p.vx) > 0.5)
+      setAnim(rig, shooting || p.dashTime > 0 ? "runshoot" : "run", 0.12);
     else setAnim(rig, shooting ? "runshoot" : "idle", 0.15);
     const run = rig.actions.run;
     if (run) run.timeScale = p.dashTime > 0 ? 1.6 : 1.15;
-    if (rig.actions.runshoot) rig.actions.runshoot.timeScale = Math.abs(p.vx) > 0.5 ? (p.dashTime > 0 ? 1.6 : 1.15) : 0.0001;
+    if (rig.actions.runshoot)
+      rig.actions.runshoot.timeScale =
+        Math.abs(p.vx) > 0.5 ? (p.dashTime > 0 ? 1.6 : 1.15) : 0.0001;
     rig.mixer.update(dt);
     // Động tác leo / trượt tường đè lên tư thế của clip, trộn dần vào và ra
     climb.apply(onWall ? p.wallNear : 0, p.vy, p.y, dt);
     // Trượt tường: bụi bắn ra ở chỗ tay chân miết vào tường
     if (onWall && p.vy < -1 && sim.time - lastDust.current > 0.12) {
       lastDust.current = sim.time;
-      sim.fx.push({ kind: "dust", x: p.x + p.wallNear * (p.w / 2), y: p.y + 0.3, at: sim.time });
+      sim.fx.push({
+        kind: "dust",
+        x: p.x + p.wallNear * (p.w / 2),
+        y: p.y + 0.3,
+        at: sim.time,
+      });
     }
     // Nhấp nháy khi bất tử sau khi trúng đòn
-    o.visible = sim.status === "dead" || p.invuln <= 0 || Math.floor(sim.time * 20) % 2 === 0;
+    o.visible =
+      sim.status === "dead" ||
+      p.invuln <= 0 ||
+      Math.floor(sim.time * 20) % 2 === 0;
 
     // Bóng tròn dưới chân: chiếu xuống mặt đất gần nhất bên dưới
     const sh = shadow.current;
@@ -788,7 +1231,10 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       const h = p.y - gy;
       sh.position.set(p.x, gy + 0.02, 0.3);
       sh.scale.setScalar(Math.max(0.35, 1 - h * 0.12));
-      (sh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.1, 0.45 - h * 0.05);
+      (sh.material as THREE.MeshBasicMaterial).opacity = Math.max(
+        0.1,
+        0.45 - h * 0.05,
+      );
     }
     // Đèn đặt hẳn phía trước mặt đứng của khối nền (z = DEPTH/2) để không đốt cháy sáng mặt tường khi bám tường
     light.current?.position.set(p.x, p.y + 1.6, DEPTH / 2 + 2.4);
@@ -800,10 +1246,21 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       </group>
       <mesh ref={shadow} rotation-x={-Math.PI / 2}>
         <circleGeometry args={[0.55, 24]} />
-        <meshBasicMaterial color="#000" transparent opacity={0.4} depthWrite={false} />
+        <meshBasicMaterial
+          color="#000"
+          transparent
+          opacity={0.4}
+          depthWrite={false}
+        />
       </mesh>
       {/* Đèn rọi đi theo nhân vật chính để luôn sáng hơn nền */}
-      <pointLight ref={light} intensity={6} distance={7} decay={1.4} color="#ffffff" />
+      <pointLight
+        ref={light}
+        intensity={6}
+        distance={7}
+        decay={1.4}
+        color="#ffffff"
+      />
     </>
   );
 }
@@ -833,7 +1290,12 @@ class ClimbPose {
 
   apply(wall: -1 | 0 | 1, vy: number, height: number, dt: number) {
     if (wall !== 0) this.side = wall;
-    this.weight = THREE.MathUtils.damp(this.weight, wall !== 0 ? 1 : 0, wall !== 0 ? 16 : 10, dt);
+    this.weight = THREE.MathUtils.damp(
+      this.weight,
+      wall !== 0 ? 1 : 0,
+      wall !== 0 ? 16 : 10,
+      dt,
+    );
     this.rising = THREE.MathUtils.damp(this.rising, vy > 0.5 ? 1 : 0, 10, dt);
     if (this.weight < 0.01) return;
     const s = this.side;
@@ -841,17 +1303,30 @@ class ClimbPose {
     const c = Math.sin(height * 2.3);
     const r = this.rising;
     const mix = (a: [number, number, number], b: [number, number, number]) =>
-      [a[0] + (b[0] - a[0]) * r, a[1] + (b[1] - a[1]) * r, a[2] + (b[2] - a[2]) * r] as [number, number, number];
+      [
+        a[0] + (b[0] - a[0]) * r,
+        a[1] + (b[1] - a[1]) * r,
+        a[2] + (b[2] - a[2]) * r,
+      ] as [number, number, number];
     // [trượt, leo] cho từng xương; tay/chân "gần" là bên trái hay phải tuỳ hướng tường không quan trọng vì nhìn ngang
     const pose: [string, [number, number, number]][] = [
       ["Spine01", mix([s * 0.15, 1, 0], [s * 0.22, 1, 0])],
       ["LeftArm", mix([s * 0.55, 0.8, 0.1], [s * 0.45, 0.55 + 0.4 * c, 0.15])],
       ["LeftForeArm", mix([s * 0.45, 0.9, 0], [s * 0.3, 1, 0])],
-      ["RightArm", mix([-s * 0.25, -0.95, 0.2], [s * 0.45, 0.55 - 0.4 * c, -0.15])],
+      [
+        "RightArm",
+        mix([-s * 0.25, -0.95, 0.2], [s * 0.45, 0.55 - 0.4 * c, -0.15]),
+      ],
       ["RightForeArm", mix([s * 0.2, -0.9, 0.3], [s * 0.3, 1, 0])],
-      ["LeftUpLeg", mix([s * 0.55, -0.45, 0.1], [s * 0.5, -0.55 - 0.35 * c, 0.1])],
+      [
+        "LeftUpLeg",
+        mix([s * 0.55, -0.45, 0.1], [s * 0.5, -0.55 - 0.35 * c, 0.1]),
+      ],
       ["LeftLeg", mix([s * 0.35, -0.95, 0], [s * 0.2, -1, 0])],
-      ["RightUpLeg", mix([s * 0.1, -1, -0.1], [s * 0.5, -0.55 + 0.35 * c, -0.1])],
+      [
+        "RightUpLeg",
+        mix([s * 0.1, -1, -0.1], [s * 0.5, -0.55 + 0.35 * c, -0.1]),
+      ],
       ["RightLeg", mix([s * 0.05, -1, 0], [s * 0.2, -1, 0])],
     ];
     for (const [name, dir] of pose) {
@@ -870,7 +1345,9 @@ class ClimbPose {
 /** Khoảng thời gian nhân vật lơ lửng trong clip nhảy: đo từ độ cao xương Hips */
 function airWindow(clip: THREE.AnimationClip | undefined) {
   const fallback = { start: 0, end: clip?.duration ?? 1 };
-  const track = clip?.tracks.find((t) => t.name.endsWith(".position") && /hips/i.test(t.name));
+  const track = clip?.tracks.find(
+    (t) => t.name.endsWith(".position") && /hips/i.test(t.name),
+  );
   if (!clip || !track) return fallback;
   const ys: number[] = [];
   for (let i = 1; i < track.values.length; i += 3) ys.push(track.values[i]);
@@ -886,17 +1363,26 @@ function airWindow(clip: THREE.AnimationClip | undefined) {
 }
 
 /** Viền sáng quanh nhân vật: vỏ lưới mặt sau phình ra theo pháp tuyến, dùng chung bộ xương */
-function addOutline(scene: THREE.Object3D, color: string, worldThickness: number) {
+function addOutline(
+  scene: THREE.Object3D,
+  color: string,
+  worldThickness: number,
+) {
   scene.updateMatrixWorld(true);
   const meshes: THREE.SkinnedMesh[] = [];
   scene.traverse((o) => {
-    if ((o as THREE.SkinnedMesh).isSkinnedMesh) meshes.push(o as THREE.SkinnedMesh);
+    if ((o as THREE.SkinnedMesh).isSkinnedMesh)
+      meshes.push(o as THREE.SkinnedMesh);
   });
   const ws = new THREE.Vector3();
   for (const m of meshes) {
     m.getWorldScale(ws);
     const thickness = worldThickness / Math.max(1e-6, ws.x);
-    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(1.6), side: THREE.BackSide, toneMapped: false });
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(color).multiplyScalar(1.6),
+      side: THREE.BackSide,
+      toneMapped: false,
+    });
     mat.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader.replace(
         "#include <skinning_vertex>",
@@ -915,40 +1401,67 @@ function addOutline(scene: THREE.Object3D, color: string, worldThickness: number
 }
 
 function lastShotAt(sim: PlatformerSim) {
-  for (let i = sim.fx.length - 1; i >= 0; i--) if (sim.fx[i].kind === "shot") return sim.fx[i].at;
+  for (let i = sim.fx.length - 1; i >= 0; i--)
+    if (sim.fx[i].kind === "shot") return sim.fx[i].at;
   return -9;
 }
 
 /** Hộp tạm trong lúc model nhân vật đang tải */
 function PlaceholderHero({ sim }: { sim: PlatformerSim }) {
   const ref = useRef<THREE.Mesh>(null);
-  useFrame(() => ref.current?.position.set(sim.player.x, sim.player.y + 0.9, 0));
+  useFrame(() =>
+    ref.current?.position.set(sim.player.x, sim.player.y + 0.9, 0),
+  );
   return (
     <mesh ref={ref}>
       <capsuleGeometry args={[0.35, 1.1, 4, 8]} />
-      <meshStandardMaterial color="#05d9e8" emissive="#05d9e8" emissiveIntensity={0.6} />
+      <meshStandardMaterial
+        color="#05d9e8"
+        emissive="#05d9e8"
+        emissiveIntensity={0.6}
+      />
     </mesh>
   );
 }
 
-const ENEMY_MODEL: Record<Exclude<Enemy["kind"], "drone">, { base: string; clips: Record<string, string>; height: number }> = {
-  trooper: { base: "mx_legion_android", clips: { walk: "walk", idle: "idle", shoot: "walkshoot", death: "death" }, height: 1.9 },
-  zombie: { base: "mx_zmb_walker", clips: { walk: "walk", run: "run", attack: "attack", death: "death", hit: "stagger" }, height: 1.85 },
-  boss: { base: "mx_mon_robot_reaper", clips: { walk: "walk", run: "run", attack: "attack", death: "death", scream: "scream", hit: "stagger" }, height: 3.6 },
-};
-
 function EnemyModel({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
   if (enemy.kind === "drone") return <DroneModel sim={sim} enemy={enemy} />;
-  return <RiggedEnemy sim={sim} enemy={enemy} spec={ENEMY_MODEL[enemy.kind]} />;
+  return (
+    <RiggedEnemy
+      sim={sim}
+      enemy={enemy}
+      spec={levelById(sim.def.id).looks[enemy.kind]}
+    />
+  );
 }
 
-function RiggedEnemy({ sim, enemy, spec }: { sim: PlatformerSim; enemy: Enemy; spec: (typeof ENEMY_MODEL)["trooper"] }) {
+function RiggedEnemy({
+  sim,
+  enemy,
+  spec,
+}: {
+  sim: PlatformerSim;
+  enemy: Enemy;
+  spec: RigLook;
+}) {
   const entries = Object.entries(spec.clips);
-  const gltfs = entries.map(([, file]) => use(extraModel(`${spec.base}_${file}` as ExtraModel)));
+  // Clip ghi đủ tên model ("mx_...") là mượn từ nhân vật Meshy khác (chung tên xương)
+  const gltfs = entries.map(([, file]) =>
+    use(
+      extraModel(
+        (file.startsWith("mx_") ? file : `${spec.base}_${file}`) as ExtraModel,
+      ),
+    ),
+  );
   const rig = useMemo(() => {
     const clips: Record<string, THREE.AnimationClip | undefined> = {};
     entries.forEach(([name], i) => (clips[name] = gltfs[i].animations[0]));
-    return buildRig(gltfs[0].scene, clips, spec.height, enemy.kind === "boss" ? 0.45 : 0.35);
+    return buildRig(
+      gltfs[0].scene,
+      clips,
+      spec.height,
+      enemy.kind === "boss" ? 0.45 : 0.35,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, gltfs);
   const group = useRef<THREE.Group>(null);
@@ -966,16 +1479,44 @@ function RiggedEnemy({ sim, enemy, spec }: { sim: PlatformerSim; enemy: Enemy; s
     yaw.current = THREE.MathUtils.damp(yaw.current, faceYaw(e.facing), 10, dt);
     o.rotation.y = yaw.current;
     if (!e.alive) setAnim(rig, "death", 0.1);
-    else if (sim.time - e.hurtAt < 0.15 && e.kind === "boss" && rig.actions.hit && e.move !== "jump") setAnim(rig, "walk", 0.1);
-    else if (e.kind === "trooper") setAnim(rig, sim.time - e.firedAt < 0.6 ? "shoot" : Math.abs(e.vx) > 0.1 ? "walk" : "idle", 0.15);
-    else if (e.kind === "zombie") setAnim(rig, Math.abs(e.vx) > 1.5 ? "run" : "walk", 0.2);
+    else if (
+      sim.time - e.hurtAt < 0.15 &&
+      e.kind === "boss" &&
+      rig.actions.hit &&
+      e.move !== "jump"
+    )
+      setAnim(rig, "walk", 0.1);
+    else if (e.kind === "trooper")
+      setAnim(
+        rig,
+        sim.time - e.firedAt < 0.6
+          ? "shoot"
+          : Math.abs(e.vx) > 0.1
+            ? "walk"
+            : "idle",
+        0.15,
+      );
+    else if (e.kind === "zombie")
+      setAnim(rig, Math.abs(e.vx) > 1.5 ? "run" : "walk", 0.2);
     else if (e.kind === "boss") {
-      const anim = !e.awake ? "scream" : e.move === "volley" ? "attack" : e.move === "jump" ? "run" : "walk";
+      const anim = !e.awake
+        ? "scream"
+        : e.move === "volley"
+          ? "attack"
+          : e.move === "jump"
+            ? "run"
+            : "walk";
       setAnim(rig, anim, 0.2);
     }
-    rig.mixer.update(Math.min(dt, 0.1) * (e.awake || e.kind !== "boss" ? 1 : 0.3));
+    rig.mixer.update(
+      Math.min(dt, 0.1) * (e.awake || e.kind !== "boss" ? 1 : 0.3),
+    );
     const hurt = sim.time - e.hurtAt;
-    flash(rig.scene, e.alive && hurt < 0.1 ? 1 - hurt / 0.1 : 0, e.kind === "boss" ? WHITE : RED);
+    flash(
+      rig.scene,
+      e.alive && hurt < 0.1 ? 1 - hurt / 0.1 : 0,
+      e.kind === "boss" ? WHITE : RED,
+    );
   });
   return (
     <group ref={group}>
@@ -1007,7 +1548,9 @@ function DroneModel({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
     if (!o.visible) return;
     o.position.set(enemy.x, enemy.y - (enemy.alive ? 0 : age * age * 12), 0);
     o.rotation.y = enemy.facing > 0 ? Math.PI / 2 : -Math.PI / 2;
-    o.rotation.z = enemy.alive ? Math.sin(clock.elapsedTime * 3 + enemy.id) * 0.15 : age * 6;
+    o.rotation.z = enemy.alive
+      ? Math.sin(clock.elapsedTime * 3 + enemy.id) * 0.15
+      : age * 6;
   });
   return (
     <group ref={group}>

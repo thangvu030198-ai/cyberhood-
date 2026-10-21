@@ -17,19 +17,19 @@ export const LEVEL_TUNING = {
     dashSpeed: 12,
     dashTime: 0.35,
     /** Vận tốc nhảy ban đầu */
-    jumpVel: 13.5,
-    gravity: 38,
+    jumpVel: 18,
+    gravity: 46,
     /** Nhân trọng lực khi đã nhả nút nhảy lúc còn đang bay lên (nhảy thấp mà vẫn mượt) */
-    releaseGravity: 3.2,
+    releaseGravity: 3.8,
     /** Gần đỉnh nhảy (|vy| nhỏ hơn apexBand) mà còn giữ nút: trọng lực nhẹ đi */
     apexBand: 2.5,
     apexGravity: 0.55,
     /** Lúc rơi */
     fallGravity: 1.12,
-    maxFall: 18,
+    maxFall: 20,
     /** Tốc độ trượt khi bám tường */
     wallSlide: 3,
-    wallJumpVel: 11,
+    wallJumpVel: 12.2,
     /** Giữ nút nhảy khi bám tường: tự đạp tiếp khi vận tốc lên giảm xuống dưới mức này */
     autoClimbVy: 3,
     /** Lực đẩy ngang khi nhảy tường mà vẫn giữ hướng vào tường (leo tiếp) / bấm hướng ra ngoài */

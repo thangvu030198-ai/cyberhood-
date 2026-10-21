@@ -15,7 +15,8 @@ export type RigLook = { base: string; clips: Record<string, string>; height: num
  * Model địch không xương (sinh vật kỳ dị không rig được): chuyển động dựng bằng tay.
  * float: trôi lơ lửng, lắc lư; crawl: bò sát đất, nhún theo bước; fly: bay lượn, chao cánh
  */
-export type StaticLook = { model: ExtraModel; height: number; motion: "float" | "crawl" | "fly" };
+/** `by: "longest"`: `height` là cạnh dài nhất (model có tay / cánh dài toả ra, đo theo chiều cao sẽ to quá cỡ) */
+export type StaticLook = { model: ExtraModel; height: number; motion: "float" | "crawl" | "fly"; by?: "height" | "longest" };
 export type Look = RigLook | StaticLook;
 /** Một kiểu hoặc một nhóm kiểu (mỗi địch lấy một kiểu theo số thứ tự, cho đám đông đa dạng) */
 export type LookSet = Look | Look[];
@@ -72,7 +73,7 @@ const drGuard = (name: string, height = 1.95): RigLook => ({
   clips: { walk: "walk", idle: "walk", shoot: "mx_ct_guard_attack", death: "mx_ct_guard_death" },
   height,
 });
-const still = (name: string, height: number, motion: StaticLook["motion"]): StaticLook => ({ model: `mx_dr_${name}` as ExtraModel, height, motion });
+const still = (name: string, height: number, motion: StaticLook["motion"], by?: StaticLook["by"]): StaticLook => ({ model: `mx_dr_${name}` as ExtraModel, height, motion, by });
 
 export const LEVELS: LevelEntry[] = [
   {
@@ -126,7 +127,7 @@ export const LEVELS: LevelEntry[] = [
       // Khách trọ ma: hồn ma bellhop, cô dâu tóc dài, đứa trẻ rỗng ruột
       zombie: [zombieLook("mx_hh_ghost", 1.75), drZombie("bride", 1.8), drZombie("child", 1.45, false)],
       // Quỷ nhiều tay trôi lơ lửng thay drone
-      drone: still("wraith", 2.2, "float"),
+      drone: still("wraith", 3.2, "float", "longest"),
       boss: drBoss("madre", 3.6, false),
     },
     bossName: "La Madre · Bà Mẹ Than Khóc",
@@ -270,7 +271,7 @@ LEVELS.push({
     trooper: [still("crawler", 1.5, "crawl"), still("fleshfang", 1.3, "crawl")],
     // Người chết đủ kiểu: áo choàng, rách rưới, trơ xương sườn, nụ cười khâu, bóng đen, đầu còi, quái hai đầu
     zombie: [drZombie("zmb_hood"), drZombie("zmb_rag"), drZombie("zmb_ribs"), drZombie("grin", 1.75, false), drZombie("shade", 2.1, false), drZombie("siren", 2.4), drZombie("twinhead", 2.1, false)],
-    drone: [still("sinew", 2.3, "float"), still("wraith", 2.2, "float")],
+    drone: [still("sinew", 3.2, "float", "longest"), still("wraith", 3.2, "float", "longest")],
     boss: still("watcher", 4.4, "float"),
   },
   bossName: "Kẻ Canh Giữ",

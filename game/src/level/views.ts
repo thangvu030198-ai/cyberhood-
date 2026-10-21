@@ -38,7 +38,7 @@ export const VIEWS: ViewPreset[] = [
   { id: "topdown", label: "Nhìn từ trên, cuộn dọc", inspired: "1942 · Raiden · bắn máy bay hẻm núi", fov: 40, distance: 36, yaw: 0, rise: 7, lookAhead: 0, damp: 6, post: "none", plane: "top" },
   { id: "iso", label: "Nhìn chéo sa bàn", inspired: "Final Fantasy Tactics (PS1)", fov: 26, distance: 46, yaw: 0, rise: 0, lookAhead: 0, damp: 6, post: "snes", plane: "top", iso: true },
   { id: "farm", label: "Nhìn từ trên kiểu nông trại", inspired: "Stardew Valley · Harvest Moon (SNES)", fov: 30, distance: 27, yaw: 0, rise: 0, lookAhead: 0, damp: 6, post: "snes", plane: "top", farm: true },
-  { id: "cinema", label: "Điện ảnh", inspired: "Shinobi · Strider 2 (PS2)", fov: 34, distance: 16, yaw: -0.18, rise: -0.6, lookAhead: 3.5, damp: 3, post: "cinema" },
+  { id: "cinema", label: "Điện ảnh", inspired: "Shinobi · Strider 2 (PS2)", fov: 38, distance: 24, yaw: -0.14, rise: 0.8, lookAhead: 3.5, damp: 3, post: "cinema" },
 ];
 
 export const viewById = (id: ViewId) => VIEWS.find((v) => v.id === id) ?? VIEWS[0];

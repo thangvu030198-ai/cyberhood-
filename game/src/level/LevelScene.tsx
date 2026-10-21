@@ -266,10 +266,11 @@ function LevelCamera({
     b.distance += (v.distance - b.distance) * kb;
     b.yaw += (v.yaw - b.yaw) * kb;
     b.rise += (v.rise - b.rise) * kb;
-    // Điện ảnh: đứng yên thì sát lại, lướt / chạy thì lùi ra
+    // Điện ảnh: lướt / chạy thì lùi ra nhẹ, vào phòng trùm thì lùi hẳn để thấy cả phòng
+    // (không sát lại khi đứng yên: khung đã hẹp, sát nữa là nhân vật chiếm nửa màn hình)
     const speedK = Math.min(1, Math.abs(p.vx) / T.player.dashSpeed);
     const zt =
-      v.post === "cinema" ? (sim.bossActive ? 1.35 : 0.85 + speedK * 0.35) : 1;
+      v.post === "cinema" ? (sim.bossActive ? 1.2 : 1 + speedK * 0.12) : 1;
     zoom.current += (zt - zoom.current) * (1 - Math.exp(-1.5 * dt));
     const dist = b.distance * zoom.current;
     if (Math.abs(camera.fov - b.fov) > 0.01) {
@@ -1990,7 +1991,7 @@ function StaticEnemy({
   enemy: Enemy;
   spec: StaticLook;
 }) {
-  const { root } = useFitted(spec.model, spec.height, "height", enemy.kind === "boss" ? 0.45 : 0.35);
+  const { root } = useFitted(spec.model, spec.height, spec.by ?? "height", enemy.kind === "boss" ? 0.45 : 0.35);
   // Vật liệu riêng cho từng con để nháy sáng khi trúng đòn không lây sang con khác
   const obj = useMemo(() => {
     const c = root.clone(true);
@@ -2018,7 +2019,7 @@ function StaticEnemy({
     const top = sim.mode === "topdown";
     // Nhìn từ trên: thân sinh vật nổi khỏi mặt sàn theo trục z (đã xoay thế giới)
     const lift = spec.motion === "float" ? 0.4 + Math.sin(t * 1.8) * 0.25 : spec.motion === "fly" ? 0.9 + Math.sin(t * 5) * 0.35 : 0;
-    o.position.set(e.x, e.y + (top ? e.h / 2 : lift), zFloor(sim) + (top ? lift + (spec.motion === "crawl" ? 0 : 0.3) : enemy.kind === "boss" ? -0.3 : 0));
+    o.position.set(e.x, e.y + (top ? e.h / 2 : lift), zFloor(sim) + (top ? lift + (spec.motion === "crawl" ? 0 : 0.3) : enemy.kind === "boss" ? -0.3 : spec.motion === "crawl" ? 0 : -0.8));
     o.rotation.x = upright(sim);
     yaw.current = THREE.MathUtils.damp(
       yaw.current,

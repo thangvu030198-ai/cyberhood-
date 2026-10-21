@@ -15,6 +15,7 @@ import {
 } from "../sim/contract";
 import { gainMeter } from "../sim/transform";
 import { RARITY_COLOR, type MechPart } from "../sim/loot";
+import type { MechSlot } from "../sim/config";
 import { despawnSpecial, drones, onDroneKilled, spawnSpecial, specialDrone } from "./Enemies";
 import { handles } from "./refs";
 import { useGame } from "./store";
@@ -82,7 +83,9 @@ export const runtime = {
   crate: null as Vec2 | null,
   wantedUntil: 0,
   /** Hiệu ứng cột sáng khi rơi đồ */
-  beams: [] as { pos: THREE.Vector3; color: string; born: number }[],
+  beams: [] as { pos: THREE.Vector3; color: string; born: number; slot?: MechSlot }[],
+  /** Pin năng lượng nằm trên phố trong hợp đồng: nhặt được +15% thanh biến hình */
+  batteries: [] as Vec2[],
   hintAt: 0,
 };
 
@@ -152,6 +155,7 @@ export function startNewContract(): string | null {
   runtime.mission = null;
   runtime.crate = null;
   runtime.wantedUntil = 0;
+  runtime.batteries = Array.from({ length: GAME.consumables.battery.perMatch }, () => spotAround(playerPos() ?? { x: 0, z: 0 }, 40, 160));
   playSfx("pickup", 0.8);
   toast("Nhận hợp đồng: 6 nhiệm vụ trong 7 phút");
   return null;
@@ -181,7 +185,7 @@ function rewardMission(markerId: number) {
 
 export function showLoot(part: MechPart) {
   const p = handles.player?.currPos ?? _p.set(0, 0, 0);
-  runtime.beams.push({ pos: p.clone(), color: RARITY_COLOR[part.rarity], born: performance.now() / 1000 });
+  runtime.beams.push({ pos: p.clone(), color: RARITY_COLOR[part.rarity], born: performance.now() / 1000, slot: part.slot });
   useHunter.getState().notifyDrop(part);
   playSfx("pickup", 0.9);
 }
@@ -248,6 +252,17 @@ function updateMission(here: Vec2, elapsed: number) {
   // Rượt đuổi hoàn thành qua sự kiện hạ drone
 }
 
+function pickBatteries(here: Vec2) {
+  const i = runtime.batteries.findIndex((b) => dist(here, b) < 3);
+  if (i < 0) return;
+  runtime.batteries.splice(i, 1);
+  const h = useHunter.getState();
+  gainMeter(h.transform, "battery");
+  useHunter.setState({ transform: { ...h.transform } });
+  playSfx("pickup", 0.8);
+  toast(`Nhặt Pin năng lượng: +${GAME.transform.gain.battery}% biến hình`);
+}
+
 function updateEvent(here: Vec2, elapsed: number) {
   const h = useHunter.getState();
   const c = h.contract!;
@@ -279,7 +294,7 @@ function beginEvent(type: string, here: Vec2, elapsed: number) {
     // Legion gần đó kéo tới tranh hàng
     const crate = runtime.crate;
     drones
-      .filter((d) => d.kind === "legion" && d.state !== "dead")
+      .filter((d) => (d.kind === "legion" || d.kind === "trooper") && d.state !== "dead")
       .sort((a, b) => dist({ x: a.pos.x, z: a.pos.z }, crate) - dist({ x: b.pos.x, z: b.pos.z }, crate))
       .slice(0, 3)
       .forEach((d) => {
@@ -320,6 +335,7 @@ export function updateContract(dt: number) {
   }
   updateMission(here, c.elapsed);
   updateEvent(here, c.elapsed);
+  pickBatteries(here);
 
   if (canExtract(c, here)) return endNow("extracted");
 }
@@ -329,6 +345,7 @@ function endNow(outcome: "extracted" | "dead" | "timeout") {
   despawnSpecial("boss");
   runtime.mission = null;
   runtime.crate = null;
+  runtime.batteries = [];
   const res = useHunter.getState().endContract(outcome);
   document.exitPointerLock?.();
   if (res && outcome === "extracted") playSfx("pickup", 1);
@@ -356,7 +373,7 @@ onDroneKilled((d) => {
 });
 
 /** Mục tiêu đang cần tới (cho cột sáng và minimap) */
-export type Pin = { x: number; z: number; color: string; kind: "marker" | "objective" | "extract" | "crate" | "car" | "board" };
+export type Pin = { x: number; z: number; color: string; kind: "marker" | "objective" | "extract" | "crate" | "car" | "board" | "battery" };
 
 export function contractPins(): Pin[] {
   const pins: Pin[] = [];
@@ -381,6 +398,7 @@ export function contractPins(): Pin[] {
     for (const mk of c.markers) if (!mk.done) pins.push({ x: mk.pos.x, z: mk.pos.z, color: "#ffb000", kind: "marker" });
   }
   if (runtime.crate) pins.push({ ...runtime.crate, color: "#b05cff", kind: "crate" });
+  for (const b of runtime.batteries) pins.push({ ...b, color: "#05d9e8", kind: "battery" });
   if (c.extractVisible) pins.push({ ...c.extract, color: "#39ff88", kind: "extract" });
   return pins;
 }

@@ -71,6 +71,7 @@ const PIN_STYLE: Record<Pin["kind"], { radius: number; height: number }> = {
   crate: { radius: 1.4, height: 70 },
   car: { radius: 2.4, height: 30 },
   board: { radius: 0.9, height: 25 },
+  battery: { radius: 0.6, height: 12 },
 };
 
 /** Cột sáng và vòng dưới đất cho mọi điểm cần tới */
@@ -127,12 +128,9 @@ function Pins() {
         </group>
       ))}
       <group ref={crate} visible={false}>
-        <mesh>
-          <boxGeometry args={[1.2, 1.2, 1.2]} />
-          <meshStandardMaterial color="#1b0f2e" metalness={0.7} roughness={0.3} emissive="#b05cff" emissiveIntensity={0.6} />
-        </mesh>
-        <mesh>
-          <boxGeometry args={[1.26, 0.12, 1.26]} />
+        {/* Thân thùng là model Meshy (MeshyProps); ở đây chỉ còn vòng sáng dưới đất */}
+        <mesh position={[0, -0.5, 0]} rotation-x={-Math.PI / 2}>
+          <ringGeometry args={[1.1, 1.3, 40]} />
           <meshBasicMaterial color={new THREE.Color("#b05cff").multiplyScalar(4)} toneMapped={false} />
         </mesh>
       </group>

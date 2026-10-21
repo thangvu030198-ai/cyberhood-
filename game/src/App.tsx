@@ -17,6 +17,8 @@ import { Npcs } from "./game/Npcs";
 import { ContractScene } from "./game/ContractScene";
 import { MechController } from "./game/Mech";
 import { HubProps, Showcase } from "./game/Showcase";
+import { LifeDynamic, LifeStatic } from "./game/Life";
+import { MeshyDynamic, MeshyStatic } from "./game/MeshyProps";
 import { useHunter } from "./game/hunter";
 import { runtime, startNewContract } from "./game/contracts";
 import { Vault, VaultDoor } from "./game/Vault";
@@ -114,6 +116,8 @@ export default function App() {
               <Vault />
               <ContractScene />
               <HubProps />
+              <LifeStatic quality={quality} />
+              <MeshyStatic />
               <KitDressing />
             </Physics>
             <VaultDoor />
@@ -128,6 +132,8 @@ export default function App() {
             <CameraRig />
             <Interaction />
             <Showcase quality={quality} />
+            <LifeDynamic quality={quality} />
+            <MeshyDynamic />
             <Rain />
             <DebugHook />
             {!NO_FX && (

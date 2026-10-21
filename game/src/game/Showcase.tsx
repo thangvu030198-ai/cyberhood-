@@ -11,7 +11,7 @@ import { CITY, CITY_HALF, mulberry32 } from "./config";
 const SIDEWALK = CITY.SIDEWALK_HEIGHT;
 
 /** Bản sao của scene, thu phóng cho chiều cao (hoặc cạnh dài nhất) bằng `size`, đáy đặt ở y = 0 */
-function useFitted(name: ExtraModel, size: number, by: "height" | "longest" = "height", selfLit = 0) {
+export function useFitted(name: ExtraModel, size: number, by: "height" | "longest" = "height", selfLit = 0) {
   const gltf = use(extraModel(name));
   return useMemo(() => {
     const root = new THREE.Group();

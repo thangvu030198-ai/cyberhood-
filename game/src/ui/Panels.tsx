@@ -26,6 +26,13 @@ export const CREDITS = [
   "Commercial Refrigerator · Eric Chadwick, Darmstadt Graphics Group, Sean Thomas · CC-BY 4.0",
   "Low Poly Spaceship · EdwinRC · CC-BY 2.0",
   "UFO, cổng dịch chuyển, cây holo: Polygonal Mind · CC0 · Thùng sci-fi: Sara Vieira · CC0",
+  "Drone “S2WT Kamdo” · Hansalex · CC-BY 4.0",
+  "UFO lớn · Babylon.js Assets · CC-BY 4.0",
+  "“SciFi Platform Stage Scene” (Sketchfab) · CC-BY 4.0",
+  "Traffic Cone · hinndia · CC-BY 4.0",
+  "Người đi bộ: 100Avatars · Polygonal Mind · CC0 · Robot: Tomás Laulhé · CC0",
+  "Xe: Kenney Car Kit · CC0 · Dodge Challenger 1970: kryptonmedia · CC0 · Trực thăng: sriniwasjha · CC0",
+  "Lính Legion, Archivist, mech Director Vane, Colossus, xe Velocity, vật phẩm, linh kiện: tạo bằng Meshy AI",
 ];
 
 export function CharacterCreator() {

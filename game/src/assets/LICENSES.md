@@ -19,3 +19,12 @@
 | `public/models/spaceship.glb` | Low Poly Spaceship của EdwinRC, qua pmndrs/examples | CC-BY 2.0: **bắt buộc ghi công** |
 | `public/models/ufo.glb`, `public/models/teleporter.glb`, `public/models/holotree.glb` | Polygonal Mind (github.com/ToxSam/cc0-models-Polygonal-Mind) | CC0 1.0 |
 | `public/models/crate.glb` | Sci-fi crate của Sara Vieira (pmndrs market-assets) | CC0 1.0 |
+| `public/models/crowd_a.glb`, `public/models/crowd_b.glb` | 21 avatar 100Avatars của Polygonal Mind (github.com/polygonalmind/100Avatars), nén texture 256px | CC0 1.0 |
+| `public/models/robot.glb` | RobotExpressive của Tomás Laulhé (Quaternius), chỉnh bởi Don McCurdy, lấy từ repo three.js | CC0 1.0 |
+| `public/models/kamdo.glb` | "S2WT Kamdo (Industrial Divinities)" của Hansalex (sketchfab.com/Hansalex), qua pmndrs/examples | CC-BY 4.0: **bắt buộc ghi công** |
+| `public/models/cars.glb` | Kenney Car Kit (qua pmndrs market-assets) và Dodge Challenger 1970 R/T của kryptonmedia (Blendswap, qua gkjohnson/3d-demo-data), giảm đa giác | CC0 1.0 |
+| `public/models/street.glb` | Polygonal Mind, KayKit City Builder Bits, Lantern và BoomBox (Microsoft), SciFi Helmet (Michael Pavlovic): CC0. Traffic Cone của hinndia (KhronosGroup/glTF-Sample-Assets): **CC-BY 4.0, bắt buộc ghi công** | CC0 1.0 / CC-BY 4.0 |
+| `public/models/helicopter.glb` | Helicopter của sriniwasjha (Blendswap 25911, qua pmndrs market-assets), giảm đa giác | CC0 1.0 |
+| `public/models/bigufo.glb` | UFO của Babylon.js Assets (github.com/BabylonJS/Assets) | CC-BY 4.0: **bắt buộc ghi công** |
+| `public/models/platform.glb` | "SciFi Platform Stage Scene (Baked)" (sketchfab 64adb59a716d43e5a8705ff6fe86c0ce), qua PlayCanvas engine examples | CC-BY 4.0: **bắt buộc ghi công** |
+| `public/models/mx_*.glb` | Model gốc của Cyberhood, tạo bằng Meshy AI (text-to-3d + rigging) trên tài khoản chủ dự án; chi tiết prompt và task id ở `docs/MESHY_ASSETS.md` | Theo điều khoản Meshy: gói trả phí thuộc sở hữu người tạo; gói miễn phí là CC-BY 4.0 (ghi công Meshy). Đã ghi công trong Credits |

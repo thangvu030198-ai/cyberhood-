@@ -96,6 +96,38 @@ const EXTRA_SIZES = {
   skyline: 5_249_000,
   teleporter: 60_000,
   holotree: 84_000,
+  /** Đám đông: 100Avatars của Polygonal Mind (CC0), chia 2 file */
+  crowd_a: 9_472_000,
+  crowd_b: 7_639_000,
+  /** Drone Legion: "S2WT Kamdo" của Hansalex (CC-BY 4.0) */
+  kamdo: 720_000,
+  /** RobotExpressive: Tomás Laulhé (CC0) */
+  robot: 416_000,
+  /** Xe: Kenney Car Kit (CC0) + Dodge Challenger 1970 của kryptonmedia (CC0) */
+  cars: 9_209_000,
+  /** Đạo cụ phố: Polygonal Mind, KayKit, Khronos/Microsoft, Michael Pavlovic (CC0) và Traffic Cone của hinndia (CC-BY 4.0) */
+  street: 5_372_000,
+  helicopter: 2_344_000,
+  bigufo: 1_462_000,
+  platform: 1_412_000,
+  // Model gốc tạo bằng Meshy (text-to-3d, tài khoản của chủ dự án), xem docs/MESHY_ASSETS.md
+  mx_legion_trooper_walk: 3_890_000,
+  mx_legion_trooper_run: 35_000,
+  mx_archivist_walk: 2_386_000,
+  mx_archivist_run: 35_000,
+  mx_director_vane_mech: 3_259_000,
+  mx_colossus_mech: 3_017_000,
+  mx_velocity_car: 2_054_000,
+  mx_supply_crate: 577_000,
+  mx_battery_cell: 489_000,
+  mx_extra_coin: 512_000,
+  mx_chrono_cube: 587_000,
+  mx_nova_bomb: 453_000,
+  mx_easter_egg: 573_000,
+  mx_part_core: 715_000,
+  mx_part_armor: 677_000,
+  mx_part_weapon: 581_000,
+  mx_part_engine: 712_000,
 } as const;
 export type ExtraModel = keyof typeof EXTRA_SIZES;
 

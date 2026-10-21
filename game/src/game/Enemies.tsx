@@ -15,8 +15,11 @@ import { lineOfSight, pushOutOfBuildings, raySphere } from "./world";
 // Drone an ninh của OMNI-DYNE: tuần tra quanh điểm gốc, phát hiện thì bay vòng quanh người chơi và bắn laser.
 
 type DroneState = "patrol" | "chase" | "flee" | "dead";
-/** legion: lính thường; courier: drone đưa thư bỏ chạy (nhiệm vụ rượt đuổi); boss: trùm Mech sự kiện phút 4 */
-export type DroneKind = "legion" | "courier" | "boss";
+/**
+ * legion: drone thường; trooper: lính Legion đi bộ (model Meshy); courier: drone đưa thư bỏ chạy (nhiệm vụ rượt đuổi);
+ * boss: trùm Mech sự kiện phút 4
+ */
+export type DroneKind = "legion" | "trooper" | "courier" | "boss";
 
 export type Drone = {
   id: number;
@@ -40,6 +43,10 @@ export type Drone = {
 };
 
 const DRONE_COUNT = 14;
+const TROOPER_COUNT = 8;
+const TROOPER_HP = 80;
+/** Lính đi bộ: tâm vùng trúng đạn ngang bụng, chân chạm đất */
+const TROOPER_CENTER = 1.0;
 const COURIER_HP = 160;
 const BOSS_HP = 2400;
 const COURIER_SPEED = 9;
@@ -81,6 +88,35 @@ export const drones: Drone[] = (() => {
       wander: home.clone(),
       nextWander: 0,
       hp: DRONE_HP,
+      state: "patrol",
+      nextShot: 0,
+      deadAt: 0,
+      hurtAt: -1,
+      firedAt: -1,
+      orbit: rand() * Math.PI * 2,
+    });
+  }
+  // Lính Legion đi bộ tuần tra trên phố
+  for (let i = 0; list.length < DRONE_COUNT + TROOPER_COUNT && i < 200; i++) {
+    const street = streets[Math.floor(rand() * streets.length)];
+    const along = (rand() - 0.5) * CITY_HALF * 1.6;
+    const alongX = rand() < 0.5;
+    const lane = (rand() < 0.5 ? -1 : 1) * 5;
+    const home = alongX
+      ? new THREE.Vector3(along, TROOPER_CENTER, street + lane)
+      : new THREE.Vector3(street + lane, TROOPER_CENTER, along);
+    if (Math.hypot(home.x - PLAYER.spawn[0], home.z - PLAYER.spawn[2]) < 40) continue;
+    list.push({
+      id: list.length,
+      kind: "trooper",
+      maxHp: TROOPER_HP,
+      size: 1,
+      home,
+      pos: home.clone(),
+      vel: new THREE.Vector3(),
+      wander: home.clone(),
+      nextWander: 0,
+      hp: TROOPER_HP,
       state: "patrol",
       nextShot: 0,
       deadAt: 0,
@@ -193,7 +229,7 @@ export function damageDrone(d: Drone, amount: number) {
   const game = useGame.getState();
   // Bị bắn thì drone này và đồng đội quanh đó lao vào truy đuổi
   for (const other of drones) {
-    if (other.kind === "legion" && other.state !== "dead" && other.pos.distanceTo(d.pos) < 35) other.state = "chase";
+    if ((other.kind === "legion" || other.kind === "trooper") && other.state !== "dead" && other.pos.distanceTo(d.pos) < 35) other.state = "chase";
   }
   if (d.hp > 0) {
     playSfx("enemyHurt", 0.7);
@@ -220,7 +256,36 @@ const _aim = new THREE.Vector3();
 const _miss = new THREE.Vector3();
 const _away = new THREE.Vector3();
 
-function DroneModel({ index }: { index: number }) {
+/** Drone Legion chi tiết cao "S2WT Kamdo" (Hansalex, CC-BY 4.0): thân kim loại, mắt đỏ phát sáng */
+function useKamdo(index: number) {
+  const gltf = use(extraModel("kamdo"));
+  return useMemo(() => {
+    const s = gltf.scene.clone(true);
+    s.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(s);
+    const dim = box.getSize(new THREE.Vector3());
+    const k = (1.7 * drones[index].size) / Math.max(dim.x, dim.y, dim.z);
+    const c = box.getCenter(new THREE.Vector3());
+    s.scale.setScalar(k);
+    s.position.set(-c.x * k, -c.y * k, -c.z * k);
+    const materials: THREE.MeshStandardMaterial[] = [];
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      if (drones[index].kind === "courier") mat.color.lerp(new THREE.Color("#ffc23d"), 0.6);
+      mat.emissive.set(PALETTE.pink);
+      mat.emissiveIntensity = 0.08;
+      m.material = mat;
+      materials.push(mat);
+    });
+    const root = new THREE.Group();
+    root.add(s);
+    return { scene: root, materials };
+  }, [gltf, index]);
+}
+
+function KenneyDrone({ index }: { index: number }) {
   const gltf = use(models.drone);
   const { scene, materials } = useMemo(() => {
     // Mọi phần của drone dùng chung texture colormap: gộp thành một lưới, một vật liệu riêng mỗi drone
@@ -242,8 +307,29 @@ function DroneModel({ index }: { index: number }) {
       mesh.material = material;
     });
     const s = mergeByMaterial(src);
-    return { scene: s, materials: material ? [material as THREE.MeshStandardMaterial] : [] };
+    s.scale.setScalar(1.4 * drones[index].size);
+    const root = new THREE.Group();
+    root.add(s);
+    return { scene: root, materials: material ? [material as THREE.MeshStandardMaterial] : [] };
   }, [gltf, index]);
+  return <DroneBody index={index} scene={scene} materials={materials} />;
+}
+
+function KamdoDrone({ index }: { index: number }) {
+  const { scene, materials } = useKamdo(index);
+  return <DroneBody index={index} scene={scene} materials={materials} />;
+}
+
+/** Drone Legion: hiện drone Kenney trong lúc model Kamdo đang tải nền */
+function DroneModel({ index }: { index: number }) {
+  return (
+    <Suspense fallback={<KenneyDrone index={index} />}>
+      <KamdoDrone index={index} />
+    </Suspense>
+  );
+}
+
+function DroneBody({ index, scene, materials }: { index: number; scene: THREE.Object3D; materials: THREE.MeshStandardMaterial[] }) {
   const eye = useMemo(() => new THREE.Color("#ff1f3d").multiplyScalar(6), []);
   const ref = useRef<THREE.Group>(null);
 
@@ -269,11 +355,79 @@ function DroneModel({ index }: { index: number }) {
 
   return (
     <group ref={ref}>
-      <primitive object={scene} scale={1.4 * drones[index].size} />
+      <primitive object={scene} />
       <mesh position={[0, 0.35 * drones[index].size, 0.45 * drones[index].size]} scale={drones[index].size}>
         <sphereGeometry args={[0.12, 10, 8]} />
         <meshBasicMaterial color={eye} toneMapped={false} />
       </mesh>
+    </group>
+  );
+}
+
+/** Lính Legion đi bộ (model Meshy, đã gắn xương): đi khi tuần tra, chạy khi truy đuổi */
+function TrooperModel({ index }: { index: number }) {
+  const walkGltf = use(extraModel("mx_legion_trooper_walk"));
+  const runGltf = use(extraModel("mx_legion_trooper_run"));
+  const ref = useRef<THREE.Group>(null);
+  const { scene, mixer, walk, run, mats } = useMemo(() => {
+    const s = cloneSkinned(walkGltf.scene);
+    fitCharacter(s, 1.85, -TROOPER_CENTER);
+    const mats: { mat: THREE.MeshStandardMaterial; base: THREE.Color }[] = [];
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      // Dải visor đỏ tự sáng nhẹ theo texture để thấy lính trong đêm
+      if (mat.map && !mat.emissiveMap) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#ffffff");
+        mat.emissiveIntensity = 0.18;
+      }
+      m.material = mat;
+      mats.push({ mat, base: mat.emissive.clone() });
+    });
+    const mixer = new THREE.AnimationMixer(s);
+    const walk = walkGltf.animations[0] ? mixer.clipAction(walkGltf.animations[0]) : null;
+    const run = runGltf.animations[0] ? mixer.clipAction(runGltf.animations[0]) : null;
+    walk?.play();
+    run?.play();
+    if (run) run.weight = 0;
+    return { scene: s, mixer, walk, run, mats };
+  }, [walkGltf, runGltf]);
+  useFrame(({ camera }, dt) => {
+    const d = drones[index];
+    const g = ref.current;
+    if (!g) return;
+    g.visible = d.state !== "dead" && d.pos.distanceTo(camera.position) < 90;
+    if (!g.visible) return;
+    g.position.copy(d.pos);
+    const speed = Math.hypot(d.vel.x, d.vel.z);
+    const look = d.state === "chase" ? _aim.subVectors(_target, d.pos) : d.vel;
+    if (look.lengthSq() > 0.01) {
+      const yaw = Math.atan2(look.x, look.z);
+      g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, g.rotation.y + shortest(g.rotation.y, yaw), 0.15);
+    }
+    // Pha trộn đi/chạy theo tốc độ
+    const k = THREE.MathUtils.clamp((speed - 2) / 3, 0, 1);
+    if (walk) {
+      walk.weight = 1 - k;
+      walk.timeScale = THREE.MathUtils.clamp(speed / 1.6, 0.15, 1.6);
+    }
+    if (run) {
+      run.weight = k;
+      run.timeScale = THREE.MathUtils.clamp(speed / 5, 0.5, 1.4);
+    }
+    const hurt = clock - d.hurtAt < 0.12;
+    for (const { mat, base } of mats) {
+      if (hurt) mat.emissive.setRGB(1, 0.15, 0.15);
+      else mat.emissive.copy(base);
+    }
+    if (camera.position.distanceTo(d.pos) < 55) mixer.update(Math.min(dt, 0.1));
+  });
+  return (
+    <group ref={ref} visible={false}>
+      <primitive object={scene} />
     </group>
   );
 }
@@ -371,11 +525,12 @@ export function Enemies() {
 
     for (const d of drones) {
       if (d.state === "dead") {
-        if (d.kind !== "legion") continue;
+        if (d.kind !== "legion" && d.kind !== "trooper") continue;
         if (clock - d.deadAt > respawnDelay(game.wanted)) {
           d.state = game.wanted >= 2 ? "chase" : "patrol";
-          d.hp = DRONE_HP;
-          d.pos.set(d.home.x, 30, d.home.z); // bay xuống từ trên cao
+          d.hp = d.maxHp;
+          // Drone bay xuống từ trên cao, lính hiện lại ở điểm gốc
+          d.pos.set(d.home.x, d.kind === "trooper" ? TROOPER_CENTER : 30, d.home.z);
           d.vel.set(0, 0, 0);
         }
         continue;
@@ -399,14 +554,18 @@ export function Enemies() {
       } else if (d.state === "patrol") {
         if (alive && dist < aggro && (sees || game.wanted >= 2)) d.state = "chase";
         if (clock > d.nextWander) {
-          d.wander.set(d.home.x + (Math.random() - 0.5) * 24, HOVER + Math.random() * 2, d.home.z + (Math.random() - 0.5) * 24);
+          d.wander.set(
+            d.home.x + (Math.random() - 0.5) * 24,
+            d.kind === "trooper" ? TROOPER_CENTER : HOVER + Math.random() * 2,
+            d.home.z + (Math.random() - 0.5) * 24,
+          );
           d.nextWander = clock + 4 + Math.random() * 4;
         }
         _desired.subVectors(d.wander, d.pos);
         const len = _desired.length();
-        _desired.multiplyScalar(len > 1 ? PATROL_SPEED / len : 0);
+        _desired.multiplyScalar(len > 1 ? (d.kind === "trooper" ? 1.6 : PATROL_SPEED) / len : 0);
       } else {
-        if (d.kind === "legion" && (!alive || (dist > aggro * 1.8 && game.wanted === 0))) {
+        if ((d.kind === "legion" || d.kind === "trooper") && (!alive || (dist > aggro * 1.8 && game.wanted === 0))) {
           d.state = "patrol";
           continue;
         }
@@ -416,16 +575,18 @@ export function Enemies() {
         const camSide = Math.atan2(camera.position.z - _target.z, camera.position.x - _target.x);
         const behind = Math.max(0, Math.cos(d.orbit - camSide));
         const boss = d.kind === "boss";
-        const standoff = boss ? STANDOFF * 1.8 : STANDOFF;
+        const trooper = d.kind === "trooper";
+        const standoff = boss ? STANDOFF * 1.8 : trooper ? STANDOFF * 1.3 : STANDOFF;
         _desired.set(
           _target.x + Math.cos(d.orbit) * standoff,
           // Sà thấp khi tấn công để người chơi ngắm được
-          boss ? BOSS_CENTER : ATTACK_HEIGHT + Math.sin(d.orbit * 1.7) * 0.8 + behind * behind * 9,
+          boss ? BOSS_CENTER : trooper ? TROOPER_CENTER : ATTACK_HEIGHT + Math.sin(d.orbit * 1.7) * 0.8 + behind * behind * 9,
           _target.z + Math.sin(d.orbit) * standoff,
         );
         _desired.sub(d.pos);
         const len = _desired.length();
-        _desired.multiplyScalar(len > 0.5 ? Math.min(CHASE_SPEED, len * 2) / len : 0);
+        const top = trooper ? CHASE_SPEED * 0.55 : CHASE_SPEED;
+        _desired.multiplyScalar(len > 0.5 ? Math.min(top, len * 2) / len : 0);
 
         if (sees && dist < FIRE_RANGE && clock > d.nextShot) {
           d.nextShot = clock + Math.max(0.6, 1.5 - game.wanted * 0.15) + Math.random() * 0.6;
@@ -443,7 +604,7 @@ export function Enemies() {
 
       d.vel.lerp(_desired, 1 - Math.exp(-2.5 * step));
       d.pos.addScaledVector(d.vel, step);
-      d.pos.y = d.kind === "boss" ? BOSS_CENTER : THREE.MathUtils.clamp(d.pos.y - (d.pos.y > 14 ? 8 * step : 0), 2.5, 32);
+      d.pos.y = d.kind === "boss" ? BOSS_CENTER : d.kind === "trooper" ? TROOPER_CENTER : THREE.MathUtils.clamp(d.pos.y - (d.pos.y > 14 ? 8 * step : 0), 2.5, 32);
       pushOutOfBuildings(d.pos);
     }
   });
@@ -452,8 +613,12 @@ export function Enemies() {
     <>
       {drones.map((d) =>
         d.kind === "boss" ? (
-          <Suspense key={d.id} fallback={<DroneModel index={d.id} />}>
+          <Suspense key={d.id} fallback={<KenneyDrone index={d.id} />}>
             <BossModel index={d.id} />
+          </Suspense>
+        ) : d.kind === "trooper" ? (
+          <Suspense key={d.id} fallback={null}>
+            <TrooperModel index={d.id} />
           </Suspense>
         ) : (
           <DroneModel key={d.id} index={d.id} />

@@ -59,7 +59,8 @@ export type Interactable =
   | { kind: "npc"; id: NpcId }
   | { kind: "door" }
   | { kind: "exit" }
-  | { kind: "terminal" };
+  | { kind: "terminal" }
+  | { kind: "board" };
 
 type SaveData = {
   cred: number;
@@ -124,6 +125,8 @@ type GameState = {
   /** Chuột đang bị khoá vào game (rê để xoay camera) */
   pointerLocked: boolean;
   shopOpen: boolean;
+  /** Bảng của Hunter (hợp đồng, gara, kết quả) đang mở */
+  panelOpen: boolean;
 
   profile: Profile | null;
   inventory: Inventory;
@@ -143,7 +146,7 @@ type GameState = {
   enterCar: (id: number) => void;
   exitCar: () => void;
 
-  damagePlayer: (amount: number) => void;
+  damagePlayer: (amount: number, opts?: { emp?: boolean }) => void;
   heal: (amount: number) => void;
   addCred: (amount: number) => void;
   registerKill: () => void;
@@ -170,9 +173,15 @@ type GameState = {
 
 const now = () => performance.now() / 1000;
 
+/** Chặn sát thương trước khi trừ máu người (Mech gắn vào đây). Trả true nếu đã xử lý */
+let damageHook: ((amount: number, emp: boolean) => boolean) | null = null;
+export function setDamageHook(fn: typeof damageHook) {
+  damageHook = fn;
+}
+
 /** Có bảng giao diện nào đang mở chặn điều khiển nhân vật không */
-export function uiBlocking(s: Pick<GameState, "shopOpen" | "dialogue" | "inventoryOpen" | "profile">) {
-  return s.shopOpen || s.dialogue !== null || s.inventoryOpen || s.profile === null;
+export function uiBlocking(s: Pick<GameState, "shopOpen" | "dialogue" | "inventoryOpen" | "profile" | "panelOpen">) {
+  return s.shopOpen || s.dialogue !== null || s.inventoryOpen || s.profile === null || s.panelOpen;
 }
 
 export const useGame = create<GameState>((set, get) => ({
@@ -199,6 +208,7 @@ export const useGame = create<GameState>((set, get) => ({
   aiming: false,
   pointerLocked: false,
   shopOpen: false,
+  panelOpen: false,
 
   profile: saved?.profile ?? null,
   inventory: saved?.inventory ?? {},
@@ -218,9 +228,14 @@ export const useGame = create<GameState>((set, get) => ({
   enterCar: (carId) => set({ mode: "drive", carId, nearCarId: null, emote: null, aiming: false, shopOpen: false }),
   exitCar: () => set({ mode: "foot", carId: null, speed: 0 }),
 
-  damagePlayer: (amount) => {
+  damagePlayer: (amount, opts) => {
     const s = get();
     if (s.flatlinedAt !== null) return;
+    // Đang trong Mech: Mech chịu đòn thay người
+    if (damageHook?.(amount, !!opts?.emp)) {
+      set({ lastDamageAt: now() });
+      return;
+    }
     const hp = Math.max(0, s.hp - amount);
     set({ hp, lastDamageAt: now() });
     if (hp === 0) {

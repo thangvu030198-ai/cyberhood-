@@ -6,6 +6,7 @@ import { handles } from "../game/refs";
 import { SHOP_POS } from "../game/Shop";
 import { useGame } from "../game/store";
 import { objectiveTarget } from "../game/quests";
+import { contractPins } from "../game/contracts";
 
 const RANGE = 70; // mét từ tâm tới mép bản đồ
 const FPS = 12;
@@ -94,12 +95,39 @@ export function Minimap({ size }: { size: number }) {
         ctx.restore();
       }
 
+      // Ghim hợp đồng: marker vàng, mục tiêu, thùng hàng, điểm thoát; ngoài tầm thì ghim ở mép
+      for (const pin of contractPins()) {
+        let [tx, ty] = map(pin.x, pin.z);
+        const r = Math.hypot(tx, ty);
+        const edge = size / 2 - 8;
+        if (r > edge) {
+          tx = (tx / r) * edge;
+          ty = (ty / r) * edge;
+        }
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.fillStyle = pin.color;
+        ctx.shadowColor = pin.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        if (pin.kind === "extract") {
+          ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        } else {
+          ctx.rotate(Math.PI / 4 - handles.camYaw);
+          const k = pin.kind === "marker" ? 4.5 : 5.5;
+          ctx.rect(-k, -k, k * 2, k * 2);
+        }
+        ctx.fill();
+        ctx.restore();
+      }
+
       for (const d of drones) {
         if (d.state === "dead") continue;
         const [x, y] = map(d.pos.x, d.pos.z);
-        ctx.fillStyle = d.state === "chase" ? "#ff1f3d" : "rgba(255, 31, 61, 0.55)";
+        const special = d.kind === "courier" ? "#ffd23d" : d.kind === "boss" ? "#ff7a1f" : null;
+        ctx.fillStyle = special ?? (d.state === "chase" ? "#ff1f3d" : "rgba(255, 31, 61, 0.55)");
         ctx.beginPath();
-        ctx.arc(x, y, d.state === "chase" ? 3.5 : 2.5, 0, Math.PI * 2);
+        ctx.arc(x, y, special ? 5 : d.state === "chase" ? 3.5 : 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();

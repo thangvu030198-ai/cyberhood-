@@ -245,6 +245,7 @@ const INTERACT_LABEL = {
   door: "Vào Server Vault",
   exit: "Rời Server Vault",
   terminal: "Kích hoạt terminal GHOST_0",
+  board: "Mở bảng hợp đồng",
 } as const;
 
 export function interactLabel(i: NonNullable<ReturnType<typeof useGame.getState>["nearInteract"]>) {

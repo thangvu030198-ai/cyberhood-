@@ -14,6 +14,10 @@ import { PlayerCombat, combatDebug } from "./game/Weapons";
 import { Shop } from "./game/Shop";
 import { GameRules } from "./game/GameRules";
 import { Npcs } from "./game/Npcs";
+import { ContractScene } from "./game/ContractScene";
+import { MechController } from "./game/Mech";
+import { useHunter } from "./game/hunter";
+import { runtime, startNewContract } from "./game/contracts";
 import { Vault, VaultDoor } from "./game/Vault";
 import { HoloAds, NeonEnvironment, SteamVents } from "./game/Visuals";
 import { KitDressing } from "./game/Kit";
@@ -78,6 +82,8 @@ function DebugHook() {
       __drones: drones,
       __combat: combatDebug,
       __quests: { questProgress },
+      __hunter: useHunter,
+      __contract: { runtime, startNewContract },
     });
   }
   return null;
@@ -105,6 +111,7 @@ export default function App() {
               <Shop />
               <Npcs />
               <Vault />
+              <ContractScene />
               <KitDressing />
             </Physics>
             <VaultDoor />
@@ -112,6 +119,7 @@ export default function App() {
             <HoloAds />
             <SteamVents />
             <Enemies />
+            <MechController />
             <PlayerCombat />
             <Effects />
             <GameRules />

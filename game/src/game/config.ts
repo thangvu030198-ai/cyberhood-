@@ -62,3 +62,6 @@ export function mulberry32(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/** Bảng hợp đồng ở Vùng An toàn, trên vỉa hè cạnh điểm xuất phát */
+export const BOARD_SPOT = { x: -10.2, y: 0.15, z: 3 };

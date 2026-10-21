@@ -5,6 +5,8 @@ import { MAX_WANTED, SHOP_ITEMS, districtAt, gridRef, useGame, type Emote, type 
 import { Minimap } from "./Minimap";
 import { pointer } from "../game/pointer";
 import { loadProgress } from "../game/assets";
+import { ContractHud, DropBanner, HunterPanels, MechMeter } from "./HunterUi";
+import { useHunter } from "../game/hunter";
 import { CharacterCreator, DialoguePanel, InventoryPanel, QuestTracker, Toast, interactLabel } from "./Panels";
 
 const EMOTE_KEYS: Record<string, Emote> = { Digit1: "wave", Digit2: "dance", Digit3: "thumbsUp" };
@@ -229,6 +231,10 @@ function Help({ mode }: { mode: "foot" | "drive" }) {
           <dd>Nói chuyện · tương tác (mua đồ: nói với Vex)</dd>
           <dt>F</dt>
           <dd>Lên/xuống xe</dd>
+          <dt>T</dt>
+          <dd>Biến hình Mech khi thanh đầy 100%</dd>
+          <dt>G</dt>
+          <dd>Gara Mech: ráp, ghép, sửa linh kiện</dd>
           <dt>Q · Tab</dt>
           <dd>Dùng Stim Pack · Túi đồ, cài đặt đồ hoạ</dd>
           <dt>1 2 3</dt>
@@ -274,6 +280,7 @@ export function Hud() {
   const speed = useGame((s) => s.speed);
   const kills = useGame((s) => s.kills);
   const pointerLocked = useGame((s) => s.pointerLocked);
+  const hunterPanel = useGame((s) => s.panelOpen);
   const [help, setHelp] = useState(true);
   const touch = isTouchDevice();
 
@@ -289,13 +296,24 @@ export function Hud() {
       const emote = EMOTE_KEYS[e.code];
       if (emote) setEmote(emote);
       if (e.code === "KeyH") setHelp((h) => !h);
+      if (e.code === "KeyG") {
+        const g = useGame.getState();
+        if (g.profile && !g.dialogue && !g.shopOpen && !g.inventoryOpen) {
+          const h = useHunter.getState();
+          if (h.panel === "garage") h.setPanel(null);
+          else if (!g.panelOpen) {
+            document.exitPointerLock?.();
+            h.setPanel("garage");
+          }
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setEmote]);
 
   if (!ready) return <LoadingScreen />;
-  const panelOpen = shopOpen || !!dialogue || inventoryOpen || !profile;
+  const panelOpen = shopOpen || !!dialogue || inventoryOpen || !profile || hunterPanel;
 
   return (
     <div className="hud">
@@ -321,6 +339,9 @@ export function Hud() {
         <div className="lock-hint">Nhấp vào màn hình để điều khiển bằng chuột</div>
       )}
       <Vitals />
+      {location === "city" && <ContractHud />}
+      {!panelOpen && <MechMeter />}
+      <DropBanner />
 
       {mode === "foot" && !panelOpen && (nearCarId !== null || nearInteract) && (
         <div className="prompt">
@@ -395,6 +416,7 @@ export function Hud() {
       <ShopPanel />
       <DialoguePanel />
       <InventoryPanel />
+      <HunterPanels />
       <CharacterCreator />
       <Flatline />
     </div>

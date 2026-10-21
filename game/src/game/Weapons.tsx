@@ -9,6 +9,7 @@ import { fx } from "./Effects";
 import { handles } from "./refs";
 import { uiBlocking, useGame } from "./store";
 import { rayBuildings, rayGround } from "./world";
+import { MECH_DAMAGE_MUL, mechActive } from "./Mech";
 import { isLocked, pointer, requestLock } from "./pointer";
 
 const RANGE = 90;
@@ -140,7 +141,7 @@ export function PlayerCombat() {
     const s = useGame.getState();
     const player = handles.player;
     if (!player) return;
-    const canFire = s.mode === "foot" && s.flatlinedAt === null && !s.shopOpen;
+    const canFire = s.mode === "foot" && s.flatlinedAt === null && !s.shopOpen && !s.panelOpen;
     const touchFire = !!useButtonStore.getState().buttons.fire;
 
     // Nhân vật luôn quay theo hướng camera (kiểu bắn góc nhìn thứ 3): xoay camera tới đâu thân quay tới đó
@@ -166,7 +167,8 @@ export function PlayerCombat() {
     if (t - lastShot.current < weapon.cooldown) return;
     lastShot.current = t;
 
-    const damage = weapon.damage * (s.upgrades.overclock ? 1.5 : 1);
+    const mech = mechActive();
+    const damage = weapon.damage * (s.upgrades.overclock ? 1.5 : 1) * (mech ? MECH_DAMAGE_MUL : 1);
     _chest.copy(player.currPos).setY(player.currPos.y + 0.5);
     camera.getWorldDirection(_dir);
 
@@ -217,7 +219,8 @@ export function PlayerCombat() {
     // Vừa xoay người thì súng chưa kịp cập nhật vị trí: cho tia laser xuất phát trước ngực
     if (snapped || _muzzle.distanceTo(_chest) > 2) _muzzle.copy(_chest).addScaledVector(_flat, 0.6);
     combatDebug.last.muzzle = _muzzle.toArray();
-    fx.tracer(_muzzle, _end, PALETTE.cyan);
+    fx.tracer(_muzzle, _end, mech ? PALETTE.amber : PALETTE.cyan);
+    if (mech) fx.blast(_end);
     fx.muzzle(_muzzle, PALETTE.cyan);
     playSfx(weapon.sfx, 0.55);
   });

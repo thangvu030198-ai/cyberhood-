@@ -8,4 +8,6 @@ export const handles = {
   cars: new Map<number, EcctrlVehicleHandle>(),
   /** Góc azimuth của camera (rad), minimap xoay theo */
   camYaw: 0,
+  /** 0 = người thường, 1 = dạng Mech hoàn toàn; nội suy trong lúc biến hình */
+  mechBlend: 0,
 };

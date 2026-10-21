@@ -95,6 +95,8 @@ export const models = {
 // Âm thanh: WebAudio, chỉ bật sau tương tác đầu tiên của người chơi (chính sách autoplay).
 
 type SfxName = "blaster" | "repeater" | "enemyAttack" | "enemyDestroy" | "enemyHurt";
+/** Âm báo tổng hợp bằng oscillator, không cần file: nhặt đồ, biến hình */
+type SynthName = "pickup" | "transform";
 
 const SFX_SOURCES: Record<SfxName, string> = {
   blaster: sfxBlaster,
@@ -134,7 +136,8 @@ if (typeof window !== "undefined") {
 }
 
 /** Phát hiệu ứng âm thanh; `volume` giảm dần theo khoảng cách do nơi gọi tự tính. */
-export function playSfx(name: SfxName, volume = 1) {
+export function playSfx(name: SfxName | SynthName, volume = 1) {
+  if (name === "pickup" || name === "transform") return playSynth(name, volume);
   const ctx = audio;
   const buffer = buffers.get(name);
   if (!ctx || !buffer || volume <= 0.01) return;
@@ -145,4 +148,26 @@ export function playSfx(name: SfxName, volume = 1) {
   src.playbackRate.value = 0.94 + Math.random() * 0.12;
   src.connect(gain).connect(ctx.destination);
   src.start();
+}
+
+/** Chuỗi nốt ngắn: "pickup" là tiếng chuông đi lên, "transform" là tiếng máy rít trầm dần lên cao */
+function playSynth(name: SynthName, volume: number) {
+  const ctx = audio;
+  if (!ctx || volume <= 0.01) return;
+  const t0 = ctx.currentTime;
+  const notes = name === "pickup" ? [880, 1175, 1568] : [110, 165, 220, 330, 440];
+  const step = name === "pickup" ? 0.07 : 0.22;
+  notes.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = name === "pickup" ? "triangle" : "sawtooth";
+    osc.frequency.setValueAtTime(f, t0 + i * step);
+    const start = t0 + i * step;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(Math.min(1, volume) * (name === "pickup" ? 0.18 : 0.08), start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + step * 2.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + step * 2.4);
+  });
 }

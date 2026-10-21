@@ -1073,3 +1073,416 @@ canvas {
     top: max(220px, calc(env(safe-area-inset-top, 0px) + 220px));
   }
 }
+
+/* ---------------------------------------------------------------- Hunter: hợp đồng, Mech, gara */
+.contract-hud {
+  position: absolute;
+  left: 50%;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  min-width: min(520px, calc(100vw - 340px));
+  max-width: calc(100vw - 32px);
+  background: var(--ink-2);
+  border: 1px solid rgba(255, 176, 0, 0.55);
+  font-size: 12px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.contract-hud__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 6px 16px;
+}
+.contract-hud__row b {
+  color: var(--amber);
+}
+.contract-hud__time {
+  font: 700 26px var(--font-display);
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.contract-hud__time--low {
+  color: var(--red);
+  animation: blink 1s steps(2, start) infinite;
+}
+.contract-hud__doing {
+  color: var(--cyan);
+}
+.contract-hud__event {
+  padding: 2px 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  background: #b05cff;
+}
+.contract-hud__extract {
+  font-weight: 700;
+  color: #39ff88;
+}
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.mech-meter {
+  position: absolute;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 4px;
+  width: min(300px, 60vw);
+  font: 700 11px var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-align: center;
+  pointer-events: none;
+}
+.mech-meter__bar {
+  display: block;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.mech-meter__bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--pink));
+  transition: width 0.2s;
+}
+.mech-meter--ready {
+  color: var(--amber);
+  animation: glow-pulse 1.2s ease-in-out infinite;
+}
+.mech-meter--ready .mech-meter__bar span {
+  background: var(--amber);
+}
+.mech-meter--active {
+  color: var(--pink);
+}
+.mech-meter--active .mech-meter__bar span {
+  background: linear-gradient(90deg, #ff1f3d, var(--amber));
+}
+@keyframes glow-pulse {
+  50% {
+    text-shadow: 0 0 12px var(--amber);
+  }
+}
+
+.drop-banner {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 22px;
+  background: rgba(13, 2, 33, 0.9);
+  border: 2px solid;
+  animation: drop-in 0.35s ease-out;
+  pointer-events: none;
+}
+.drop-banner__eyebrow {
+  font: 700 12px var(--font-mono);
+  letter-spacing: 0.3em;
+}
+.drop-banner__name {
+  font: 700 24px var(--font-display);
+  color: var(--text);
+}
+.drop-banner__slot {
+  font-size: 12px;
+  color: var(--muted);
+}
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -12px) scale(0.92);
+  }
+}
+
+.hunter-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  pointer-events: auto;
+  background: rgba(13, 2, 33, 0.95);
+  border: 1px solid rgba(255, 176, 0, 0.5);
+  font-size: 13px;
+  color: var(--text);
+}
+.hunter-panel--wide {
+  width: min(820px, calc(100vw - 32px));
+}
+.hunter-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+.hunter-panel__mech {
+  padding: 8px 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+.hunter-panel__msg {
+  margin: 0;
+  color: var(--amber);
+}
+.hunter-panel button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.hunter-energy {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 4px;
+  align-items: center;
+}
+.hunter-energy span {
+  width: 12px;
+  height: 18px;
+  border: 1px solid var(--cyan);
+  transform: skewX(-12deg);
+}
+.hunter-energy span.on {
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+.hunter-energy small {
+  margin-left: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.hunter-rules {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: var(--text);
+  line-height: 1.45;
+}
+.hunter-season {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.hunter-season__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.hunter-season__head b {
+  color: var(--amber);
+}
+.hunter-season__map {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.hunter-season__bar {
+  display: block;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.hunter-season__bar span {
+  display: block;
+  height: 100%;
+  background: var(--amber);
+}
+.rarity {
+  display: inline-block;
+  padding: 0 6px;
+  font: 700 11px var(--font-mono);
+  border: 1px solid;
+}
+.hunter-stars {
+  font-size: 28px;
+  letter-spacing: 4px;
+  color: rgba(255, 255, 255, 0.15);
+}
+.hunter-stars .on {
+  color: var(--amber);
+  text-shadow: 0 0 12px var(--amber);
+}
+.hunter-result {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.hunter-result dt {
+  color: var(--muted);
+}
+.hunter-result dd {
+  margin: 0;
+  font-weight: 700;
+}
+.lost {
+  color: var(--red);
+}
+.parts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+.parts--dim {
+  opacity: 0.5;
+}
+.part {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  font: 12px var(--font-mono);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid;
+  border-left-width: 4px;
+  cursor: pointer;
+}
+.part:disabled {
+  cursor: default;
+}
+.part--on {
+  background: rgba(5, 217, 232, 0.18);
+  outline: 2px solid var(--cyan);
+}
+.part__slot {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.part__name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.part__stat {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.mech-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.mech-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid;
+  border-left-width: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.mech-card--on {
+  box-shadow: inset 0 0 0 1px var(--cyan);
+}
+.mech-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.mech-card__power {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--amber);
+}
+.mech-card__power small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.mech-card__parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 2px 12px;
+  font-size: 12px;
+}
+.mech-card__dur {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mech-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.garage-tabs {
+  display: flex;
+  gap: 6px;
+}
+.garage-tabs button {
+  font: 700 12px var(--font-mono);
+  padding: 6px 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+.garage-tabs button.on {
+  color: var(--ink);
+  background: var(--amber);
+  border-color: var(--amber);
+}
+.garage-hint {
+  margin: 0;
+  color: var(--cyan);
+}
+.garage-count {
+  display: inline-flex;
+  gap: 10px;
+  margin-left: 8px;
+  font-weight: 400;
+}
+.hunter-cred {
+  font: 700 22px var(--font-display);
+  color: var(--amber);
+}
+.hunter-cred small {
+  font-size: 11px;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .contract-hud {
+    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 120px);
+    min-width: 0;
+  }
+  .contract-hud__time {
+    font-size: 20px;
+  }
+}

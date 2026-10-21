@@ -3,6 +3,7 @@ import { playSfx } from "./assets";
 import { handles } from "./refs";
 import { releaseLock } from "./pointer";
 import { useGame, type Dialogue, type Interactable } from "./store";
+import { useHunter } from "./hunter";
 import { ITEMS, NPCS, SHARD_SPOTS, VAULT_DOOR, VAULT_ORIGIN, nextQuest, questById, type NpcId, type Step } from "./story";
 
 // Bộ máy nhiệm vụ: đọc dữ liệu trong story.ts, nhận sự kiện từ gameplay (nói chuyện, hạ drone,
@@ -139,6 +140,11 @@ export const VAULT_EXIT: [number, number, number] = [0, 0, 0.2];
 export const VAULT_TERMINAL: [number, number, number] = [0, 0, -23.5];
 
 export function interact(target: Interactable) {
+  if (target.kind === "board") {
+    document.exitPointerLock?.();
+    useHunter.getState().setPanel("contracts");
+    return;
+  }
   const s = useGame.getState();
   if (target.kind === "npc") {
     talkTo(target.id);

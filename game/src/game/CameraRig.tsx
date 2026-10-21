@@ -9,9 +9,13 @@ import { handles } from "./refs";
 import { uiBlocking, useGame } from "./store";
 import { flipCarUpright } from "./Vehicles";
 import { interact } from "./quests";
+import { useHunter } from "./hunter";
+import { inMechForm } from "./Mech";
 
 const FOOT_DISTANCE = 6;
 const CAR_DISTANCE = 9.5;
+/** Dạng Mech cao gấp đôi: lùi camera để thấy toàn thân */
+const MECH_DISTANCE = 10;
 /** Khi ngắm: camera áp sát và lệch qua vai phải */
 const AIM_DISTANCE = 3.2;
 /** Độ nhạy chuột khi đã khoá (rad mỗi pixel) */
@@ -77,6 +81,7 @@ export function CameraRig() {
   }, [scene, dom]);
 
   const aiming = useGame((s) => s.aiming && s.mode === "foot");
+  const mechOn = useHunter((s) => s.transform.phase === "active" || s.transform.phase === "transforming");
   const firstMode = useRef(true);
   useEffect(() => {
     if (firstMode.current) {
@@ -85,10 +90,13 @@ export function CameraRig() {
     }
     const controls = cc.current;
     if (!controls) return;
-    controls.dollyTo(mode === "drive" ? CAR_DISTANCE : aiming ? AIM_DISTANCE : FOOT_DISTANCE, true);
+    controls.dollyTo(
+      mode === "drive" ? CAR_DISTANCE : mechOn ? MECH_DISTANCE : aiming ? AIM_DISTANCE : FOOT_DISTANCE,
+      true,
+    );
     if (aiming) controls.setFocalOffset(0.75, 0.25, 0, true);
     else controls.setFocalOffset(0, 0, 0, true);
-  }, [mode, aiming]);
+  }, [mode, aiming, mechOn]);
 
   useFrame(() => {
     const controls = cc.current;
@@ -172,6 +180,7 @@ function toggleCar() {
   const s = useGame.getState();
   const { mode, nearCarId, enterCar, exitCar, flatlinedAt } = s;
   if (flatlinedAt !== null || uiBlocking(s) || s.location !== "city") return;
+  if (mode === "foot" && inMechForm()) return s.showToast("Titan Frame không lái được xe");
   if (mode === "drive") exitCar();
   else if (nearCarId !== null) enterCar(nearCarId);
 }

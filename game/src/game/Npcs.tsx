@@ -12,6 +12,7 @@ import { handles } from "./refs";
 import { useGame, type Interactable } from "./store";
 import { NPCS, SHARD_SPOTS, VAULT_DOOR, VAULT_ORIGIN, type NpcId } from "./story";
 import { makeLabelTexture } from "./textures";
+import { BOARD_POS } from "./contracts";
 
 const TALK_REACH = 3.2;
 const DOOR_REACH = 3.6;
@@ -191,6 +192,7 @@ function InteractionScanner() {
         if (!npc.inVault) consider({ kind: "npc", id: npc.id }, npc.pos[0], npc.pos[2], TALK_REACH);
       }
       consider({ kind: "door" }, VAULT_DOOR[0], VAULT_DOOR[2], DOOR_REACH);
+      consider({ kind: "board" }, BOARD_POS.x, BOARD_POS.z, DOOR_REACH);
     } else {
       consider({ kind: "exit" }, VAULT_ORIGIN[0] + VAULT_EXIT[0], VAULT_ORIGIN[2] + VAULT_EXIT[2] - 1.5, DOOR_REACH);
       consider({ kind: "terminal" }, VAULT_ORIGIN[0] + VAULT_TERMINAL[0], VAULT_ORIGIN[2] + VAULT_TERMINAL[2] + 1, DOOR_REACH);
@@ -209,7 +211,7 @@ function InteractionKeys() {
       if (e.repeat) return;
       const s = useGame.getState();
       if (s.profile === null) return;
-      if (e.code === "KeyE" && !s.dialogue && !s.shopOpen && !s.inventoryOpen && s.nearInteract) interact(s.nearInteract);
+      if (e.code === "KeyE" && !s.dialogue && !s.shopOpen && !s.inventoryOpen && !s.panelOpen && s.nearInteract) interact(s.nearInteract);
       if (e.code === "KeyQ" && !s.useStim() && (s.inventory.stim ?? 0) > 0 && s.hp >= s.maxHp) s.showToast("Máu đang đầy");
       if (e.code === "Tab" || e.code === "KeyI") {
         e.preventDefault();

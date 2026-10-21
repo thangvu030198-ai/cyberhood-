@@ -12,10 +12,16 @@ import { lineOfSight, pushOutOfBuildings, raySphere } from "./world";
 
 // Drone an ninh của OMNI-DYNE: tuần tra quanh điểm gốc, phát hiện thì bay vòng quanh người chơi và bắn laser.
 
-type DroneState = "patrol" | "chase" | "dead";
+type DroneState = "patrol" | "chase" | "flee" | "dead";
+/** legion: lính thường; courier: drone đưa thư bỏ chạy (nhiệm vụ rượt đuổi); boss: trùm Mech sự kiện phút 4 */
+export type DroneKind = "legion" | "courier" | "boss";
 
 export type Drone = {
   id: number;
+  kind: DroneKind;
+  maxHp: number;
+  /** Kích thước hiển thị và vùng trúng đạn */
+  size: number;
   home: THREE.Vector3;
   pos: THREE.Vector3;
   vel: THREE.Vector3;
@@ -30,6 +36,9 @@ export type Drone = {
 };
 
 const DRONE_COUNT = 14;
+const COURIER_HP = 160;
+const BOSS_HP = 2400;
+const COURIER_SPEED = 9;
 const DRONE_HP = 100;
 const HIT_RADIUS = 0.95;
 const HOVER = 4.5;
@@ -56,6 +65,9 @@ export const drones: Drone[] = (() => {
     if (Math.hypot(home.x - PLAYER.spawn[0], home.z - PLAYER.spawn[2]) < 35) continue;
     list.push({
       id: list.length,
+      kind: "legion",
+      maxHp: DRONE_HP,
+      size: 1,
       home,
       pos: home.clone(),
       vel: new THREE.Vector3(),
@@ -69,8 +81,62 @@ export const drones: Drone[] = (() => {
       orbit: rand() * Math.PI * 2,
     });
   }
+  // Hai suất đặc biệt cho hợp đồng, nằm im (dead) tới khi được kích hoạt và không tự hồi sinh
+  for (const kind of ["courier", "boss"] as const) {
+    list.push({
+      id: list.length,
+      kind,
+      maxHp: kind === "boss" ? BOSS_HP : COURIER_HP,
+      size: kind === "boss" ? 3.2 : 1.2,
+      home: new THREE.Vector3(),
+      pos: new THREE.Vector3(0, -50, 0),
+      vel: new THREE.Vector3(),
+      wander: new THREE.Vector3(),
+      nextWander: 0,
+      hp: 0,
+      state: "dead",
+      nextShot: 0,
+      deadAt: 0,
+      hurtAt: -1,
+      orbit: 0,
+    });
+  }
   return list;
 })();
+
+/** Kích hoạt drone đặc biệt tại một điểm (hợp đồng gọi) */
+export function spawnSpecial(kind: Exclude<DroneKind, "legion">, at: THREE.Vector3) {
+  const d = drones.find((x) => x.kind === kind)!;
+  d.pos.copy(at).setY(kind === "boss" ? 6 : HOVER);
+  d.home.copy(d.pos);
+  d.vel.set(0, 0, 0);
+  d.hp = d.maxHp;
+  d.state = kind === "courier" ? "flee" : "chase";
+  d.nextShot = clock + 2;
+  return d;
+}
+
+export function despawnSpecial(kind: Exclude<DroneKind, "legion">) {
+  const d = drones.find((x) => x.kind === kind)!;
+  d.state = "dead";
+  d.pos.set(0, -50, 0);
+}
+
+export const specialDrone = (kind: Exclude<DroneKind, "legion">) => drones.find((x) => x.kind === kind)!;
+
+/** Người nghe sự kiện hạ drone (hợp đồng: cộng kill, thanh biến hình, hoàn thành nhiệm vụ) */
+type KillListener = (d: Drone) => void;
+const killListeners = new Set<KillListener>();
+export function onDroneKilled(fn: KillListener) {
+  killListeners.add(fn);
+  return () => void killListeners.delete(fn);
+}
+
+/** Hệ số sát thương người chơi gây ra cho từng loại (trùm Mech gần như miễn nhiễm súng thường) */
+let bossDamageScale = 0.08;
+export function setBossDamageScale(v: number) {
+  bossDamageScale = v;
+}
 
 let clock = 0;
 
@@ -80,7 +146,7 @@ export function hitDrones(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: nu
   let bestT = maxDist;
   for (const d of drones) {
     if (d.state === "dead") continue;
-    const t = raySphere(origin, dir, d.pos, HIT_RADIUS);
+    const t = raySphere(origin, dir, d.pos, HIT_RADIUS * d.size);
     if (t !== null && t < bestT) {
       bestT = t;
       best = d;
@@ -113,12 +179,12 @@ export function nearestVisibleDrone(from: THREE.Vector3, forward: THREE.Vector3,
 
 export function damageDrone(d: Drone, amount: number) {
   if (d.state === "dead") return;
-  d.hp -= amount;
+  d.hp -= d.kind === "boss" ? amount * bossDamageScale : amount;
   d.hurtAt = clock;
   const game = useGame.getState();
   // Bị bắn thì drone này và đồng đội quanh đó lao vào truy đuổi
   for (const other of drones) {
-    if (other.state !== "dead" && other.pos.distanceTo(d.pos) < 35) other.state = "chase";
+    if (other.kind === "legion" && other.state !== "dead" && other.pos.distanceTo(d.pos) < 35) other.state = "chase";
   }
   if (d.hp > 0) {
     playSfx("enemyHurt", 0.7);
@@ -128,9 +194,11 @@ export function damageDrone(d: Drone, amount: number) {
   d.deadAt = clock;
   questProgress("kill");
   fx.blast(d.pos);
-  fx.chip(d.pos, 15 + Math.floor(Math.random() * 20) + game.wanted * 5);
+  if (d.kind === "boss") for (let i = 0; i < 6; i++) fx.blast(_away.copy(d.pos).add(new THREE.Vector3((Math.random() - 0.5) * 6, Math.random() * 3, (Math.random() - 0.5) * 6)));
+  fx.chip(d.pos, (15 + Math.floor(Math.random() * 20) + game.wanted * 5) * (d.kind === "boss" ? 8 : 1));
   playSfx("enemyDestroy", 0.9);
   game.registerKill();
+  for (const fn of killListeners) fn(d);
 }
 
 function respawnDelay(wanted: number) {
@@ -154,8 +222,11 @@ function DroneModel({ index }: { index: number }) {
       if (!mesh.isMesh) return;
       if (!material) {
         material = (mesh.material as THREE.MeshStandardMaterial).clone();
-        // Tông thép tối của OMNI-DYNE, đèn đỏ khi trúng đạn
+        // Tông thép tối của OMNI-DYNE, đèn đỏ khi trúng đạn; drone đưa thư màu vàng, trùm màu đỏ
+        const kind = drones[index].kind;
         material.color.multiplyScalar(0.55);
+        if (kind === "courier") material.color.set("#d9a316");
+        if (kind === "boss") material.color.set("#5a0f1c");
         material.emissive.set(PALETTE.pink);
         material.emissiveIntensity = 0.08;
       }
@@ -163,7 +234,7 @@ function DroneModel({ index }: { index: number }) {
     });
     const s = mergeByMaterial(src);
     return { scene: s, materials: material ? [material as THREE.MeshStandardMaterial] : [] };
-  }, [gltf]);
+  }, [gltf, index]);
   const eye = useMemo(() => new THREE.Color("#ff1f3d").multiplyScalar(6), []);
   const ref = useRef<THREE.Group>(null);
 
@@ -189,8 +260,8 @@ function DroneModel({ index }: { index: number }) {
 
   return (
     <group ref={ref}>
-      <primitive object={scene} scale={1.4} />
-      <mesh position={[0, 0.35, 0.45]}>
+      <primitive object={scene} scale={1.4 * drones[index].size} />
+      <mesh position={[0, 0.35 * drones[index].size, 0.45 * drones[index].size]} scale={drones[index].size}>
         <sphereGeometry args={[0.12, 10, 8]} />
         <meshBasicMaterial color={eye} toneMapped={false} />
       </mesh>
@@ -218,6 +289,7 @@ export function Enemies() {
 
     for (const d of drones) {
       if (d.state === "dead") {
+        if (d.kind !== "legion") continue;
         if (clock - d.deadAt > respawnDelay(game.wanted)) {
           d.state = game.wanted >= 2 ? "chase" : "patrol";
           d.hp = DRONE_HP;
@@ -230,7 +302,19 @@ export function Enemies() {
       const dist = d.pos.distanceTo(_target);
       const sees = alive && dist < aggro * 1.6 && lineOfSight(d.pos, _target);
 
-      if (d.state === "patrol") {
+      if (d.state === "flee") {
+        // Drone đưa thư: chạy ra xa người chơi, bám trong thành phố, lượn ngoằn ngoèo cho khó bắn
+        _desired.subVectors(d.pos, _target).setY(0);
+        if (_desired.lengthSq() < 0.01) _desired.set(1, 0, 0);
+        _desired.normalize();
+        _desired.x += Math.sin(clock * 0.9 + d.id) * 0.6;
+        _desired.z += Math.cos(clock * 0.7 + d.id) * 0.6;
+        // Gần mép thành phố thì quay vào trong
+        if (Math.abs(d.pos.x) > CITY_HALF * 0.85) _desired.x -= Math.sign(d.pos.x) * 2;
+        if (Math.abs(d.pos.z) > CITY_HALF * 0.85) _desired.z -= Math.sign(d.pos.z) * 2;
+        _desired.normalize().multiplyScalar(dist > 60 ? COURIER_SPEED * 0.3 : COURIER_SPEED);
+        _desired.y = (HOVER + 1 - d.pos.y) * 2;
+      } else if (d.state === "patrol") {
         if (alive && dist < aggro && (sees || game.wanted >= 2)) d.state = "chase";
         if (clock > d.nextWander) {
           d.wander.set(d.home.x + (Math.random() - 0.5) * 24, HOVER + Math.random() * 2, d.home.z + (Math.random() - 0.5) * 24);
@@ -240,7 +324,7 @@ export function Enemies() {
         const len = _desired.length();
         _desired.multiplyScalar(len > 1 ? PATROL_SPEED / len : 0);
       } else {
-        if (!alive || (dist > aggro * 1.8 && game.wanted === 0)) {
+        if (d.kind === "legion" && (!alive || (dist > aggro * 1.8 && game.wanted === 0))) {
           d.state = "patrol";
           continue;
         }
@@ -249,11 +333,13 @@ export function Enemies() {
         // Phía sau lưng người chơi là chỗ camera đứng: khi vòng qua đó thì bay vọt lên cao
         const camSide = Math.atan2(camera.position.z - _target.z, camera.position.x - _target.x);
         const behind = Math.max(0, Math.cos(d.orbit - camSide));
+        const boss = d.kind === "boss";
+        const standoff = boss ? STANDOFF * 1.8 : STANDOFF;
         _desired.set(
-          _target.x + Math.cos(d.orbit) * STANDOFF,
+          _target.x + Math.cos(d.orbit) * standoff,
           // Sà thấp khi tấn công để người chơi ngắm được
-          ATTACK_HEIGHT + Math.sin(d.orbit * 1.7) * 0.8 + behind * behind * 9,
-          _target.z + Math.sin(d.orbit) * STANDOFF,
+          (boss ? 7 : ATTACK_HEIGHT) + Math.sin(d.orbit * 1.7) * 0.8 + behind * behind * 9,
+          _target.z + Math.sin(d.orbit) * standoff,
         );
         _desired.sub(d.pos);
         const len = _desired.length();
@@ -293,8 +379,10 @@ function shoot(d: Drone, dist: number, targetSpeed: number, inCar: boolean, want
   const hitChance = THREE.MathUtils.clamp(0.8 - dist / 70 - (targetSpeed > 6 ? 0.25 : 0), 0.15, 0.85);
   const hit = Math.random() < hitChance;
   if (hit) {
-    fx.tracer(d.pos, _target, "#ff1f3d");
-    useGame.getState().damagePlayer((inCar ? 3 : 6) + wanted);
+    // Súng của Legion là súng EMP: trúng Mech thì có thể trừ thời gian biến hình
+    const boss = d.kind === "boss";
+    fx.tracer(d.pos, _target, boss ? "#ff7a1f" : "#ff1f3d");
+    useGame.getState().damagePlayer(((inCar ? 3 : 6) + wanted) * (boss ? 3 : 1), { emp: boss || Math.random() < 0.25 });
   } else {
     _miss.set(_target.x + (Math.random() - 0.5) * 4, Math.max(0.1, _target.y + (Math.random() - 0.6) * 2), _target.z + (Math.random() - 0.5) * 4);
     fx.tracer(d.pos, _miss, "#ff1f3d");

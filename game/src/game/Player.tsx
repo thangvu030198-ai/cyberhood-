@@ -11,6 +11,8 @@ import { PLAYER } from "./config";
 import { handles } from "./refs";
 import { uiBlocking, useGame, type Emote } from "./store";
 import { Gun } from "./Weapons";
+import { useHunter } from "./hunter";
+import { GAME } from "../sim/config";
 
 const CAR_REACH = 3.6;
 
@@ -144,6 +146,20 @@ function CharacterModel() {
   const camera = useThree((s) => s.camera);
   const fall = useRef(0);
   useFrame((_, dt) => {
+    // Dạng Mech: phóng to giữ chân chạm đất, giáp phát sáng hổ phách
+    const blend = handles.mechBlend;
+    if (group.current) {
+      const k = 1 + blend * (MECH_SCALE - 1);
+      group.current.scale.setScalar(k);
+      group.current.position.y = FEET_Y * (1 - k);
+    }
+    if (suit) {
+      // Ánh hổ phách nhẹ trên giáp kim loại; mạnh quá thì bloom biến cả thân thành mảng vàng phẳng
+      suit.emissive.set("#ff8a00");
+      suit.emissiveIntensity = blend * 0.08;
+      suit.metalness = 0.45 + blend * 0.4;
+      suit.roughness = 0.45 - blend * 0.2;
+    }
     // Flatline: ngã ngửa ra sau (model không có clip chết)
     fall.current = THREE.MathUtils.damp(fall.current, flatlined ? 1 : 0, 6, dt);
     if (pose.current) {
@@ -176,6 +192,8 @@ function CharacterModel() {
 }
 
 const GUN_OFFSET = new THREE.Vector3(0, 0, 0);
+/** Titan Frame cao gấp ~2,3 lần người */
+const MECH_SCALE = 2.3;
 
 /** Gom input bàn phím + joystick cảm ứng rồi đẩy vào Ecctrl mỗi frame. */
 function useDriveInput(ecctrl: React.RefObject<EcctrlHandle | null>) {
@@ -211,6 +229,9 @@ export function Player() {
   const setPosition = useGame((s) => s.setPosition);
   const setNearCar = useGame((s) => s.setNearCar);
   useDriveInput(ecctrl);
+  // Dạng Mech đi chậm hơn (×0.6) nhưng mỗi bước dài hơn: bù một phần cho cảm giác nặng mà không lê lết
+  const mechOn = useHunter((s) => s.transform.phase === "active");
+  const speedMul = mechOn ? GAME.transform.forms.titan_frame.speedMul * 1.4 : 1;
 
   useEffect(() => {
     handles.player = ecctrl.current;
@@ -287,8 +308,8 @@ export function Player() {
         capsuleHalfHeight={PLAYER.capsuleHalfHeight}
         capsuleRadius={PLAYER.capsuleRadius}
         floatHeight={PLAYER.floatHeight}
-        maxWalkVel={3.2}
-        maxRunVel={7.5}
+        maxWalkVel={3.2 * speedMul}
+        maxRunVel={7.5 * speedMul}
         jumpVel={5}
         // Thế giới phẳng: khoá nghiêng để nhân vật không ngã khi FPS thấp.
         enabledRotations={[false, true, false]}

@@ -6,6 +6,7 @@ import { MeshReflectorMaterial } from "@react-three/drei";
 import { useGame } from "./store";
 import {
   BLOCK_CENTERS,
+  BOARD_SPOT,
   CITY,
   CITY_HALF,
   CITY_PITCH,
@@ -40,6 +41,7 @@ const RESERVED: [number, number, number][] = [
     .filter((n) => !n.inVault)
     .map((n) => [n.pos[0], n.pos[2], 2.5] as [number, number, number]),
   [VAULT_DOOR[0], VAULT_DOOR[2], 4],
+  [BOARD_SPOT.x, BOARD_SPOT.z, 2.8], // bảng hợp đồng
 ];
 
 function generateBuildings(): Building[] {

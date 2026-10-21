@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { PALETTE } from "../game/config";
 import { chooseDialogue, currentStep } from "../game/quests";
 import { useGame } from "../game/store";
+import type { HunterSkin } from "../game/skins";
+import { SkinPicker } from "./SkinPicker";
 import { ITEMS, NPCS, questById, type ItemId } from "../game/story";
 
 // Các bảng giao diện của giai đoạn 3: tạo nhân vật, theo dõi nhiệm vụ, hội thoại, túi đồ, thông báo.
@@ -31,8 +33,8 @@ export const CREDITS = [
   "“SciFi Platform Stage Scene” (Sketchfab) · CC-BY 4.0",
   "Traffic Cone · hinndia · CC-BY 4.0",
   "Người đi bộ: 100Avatars · Polygonal Mind · CC0 · Robot: Tomás Laulhé · CC0",
-  "Xe: Kenney Car Kit · CC0 · Dodge Challenger 1970: kryptonmedia · CC0 · Trực thăng: sriniwasjha · CC0",
-  "Lính Legion, Archivist, mech Director Vane, Colossus, xe Velocity, vật phẩm, linh kiện: tạo bằng Meshy AI",
+  "Trực thăng: sriniwasjha · CC0",
+  "Lính Legion, nhân vật, dân thường, xe cộ, nhà cửa, công trình bản đồ, mech, vật phẩm: tạo bằng Meshy AI (animation từ thư viện Meshy)",
 ];
 
 export function CharacterCreator() {
@@ -41,6 +43,7 @@ export function CharacterCreator() {
   const [handle, setHandle] = useState("");
   const [body, setBody] = useState(BODY_COLORS[0]);
   const [glow, setGlow] = useState(GLOW_COLORS[0]);
+  const [hunter, setHunter] = useState<HunterSkin>("soldier");
 
   if (profile) return null;
   const clean = handle.trim();
@@ -52,7 +55,7 @@ export function CharacterCreator() {
       aria-label="Tạo Netrunner ID"
       onSubmit={(e) => {
         e.preventDefault();
-        if (valid) setProfile({ handle: clean, body, glow });
+        if (valid) setProfile({ handle: clean, body, glow, hunter });
       }}
     >
       <p className="creator__eyebrow">CYBERHOOD · ĐĂNG KÝ CƯ DÂN</p>
@@ -69,6 +72,7 @@ export function CharacterCreator() {
           onKeyDown={(e) => e.stopPropagation()}
         />
       </label>
+      <SkinPicker value={hunter} onChange={setHunter} tint={body} />
       <fieldset className="creator__swatches">
         <legend>Màu vỏ</legend>
         {BODY_COLORS.map((c) => (

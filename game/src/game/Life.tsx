@@ -4,6 +4,8 @@ import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { extraModel, models, type ExtraModel } from "./assets";
+import { mergeParts, type Part } from "./mergeParts";
+import { inPlace, once } from "./meshyAnim";
 import { BLOCK_CENTERS, BOARD_SPOT, CITY, CITY_HALF, CITY_PITCH, PLAYER, mulberry32 } from "./config";
 import { fitCharacter } from "./Player";
 import { handles } from "./refs";
@@ -158,8 +160,20 @@ function Crowd({ count }: { count: number }) {
 }
 
 /** Dân thường dựng bằng Meshy (đã gắn xương, có clip đi bộ riêng), đi trên vỉa hè như đám đông */
+/** Clip đứng chờ / vẫy tay của dân thường; nhân vật rig từ key cũ mượn clip của công nhân (cùng bộ xương Meshy) */
+const OWN_IDLE = new Set(["courier", "elder", "dancer", "worker", "student", "biker"]);
+const civClip = (model: ExtraModel, kind: "idle" | "wave") => {
+  const who = model.replace(/^mx_civ_|_walk$/g, "");
+  if (kind === "idle" && who === "dancer") return "mx_civ_dancer_dance" as ExtraModel;
+  return `mx_civ_${OWN_IDLE.has(who) ? who : "worker"}_${kind}` as ExtraModel;
+};
+
+/** Dân thường Meshy: đi dạo quanh khối nhà, thỉnh thoảng dừng lại; người chơi chặn đường thì đứng chờ,
+ * đi ngang qua gần thì quay sang vẫy tay chào */
 function MeshyWalker({ model, seed }: { model: ExtraModel; seed: number }) {
   const gltf = use(extraModel(model));
+  const idleGltf = use(extraModel(civClip(model, "idle")));
+  const waveGltf = use(extraModel(civClip(model, "wave")));
   const ped = useMemo(() => {
     const rand = mulberry32(seed);
     const s = cloneSkinned(gltf.scene);
@@ -179,39 +193,85 @@ function MeshyWalker({ model, seed }: { model: ExtraModel; seed: number }) {
     root.name = "pedestrian";
     root.add(s);
     const mixer = new THREE.AnimationMixer(s);
-    const clip = gltf.animations[0];
-    if (clip) {
-      const act = mixer.clipAction(clip);
-      act.time = rand() * clip.duration;
-      act.play();
+    const act = (g: { animations: THREE.AnimationClip[] }) => (g.animations[0] ? mixer.clipAction(inPlace(g.animations[0])) : null);
+    const walk = act(gltf);
+    const idle = act(idleGltf);
+    const wave = act(waveGltf);
+    if (wave) once(wave);
+    if (walk) {
+      walk.time = rand() * walk.getClip().duration;
+      walk.play();
     }
     const near = BLOCK_CENTERS.filter((c) => Math.abs(c) < CITY_PITCH * 1.5);
     return {
       root,
       mixer,
+      walk,
+      idle,
+      wave,
+      pose: "walk" as "walk" | "idle" | "wave",
+      rand,
+      /** Đứng nghỉ đến thời điểm này; lần dừng chân tiếp theo */
+      restUntil: 0,
+      nextRest: 8 + rand() * 20,
+      wavedAt: -99,
       bx: near[Math.floor(rand() * near.length)],
       bz: near[Math.floor(rand() * near.length)],
       s: rand() * PERIM,
       speed: (rand() < 0.5 ? -1 : 1) * (1.1 + rand() * 0.3),
     };
-  }, [gltf, seed]);
-  useFrame(({ camera }, dt) => {
+  }, [gltf, idleGltf, waveGltf, seed]);
+  const setPose = (pose: "walk" | "idle" | "wave") => {
+    if (ped.pose === pose) return;
+    const from = ped[ped.pose];
+    const to = ped[pose];
+    if (!to) return;
+    to.reset().play();
+    if (from) to.crossFadeFrom(from, 0.3, false);
+    ped.pose = pose;
+  };
+  useFrame(({ camera, clock }, dt) => {
     const step = Math.min(dt, 0.1);
+    const t = clock.elapsedTime;
     const player = handles.player?.currPos;
     ringPoint(ped.bx, ped.bz, WALK_RING, ped.s, _pp);
-    const blocked = !!player && Math.hypot(player.x - _pp.x, player.z - _pp.z) < 1.3;
-    if (!blocked) ped.s += ped.speed * step;
+    const dist = player ? Math.hypot(player.x - _pp.x, player.z - _pp.z) : 99;
+    const blocked = dist < 1.3;
+    if (t > ped.nextRest) {
+      ped.restUntil = t + 3 + ped.rand() * 4;
+      ped.nextRest = ped.restUntil + 12 + ped.rand() * 25;
+    }
+    // Người chơi đi ngang qua trong tầm 4m: quay sang vẫy tay (mỗi người tối đa một lần mỗi 25 giây)
+    if (dist < 4 && dist > 1.3 && t - ped.wavedAt > 25 && ped.wave) {
+      ped.wavedAt = t;
+      setPose("wave");
+    }
+    const waving = ped.pose === "wave" && t - ped.wavedAt < ped.wave!.getClip().duration;
+    const standing = blocked || waving || t < ped.restUntil;
+    if (!waving) setPose(standing ? "idle" : "walk");
+    if (!standing) ped.s += ped.speed * step;
     const side = ringPoint(ped.bx, ped.bz, WALK_RING, ped.s, _pp);
     ped.root.position.set(_pp.x, SIDEWALK, _pp.z);
-    ped.root.rotation.y = SIDE_YAW[side] + (ped.speed < 0 ? Math.PI : 0);
+    if (waving && player) ped.root.rotation.y = Math.atan2(player.x - _pp.x, player.z - _pp.z);
+    else ped.root.rotation.y = SIDE_YAW[side] + (ped.speed < 0 ? Math.PI : 0);
     const d = camera.position.distanceTo(ped.root.position);
     ped.root.visible = d < PED_DRAW;
-    if (d < PED_ANIMATE && !blocked) ped.mixer.update(step);
+    if (d < PED_ANIMATE) ped.mixer.update(step);
   });
   return <primitive object={ped.root} />;
 }
 
-const CIVILIANS: ExtraModel[] = ["mx_civ_vendor_walk", "mx_civ_punk_walk", "mx_civ_salaryman_walk"];
+const CIVILIANS: ExtraModel[] = [
+  "mx_civ_vendor_walk",
+  "mx_civ_punk_walk",
+  "mx_civ_salaryman_walk",
+  "mx_civ_courier_walk",
+  "mx_civ_elder_walk",
+  "mx_civ_dancer_walk",
+  "mx_civ_worker_walk",
+  "mx_civ_student_walk",
+  "mx_civ_biker_walk",
+];
 
 /** Robot RobotExpressive đi dạo quanh các khối gần Hub, thỉnh thoảng vẫy tay */
 function Robots({ count }: { count: number }) {
@@ -277,20 +337,22 @@ function Robots({ count }: { count: number }) {
 // ---------------------------------------------------------------------------
 // Đạo cụ phố và xe: vẽ bằng InstancedMesh theo từng scene trong file bộ (cars.glb, street.glb)
 
-type Part = { geometry: THREE.BufferGeometry; material: THREE.Material; matrix: THREE.Matrix4 };
-
-/** Các lưới của một scene trong file bộ, đã thu phóng về kích thước `size` (chiều dài hoặc chiều cao), đáy tại y = 0 */
-function useSetParts(file: ExtraModel, sceneName: string, size: number, by: "height" | "longest") {
+/** Các lưới của một scene trong file bộ (hoặc cả file nếu `sceneName` rỗng), đã thu phóng về kích thước `size`
+ * (chiều dài hoặc chiều cao), đáy tại y = 0, quay thêm `yaw` để đầu model hướng +Z. Lưới cùng vật liệu được gộp. */
+function useSetParts(file: ExtraModel, sceneName: string, size: number, by: "height" | "longest", yaw = 0) {
   const gltf = use(extraModel(file));
   return useMemo(() => {
-    const scene = gltf.scenes.find((s) => s.name === sceneName);
+    const scene = sceneName ? gltf.scenes.find((s) => s.name === sceneName) : gltf.scene;
     if (!scene) return { parts: [] as Part[], half: new THREE.Vector3() };
     scene.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(scene);
     const dim = box.getSize(new THREE.Vector3());
     const k = size / (by === "height" ? dim.y : Math.max(dim.x, dim.z));
     const c = box.getCenter(new THREE.Vector3());
-    const fix = new THREE.Matrix4().makeScale(k, k, k).premultiply(new THREE.Matrix4().makeTranslation(-c.x * k, -box.min.y * k, -c.z * k));
+    const fix = new THREE.Matrix4()
+      .makeScale(k, k, k)
+      .premultiply(new THREE.Matrix4().makeTranslation(-c.x * k, -box.min.y * k, -c.z * k))
+      .premultiply(new THREE.Matrix4().makeRotationY(yaw));
     const parts: Part[] = [];
     scene.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -299,8 +361,11 @@ function useSetParts(file: ExtraModel, sceneName: string, size: number, by: "hei
       if (mat.emissiveMap || (mat.emissive && mat.emissive.getHex() !== 0)) mat.emissiveIntensity = Math.max(mat.emissiveIntensity, 2);
       parts.push({ geometry: m.geometry, material: mat, matrix: new THREE.Matrix4().multiplyMatrices(fix, m.matrixWorld) });
     });
-    return { parts, half: dim.multiplyScalar(k / 2) };
-  }, [gltf, sceneName, size, by]);
+    const half = dim.multiplyScalar(k / 2);
+    // Sau khi quay 90°, chiều dài nằm theo trục Z
+    if (Math.abs(Math.sin(yaw)) > 0.5) [half.x, half.z] = [half.z, half.x];
+    return { parts: mergeParts(parts), half };
+  }, [gltf, sceneName, size, by, yaw]);
 }
 
 function SetInstances({
@@ -308,6 +373,7 @@ function SetInstances({
   name,
   size,
   by = "height",
+  yaw = 0,
   matrices,
   colliders,
 }: {
@@ -315,10 +381,11 @@ function SetInstances({
   name: string;
   size: number;
   by?: "height" | "longest";
+  yaw?: number;
   matrices: THREE.Matrix4[];
   colliders?: boolean;
 }) {
-  const { parts, half } = useSetParts(file, name, size, by);
+  const { parts, half } = useSetParts(file, name, size, by, yaw);
   const refs = useRef<(THREE.InstancedMesh | null)[]>([]);
   const out = useMemo(() => new THREE.Matrix4(), []);
   // Đạo cụ đứng yên: gán ma trận một lần khi InstancedMesh gắn vào
@@ -377,7 +444,6 @@ const STREET_PROPS: { name: string; size: number; by?: "height" | "longest"; wei
   { name: "pm_scifi_battery", size: 1.4, weight: 1, collider: true },
   { name: "boombox", size: 0.7, by: "longest", weight: 1 },
   { name: "lantern", size: 2.4, weight: 1 },
-  { name: "scifi_helmet", size: 0.6, weight: 1 },
   { name: "pm_colony_minipc", size: 1.2, by: "longest", weight: 1 },
 ];
 
@@ -417,15 +483,17 @@ function StreetProps({ density }: { density: number }) {
   );
 }
 
-const CAR_MODELS: { name: string; length: number }[] = [
-  { name: "kenney_sports_sedan", length: 4.6 },
-  { name: "kenney_taxi", length: 4.5 },
-  { name: "kenney_police", length: 4.7 },
-  { name: "kenney_suv_luxury", length: 4.9 },
-  { name: "kenney_van", length: 5.1 },
-  { name: "kenney_race_future", length: 4.6 },
-  { name: "kenney_delivery_truck", length: 6.2 },
-  { name: "challenger", length: 5 },
+// Xe cyberpunk tạo bằng Meshy; model gốc có đầu xe hướng -X nên quay +90° cho đầu xe hướng +Z
+const CAR_YAW = Math.PI / 2;
+const CAR_MODELS: { name: ExtraModel; length: number }[] = [
+  { name: "mx_car_sedan", length: 4.8 },
+  { name: "mx_car_taxi", length: 4.3 },
+  { name: "mx_car_police", length: 4.9 },
+  { name: "mx_car_sports", length: 4.6 },
+  { name: "mx_car_muscle", length: 5 },
+  { name: "mx_car_van", length: 5.2 },
+  { name: "mx_car_truck", length: 9 },
+  { name: "mx_car_armored", length: 5.4 },
 ];
 const PARK_OFFSET = 6.3;
 
@@ -458,7 +526,7 @@ function ParkedCars({ count }: { count: number }) {
   return (
     <>
       {groups.map((g) => (
-        <SetInstances key={g.name} file="cars" name={g.name} size={g.length} by="longest" matrices={g.matrices} colliders />
+        <SetInstances key={g.name} file={g.name} name="" size={g.length} by="longest" yaw={CAR_YAW} matrices={g.matrices} colliders />
       ))}
     </>
   );
@@ -469,7 +537,7 @@ function Traffic({ count }: { count: number }) {
   const lanes = useMemo(() => {
     const rand = mulberry32(4242);
     return Array.from({ length: count }, (_, i) => ({
-      model: CAR_MODELS[i % (CAR_MODELS.length - 1)].name,
+      model: CAR_MODELS[i % CAR_MODELS.length].name,
       alongX: i % 2 === 0,
       street: STREETS[1 + Math.floor(rand() * (STREETS.length - 2))],
       dir: rand() < 0.5 ? -1 : 1,
@@ -479,7 +547,7 @@ function Traffic({ count }: { count: number }) {
   }, [count]);
   return (
     <>
-      {CAR_MODELS.slice(0, -1).map((m) => {
+      {CAR_MODELS.map((m) => {
         const mine = lanes.filter((l) => l.model === m.name);
         return mine.length ? <TrafficGroup key={m.name} name={m.name} length={m.length} lanes={mine} /> : null;
       })}
@@ -489,8 +557,8 @@ function Traffic({ count }: { count: number }) {
 
 type Lane = { alongX: boolean; street: number; dir: number; pos: number; speed: number };
 
-function TrafficGroup({ name, length, lanes }: { name: string; length: number; lanes: Lane[] }) {
-  const { parts } = useSetParts("cars", name, length, "longest");
+function TrafficGroup({ name, length, lanes }: { name: ExtraModel; length: number; lanes: Lane[] }) {
+  const { parts } = useSetParts(name, "", length, "longest", CAR_YAW);
   const refs = useRef<(THREE.InstancedMesh | null)[]>([]);
   const m = useMemo(() => new THREE.Matrix4(), []);
   const out = useMemo(() => new THREE.Matrix4(), []);
@@ -619,18 +687,16 @@ export function LifeDynamic({ quality }: { quality: "high" | "low" }) {
   return (
     <>
       <Suspense fallback={null}>
-        <Crowd count={high ? 34 : 14} />
+        <Crowd count={high ? 22 : 10} />
       </Suspense>
       <Suspense fallback={null}>
         <Robots count={high ? 5 : 2} />
       </Suspense>
-      {CIVILIANS.flatMap((m, i) =>
-        Array.from({ length: high ? 2 : 1 }, (_, k) => (
-          <Suspense key={`${m}${k}`} fallback={null}>
-            <MeshyWalker model={m} seed={100 + i * 10 + k} />
-          </Suspense>
-        )),
-      )}
+      {(high ? CIVILIANS : CIVILIANS.slice(0, 4)).map((m, i) => (
+        <Suspense key={m} fallback={null}>
+          <MeshyWalker model={m} seed={100 + i * 10} />
+        </Suspense>
+      ))}
       <Suspense fallback={null}>
         <Traffic count={high ? 10 : 5} />
       </Suspense>

@@ -1,0 +1,112 @@
+[
+ {
+  "name": "bld_skyscraper",
+  "prompt": "tall slender cyberpunk skyscraper, dark glass facade with grid of lit windows, vertical neon light strips in pink and cyan, rooftop antennas and holographic billboard, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_apartment",
+  "prompt": "dense cyberpunk apartment block, stacked balconies with AC units, laundry, many small lit windows, neon shop signs on ground floor, about 8 storeys, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_megacorp",
+  "prompt": "massive cyberpunk megacorporation headquarters tower, sharp angular black monolith with glowing red lines and giant logo-free emblem, very tall, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_shoprow",
+  "prompt": "cyberpunk two-storey shop row building, several storefronts with neon signs and shutters, awnings, vending machines, street level detail, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_pagoda",
+  "prompt": "cyberpunk neon pagoda tower, traditional asian tiered roofs mixed with steel and glowing pink neon edges, lanterns, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_nightclub",
+  "prompt": "cyberpunk nightclub building, curved facade covered in animated-looking neon tubes, entrance with glowing canopy, purple and blue, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_hotel",
+  "prompt": "cyberpunk capsule hotel building, modular stacked capsule windows glowing warm, vertical sign, metal stairs, 6 storeys, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_factory",
+  "prompt": "cyberpunk industrial factory building, pipes, chimneys, catwalks, hazard lights, rusted metal with neon warning signs, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_tower_round",
+  "prompt": "futuristic round cylindrical residential tower, rings of glowing windows, rooftop landing pad, cyan accent lights, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_market",
+  "prompt": "cyberpunk covered night market hall, steel frame with translucent roof, many hanging lanterns and neon stalls inside, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_clinic",
+  "prompt": "cyberpunk street cybernetics clinic building, white tiles with green neon cross, surgical lights visible, compact 3 storeys, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_garage",
+  "prompt": "cyberpunk vehicle garage and workshop building, big roll-up doors with orange light, tools, mech parts, 2 storeys, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_arcade",
+  "prompt": "cyberpunk retro arcade building, facade covered with glowing screens and pixel art style neon, entrance with arcade cabinets, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "bld_overpass",
+  "prompt": "cyberpunk elevated walkway bridge between buildings, steel truss with glowing handrails and hanging ads, isolated full building exterior, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 20000
+ },
+ {
+  "name": "map_hollow_hotel",
+  "prompt": "haunted futuristic grand hotel building exterior, gothic art deco architecture with broken neon sign, eerie green lights, foggy, ominous, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ },
+ {
+  "name": "map_citadel",
+  "prompt": "dark megacorporation fortress castle citadel, black steel towers with red energy shield dome generators, gothic sci-fi spires, menacing, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ },
+ {
+  "name": "map_bunker",
+  "prompt": "military sci-fi bunker base entrance, concrete and steel blast doors, sandbags, floodlights, red warning beacons, war zone, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ },
+ {
+  "name": "map_shield_gen",
+  "prompt": "sci-fi shield generator pylon machine, tall core with rotating energy rings glowing red, heavy base, cables, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ },
+ {
+  "name": "map_turret",
+  "prompt": "sci-fi automated defense turret, twin cannons on rotating armored base, red targeting laser lights, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ },
+ {
+  "name": "map_gate",
+  "prompt": "giant ancient-futuristic portal gate, circular ring structure with glowing golden runes and energy membrane, monumental, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ },
+ {
+  "name": "map_ruins",
+  "prompt": "destroyed cyberpunk building ruins, broken concrete walls with exposed rebar, burnt neon sign fragments, debris pile, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ },
+ {
+  "name": "map_dropship",
+  "prompt": "military sci-fi dropship landed, VTOL engines, armored hull with red markings, ramp open, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000
+ }
+]

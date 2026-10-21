@@ -169,7 +169,8 @@ export function PlayerCombat() {
 
     const mech = mechActive();
     const damage = weapon.damage * (s.upgrades.overclock ? 1.5 : 1) * (mech ? MECH_DAMAGE_MUL : 1);
-    _chest.copy(player.currPos).setY(player.currPos.y + 0.5);
+    // Dạng Mech: pháo trên tay robot cao ~4 m nằm ngang vai, không phải ngực người lính đã thu nhỏ bên trong
+    _chest.copy(player.currPos).setY(player.currPos.y + (mechActive() ? 2.6 : 0.5));
     camera.getWorldDirection(_dir);
 
     // Bắn khi đang quay lưng với tâm ngắm: xoay người ngay về hướng bắn, không chờ quay từ từ

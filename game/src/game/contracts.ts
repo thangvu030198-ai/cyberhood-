@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BLOCK_CENTERS, BOARD_SPOT, CITY, CITY_PITCH, PLAYER } from "./config";
+import { BLOCK_CENTERS, BOARD_SPOT, CITY, CITY_PITCH, PLAYER, inSafeZone } from "./config";
 import { GAME } from "../sim/config";
 import {
   addKill,
@@ -263,7 +263,7 @@ function pickBatteries(here: Vec2) {
   toast(`Nhặt Pin năng lượng: +${GAME.transform.gain.battery}% biến hình`);
 }
 
-function updateEvent(here: Vec2, elapsed: number) {
+function updateEvent(here: Vec2, elapsed: number, dt: number) {
   const h = useHunter.getState();
   const c = h.contract!;
   const ev = c.event;
@@ -276,6 +276,15 @@ function updateEvent(here: Vec2, elapsed: number) {
     toast(`Mở hàng tiếp tế +${score}`);
   }
   if (ev.type === "wanted_5_star") {
+    // Trốn trong Vùng An toàn không tính: đồng hồ sống sót tạm dừng
+    if (inSafeZone(here.x, here.z)) {
+      runtime.wantedUntil += dt;
+      if (elapsed - runtime.hintAt > 8) {
+        runtime.hintAt = elapsed;
+        toast("Truy nã: trốn trong Vùng An toàn không tính giờ, ra ngoài để sống sót");
+      }
+      return;
+    }
     // Giữ 5 sao suốt 60 giây
     useGame.setState({ wanted: 5, lastCrimeAt: performance.now() / 1000 });
     if (elapsed >= runtime.wantedUntil) {
@@ -334,7 +343,7 @@ export function updateContract(dt: number) {
     }
   }
   updateMission(here, c.elapsed);
-  updateEvent(here, c.elapsed);
+  updateEvent(here, c.elapsed, dt);
   pickBatteries(here);
 
   if (canExtract(c, here)) return endNow("extracted");

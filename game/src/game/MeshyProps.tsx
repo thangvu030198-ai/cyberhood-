@@ -248,6 +248,81 @@ function Placed({ name, size, by = "longest", position, rotationY, selfLit = 0.3
   );
 }
 
+/** Công trình bản đồ lớn ngoài rìa thành phố (Meshy): có hộp va chạm theo kích thước thật,
+ * chỉ vẽ khi camera ở trong tầm `drawWithin` */
+function Landmark({ name, height, position, rotationY = 0, selfLit = 0.3, drawWithin = 280, solid = true }: {
+  name: ExtraModel;
+  height: number;
+  position: [number, number, number];
+  rotationY?: number;
+  selfLit?: number;
+  drawWithin?: number;
+  solid?: boolean;
+}) {
+  const { root } = useFitted(name, height, "height", selfLit);
+  const half = useMemo(() => new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()).multiplyScalar(0.5), [root]);
+  const ref = useRef<THREE.Group>(null);
+  const at = useMemo(() => new THREE.Vector3(...position), [position]);
+  useFrame(({ camera }) => {
+    if (ref.current) ref.current.visible = camera.position.distanceTo(at) < drawWithin;
+  });
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <group ref={ref}>
+        <primitive object={root} />
+      </group>
+      {solid && (
+        <RigidBody type="fixed" colliders={false}>
+          <CuboidCollider args={[half.x * 0.85, half.y, half.z * 0.85]} position={[0, half.y, 0]} />
+        </RigidBody>
+      )}
+    </group>
+  );
+}
+
+const toCity = (x: number, z: number) => Math.atan2(-x, -z);
+
+/** Bản đồ ngoài rìa: Citadel của Vane (tây bắc) có máy phát khiên và tháp pháo canh, cổng dịch chuyển cuối
+ * đại lộ phía nam, tàu đổ bộ ở bãi đông, khu đổ nát chiến trường và cửa hầm phía tây, Hollow Hotel phía nam xa */
+function Landmarks() {
+  const c: [number, number] = [-185, -165];
+  return (
+    <>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_citadel" height={58} position={[c[0], 0, c[1]]} rotationY={toCity(...c)} drawWithin={420} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_shield_gen" height={20} position={[-150, 0, -178]} rotationY={toCity(-150, -178)} selfLit={0.5} />
+        <Landmark name="mx_map_shield_gen" height={20} position={[-198, 0, -128]} rotationY={toCity(-198, -128)} selfLit={0.5} />
+      </Suspense>
+      <Suspense fallback={null}>
+        {[
+          [-140, -140],
+          [-158, -126],
+          [-126, -158],
+        ].map(([x, z]) => (
+          <Landmark key={`${x}${z}`} name="mx_map_turret" height={5} position={[x, 0, z]} rotationY={toCity(x, z)} drawWithin={220} />
+        ))}
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_gate" height={18} position={[0, 0, CITY_HALF + 22]} rotationY={Math.PI} selfLit={0.45} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_dropship" height={9} position={[160, 0, -70]} rotationY={-2.2} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_ruins" height={4.5} position={[-158, 0, 62]} rotationY={0.4} solid={false} drawWithin={220} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_bunker" height={11} position={[-CITY_HALF - 16, 0, 104]} rotationY={Math.PI / 2} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_hollow_hotel" height={42} position={[70, 0, CITY_HALF + 50]} rotationY={Math.PI} drawWithin={360} />
+      </Suspense>
+    </>
+  );
+}
+
 /** Phần có va chạm (đặt trong <Physics>) */
 export function MeshyStatic() {
   return (
@@ -263,6 +338,7 @@ export function MeshyStatic() {
         <Placed name="mx_noodle_stall" size={3.2} position={[11.4, Y, 30]} rotationY={-Math.PI / 2} collider={[1.4, 1.3, 0.9]} />
       </Suspense>
       <ItemShelf />
+      <Landmarks />
     </>
   );
 }

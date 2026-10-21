@@ -1,3 +1,4 @@
+import type { HunterSkin } from "./skins";
 import { create } from "zustand";
 import { BLOCK_CENTERS, CITY_PITCH, DISTRICTS, districtIdAt } from "./config";
 import type { ItemId, NpcId } from "./story";
@@ -41,7 +42,7 @@ type Upgrades = Record<UpgradeId, boolean>;
 // ---------------------------------------------------------------------------
 // Hồ sơ, túi đồ, nhiệm vụ, hội thoại
 
-export type Profile = { handle: string; body: string; glow: string };
+export type Profile = { handle: string; body: string; glow: string; hunter?: HunterSkin };
 export type Inventory = Partial<Record<ItemId, number>>;
 export type QuestState = { active: string | null; step: number; progress: number; done: string[] };
 export type Quality = "high" | "low";

@@ -1,5 +1,6 @@
 import { Suspense, use, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { mergeParts } from "./mergeParts";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { extraModel, type ExtraModel } from "./assets";
@@ -145,7 +146,7 @@ function useFleetParts(kind: FleetKind, size: number) {
       const m = o as THREE.Mesh;
       if (m.isMesh) parts.push({ geometry: m.geometry, material: m.material as THREE.Material, matrix: m.matrixWorld.clone() });
     });
-    return parts;
+    return mergeParts(parts);
   }, [root]);
 }
 
@@ -252,7 +253,7 @@ function Skyline() {
 export function Showcase({ quality }: { quality: "high" | "low" }) {
   return (
     <>
-      <SkyFleet count={quality === "high" ? 26 : 14} />
+      <SkyFleet count={quality === "high" ? 16 : 10} />
       <Suspense fallback={null}>
         <TokyoLandmark />
       </Suspense>

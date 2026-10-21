@@ -63,5 +63,9 @@ export function mulberry32(seed: number) {
   };
 }
 
+/** Vùng An toàn (Hub) quanh điểm xuất phát: địch không vào, không bắn (GDD mục 4A.2) */
+export const SAFE_ZONE = { x: 0, z: 6, r: 26 };
+export const inSafeZone = (x: number, z: number) => Math.hypot(x - SAFE_ZONE.x, z - SAFE_ZONE.z) < SAFE_ZONE.r;
+
 /** Bảng hợp đồng ở Vùng An toàn, trên vỉa hè cạnh điểm xuất phát */
 export const BOARD_SPOT = { x: -10.2, y: 0.15, z: 3 };

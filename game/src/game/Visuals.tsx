@@ -96,7 +96,7 @@ const holoFragment = /* glsl */ `
 /** Biển quảng cáo hologram lớn gắn trên mặt tiền các toà cao nhất */
 export function HoloAds() {
   const ads = useMemo(() => {
-    const tall = [...BUILDINGS].filter((b) => b.h > 45).sort((a, b) => b.h - a.h).slice(0, 10);
+    const tall = BUILDINGS.filter((b) => b.h > 45 && !b.model).sort((a, b) => b.h - a.h).slice(0, 10);
     return tall.map((b, i) => {
       const [title, sub, color] = AD_COPY[i % AD_COPY.length];
       const material = new THREE.ShaderMaterial({

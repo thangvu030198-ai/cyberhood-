@@ -1,0 +1,162 @@
+[
+ {
+  "name": "car_sedan",
+  "prompt": "futuristic cyberpunk four-door sedan car, dark metallic purple paint, thin neon cyan light strips along the body, tinted windows, glowing wheel rims, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "car_taxi",
+  "prompt": "futuristic cyberpunk city taxi car, bright yellow and black body, roof sign glowing, compact boxy-but-sleek shape, neon accents, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "car_police",
+  "prompt": "futuristic cyberpunk police car on wheels, black and white armored body, red and blue light bar, aggressive front bumper, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "car_sports",
+  "prompt": "futuristic cyberpunk low supercar, glossy crimson body, scissor doors, glowing magenta underglow strips, rear spoiler, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "car_muscle",
+  "prompt": "retro-futuristic cyberpunk muscle car, matte black with orange neon stripes, big rear wheels, exposed chrome engine intake, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "car_van",
+  "prompt": "futuristic cyberpunk delivery van, white and teal panels with graffiti-like neon decals, roof antenna array, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "car_truck",
+  "prompt": "futuristic cyberpunk heavy cargo truck, industrial grey cab with amber warning lights, container trailer with glowing seams, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "car_armored",
+  "prompt": "futuristic megacorporation armored security vehicle, black heavy plating, red visor windows, six wheels, menacing, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 25000
+ },
+ {
+  "name": "cls_racer",
+  "prompt": "full body cyberpunk street racer driver, sleek racing jacket with neon stripes, fingerless gloves, short spiky hair, goggles on forehead, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "cls_engineer",
+  "prompt": "full body cyberpunk mech engineer, utility harness with tools, heavy work boots, robotic multi-tool arm, welding visor up, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "cls_samurai",
+  "prompt": "full body cyberpunk samurai warrior, lightweight armored kimono with glowing red trims, katana on back, cybernetic jaw, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "cls_ninja",
+  "prompt": "full body cyberpunk ninja assassin, black stealth suit with thin purple light lines, face mask, hood, blades on wrists, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "cls_hacker",
+  "prompt": "full body cyberpunk hacker woman, long coat over bodysuit, neural interface cables, holographic gauntlet on arm, short silver hair, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "civ_courier",
+  "prompt": "full body cyberpunk delivery courier, bright orange jacket, backpack with glowing logo-free box, helmet with visor, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "civ_elder",
+  "prompt": "full body elderly cyberpunk street resident, long coat, cane, cybernetic eye, scarf, umbrella, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "civ_dancer",
+  "prompt": "full body cyberpunk club dancer, holographic iridescent outfit, glowing hair, platform shoes, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "civ_worker",
+  "prompt": "full body cyberpunk dock worker, hi-vis vest with LEDs, hard hat, augmented forearms, cargo pants, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "civ_student",
+  "prompt": "full body cyberpunk teenage student, oversized hoodie with neon patches, headphones, sneakers, backpack, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "civ_biker",
+  "prompt": "full body cyberpunk biker gang member, studded leather vest, mohawk, cyber arm, chains, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "legion_sniper",
+  "prompt": "full body megacorporation sniper soldier, slim black armor with red optic helmet, long rail rifle, cloak, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "legion_officer",
+  "prompt": "full body megacorporation officer commander, black long coat over armor, red visor cap, sidearm, imposing, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "legion_android",
+  "prompt": "full body megacorporation combat android, exposed black chrome skeleton frame with red glowing joints, faceless head, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "vane_human",
+  "prompt": "full body ruthless corporate villain executive, tall man in sharp black suit with red tie, slicked back hair, cybernetic red eye, long coat, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ }
+]

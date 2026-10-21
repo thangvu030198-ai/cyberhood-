@@ -8,6 +8,7 @@ import { contractScore, missionsDone, timeLeft } from "../sim/contract";
 import { abandonContract, EVENT_LABEL, runtime, startNewContract } from "../game/contracts";
 import { useHunter } from "../game/hunter";
 import { useGame } from "../game/store";
+import { SkinPicker } from "./SkinPicker";
 
 // Giao diện GameFi: thanh hợp đồng, thanh biến hình, bảng hợp đồng, kết quả, gara Mech.
 
@@ -376,6 +377,8 @@ function MechCard({ mech, equipped }: { mech: Mech; equipped: boolean }) {
 function GaragePanel() {
   const h = useHunter();
   const cred = useGame((s) => s.cred);
+  const profile = useGame((s) => s.profile);
+  const setProfile = useGame((s) => s.setProfile);
   const [mode, setMode] = useState<"assemble" | "craft">("assemble");
   const [pick, setPick] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<string | null>(null);
@@ -430,6 +433,11 @@ function GaragePanel() {
           ))}
         </ul>
       )}
+      <SkinPicker
+        value={profile?.hunter ?? "soldier"}
+        tint={profile?.body}
+        onChange={(hunter) => profile && setProfile({ ...profile, hunter })}
+      />
       <div className="garage-tabs" role="tablist">
         {(["assemble", "craft"] as const).map((m) => (
           <button

@@ -1,5 +1,6 @@
 import { use, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { mergeParts } from "./mergeParts";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { models } from "./assets";
@@ -13,6 +14,9 @@ import { useGame } from "./store";
 // máy bán hàng, tàu bay. Mọi thứ đều instancing: mỗi lưới của model là một InstancedMesh.
 
 type KitName = string;
+
+/** Đồ trang trí mặt tiền chỉ gắn vào nhà khối hộp; nhà dựng bằng model Meshy đã có chi tiết riêng */
+const BOX_BUILDINGS = BUILDINGS.filter((b) => !b.model);
 
 /** Lấy scene của một model trong kit theo tên */
 function useKitScene(name: KitName) {
@@ -52,7 +56,7 @@ function useKitParts(name: KitName) {
       }
       parts.push({ geometry: mesh.geometry, material, matrix: mesh.matrixWorld.clone() });
     });
-    return parts;
+    return mergeParts(parts);
   }, [scene]);
 }
 
@@ -156,7 +160,7 @@ function Storefronts() {
     const rand = mulberry32(31);
     const fronts: Record<string, THREE.Matrix4[]> = Object.fromEntries(STOREFRONTS.map((k) => [k, []]));
     const awnings: Record<string, THREE.Matrix4[]> = Object.fromEntries(AWNINGS.map((k) => [k, []]));
-    for (const f of faces(BUILDINGS)) {
+    for (const f of faces(BOX_BUILDINGS)) {
       const count = Math.floor((f.width - 0.4) / MODULE_W);
       const start = -((count - 1) * MODULE_W) / 2;
       const yaw = yawZ(f.n);
@@ -218,7 +222,7 @@ function NeonSigns() {
     const rand = mulberry32(77);
     const names = Object.keys(SIGNS);
     const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(names.map((k) => [k, []]));
-    for (const f of faces(BUILDINGS)) {
+    for (const f of faces(BOX_BUILDINGS)) {
       const n = 1 + Math.floor(rand() * 3);
       for (let i = 0; i < n; i++) {
         const name = names[Math.floor(rand() * names.length)];
@@ -254,7 +258,7 @@ function BigAds() {
     const rand = mulberry32(91);
     const names = ["Ad01_Art", "Ad02_Art", "Ad03_Art", "Ad04_Art"];
     const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(names.map((k) => [k, []]));
-    for (const f of faces(BUILDINGS.filter((b) => b.h > 25))) {
+    for (const f of faces(BOX_BUILDINGS.filter((b) => b.h > 25))) {
       if (rand() > 0.35) continue;
       const name = names[Math.floor(rand() * names.length)];
       // Mép trái của mặt tường, cao giữa thân nhà; quảng cáo chìa ra theo trục +Z của model
@@ -450,7 +454,7 @@ function RoofTops() {
     const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(
       [...ROOF_PROPS.map(([n]) => n), "landingpad_small", "ElectricBox01_Art"].map((k) => [k, []]),
     );
-    for (const b of BUILDINGS) {
+    for (const b of BOX_BUILDINGS) {
       const top = CITY.SIDEWALK_HEIGHT + b.h;
       const tier = buildingTier(b);
       // Toà thấp, không có tầng trên: có thể làm bãi đáp xe bay
@@ -486,7 +490,7 @@ function UpperFloors() {
     const rand = mulberry32(606);
     const names = ["Wall_Module_05", "Wall_Module_07", "Wall_Module_04"];
     const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(names.map((k) => [k, []]));
-    for (const f of faces(BUILDINGS)) {
+    for (const f of faces(BOX_BUILDINGS)) {
       const cols = Math.floor((f.width - 0.4) / MODULE_W);
       const floors = Math.floor((f.b.h - 9) / 3);
       for (let c = 0; c < cols; c++) {

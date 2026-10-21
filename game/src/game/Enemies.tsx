@@ -2,9 +2,10 @@ import { Suspense, use, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { extraModel, models, playSfx } from "./assets";
+import { inPlace, once } from "./meshyAnim";
 import { fitCharacter } from "./Player";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, mulberry32 } from "./config";
+import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, SAFE_ZONE, inSafeZone, mulberry32 } from "./config";
 import { fx } from "./Effects";
 import { handles } from "./refs";
 import { useGame } from "./store";
@@ -367,12 +368,23 @@ function DroneBody({ index, scene, materials }: { index: number; scene: THREE.Ob
 }
 
 /** Lính Legion đi bộ (model Meshy, đã gắn xương): đi khi tuần tra, chạy khi truy đuổi */
+const TROOPER_LOOKS = ["trooper", "sniper", "officer", "android"] as const;
+/** Kiểu giáp nào có sẵn clip bắn/ngã riêng; kiểu còn lại mượn của sĩ quan (cùng bộ xương Meshy) */
+const OWN_COMBAT_CLIPS = new Set(["sniper", "officer", "android"]);
+const DEATH_SHOW = 2.6;
+
 function TrooperModel({ index }: { index: number }) {
   const heavy = drones[index].size > 1;
-  const walkGltf = use(extraModel(heavy ? "mx_legion_heavy_walk" : "mx_legion_trooper_walk"));
-  const runGltf = use(extraModel(heavy ? "mx_legion_heavy_run" : "mx_legion_trooper_run"));
+  // Lính thường xoay vòng giữa bốn kiểu giáp Legion; lính nặng dùng model riêng
+  const look = heavy ? "heavy" : TROOPER_LOOKS[index % TROOPER_LOOKS.length];
+  const combat = OWN_COMBAT_CLIPS.has(look) ? look : "officer";
+  const walkGltf = use(extraModel(`mx_legion_${look}_walk`));
+  const runGltf = use(extraModel(`mx_legion_${look}_run`));
+  const shootGltf = use(extraModel(`mx_legion_${combat}_walkshoot`));
+  const deathGltf = use(extraModel(`mx_legion_${combat}_death`));
   const ref = useRef<THREE.Group>(null);
-  const { scene, mixer, walk, run, mats } = useMemo(() => {
+  const deadSeen = useRef(false);
+  const { scene, mixer, walk, run, shoot, death, mats } = useMemo(() => {
     const s = cloneSkinned(walkGltf.scene);
     fitCharacter(s, heavy ? 2.25 : 1.85, -TROOPER_CENTER);
     const mats: { mat: THREE.MeshStandardMaterial; base: THREE.Color }[] = [];
@@ -391,19 +403,42 @@ function TrooperModel({ index }: { index: number }) {
       mats.push({ mat, base: mat.emissive.clone() });
     });
     const mixer = new THREE.AnimationMixer(s);
-    const walk = walkGltf.animations[0] ? mixer.clipAction(walkGltf.animations[0]) : null;
-    const run = runGltf.animations[0] ? mixer.clipAction(runGltf.animations[0]) : null;
-    walk?.play();
-    run?.play();
-    if (run) run.weight = 0;
-    return { scene: s, mixer, walk, run, mats };
-  }, [walkGltf, runGltf, heavy]);
+    const act = (g: { animations: THREE.AnimationClip[] }) => (g.animations[0] ? mixer.clipAction(inPlace(g.animations[0])) : null);
+    const walk = act(walkGltf);
+    const run = act(runGltf);
+    const shoot = act(shootGltf);
+    const death = act(deathGltf);
+    if (death) once(death);
+    for (const a of [walk, run, shoot]) {
+      a?.play();
+      if (a && a !== walk) a.weight = 0;
+    }
+    return { scene: s, mixer, walk, run, shoot, death, mats };
+  }, [walkGltf, runGltf, shootGltf, deathGltf, heavy]);
   useFrame(({ camera }, dt) => {
     const d = drones[index];
     const g = ref.current;
     if (!g) return;
-    g.visible = d.state !== "dead" && d.pos.distanceTo(camera.position) < 90;
+    const dead = d.state === "dead";
+    const dying = dead && clock - d.deadAt < DEATH_SHOW && d.pos.y > -10;
+    g.visible = (!dead || dying) && d.pos.distanceTo(camera.position) < 90;
+    if (!dead) deadSeen.current = false;
     if (!g.visible) return;
+    if (dying) {
+      // Ngã xuống tại chỗ rồi biến mất
+      if (!deadSeen.current && death) {
+        deadSeen.current = true;
+        for (const a of [walk, run, shoot]) if (a) a.weight = 0;
+        death.reset().play();
+        death.weight = 1;
+      }
+      mixer.update(Math.min(dt, 0.1));
+      return;
+    }
+    if (death?.isRunning() || (death && death.weight > 0)) {
+      death.stop();
+      death.weight = 0;
+    }
     g.position.copy(d.pos);
     const speed = Math.hypot(d.vel.x, d.vel.z);
     const look = d.state === "chase" ? _aim.subVectors(_target, d.pos) : d.vel;
@@ -411,14 +446,17 @@ function TrooperModel({ index }: { index: number }) {
       const yaw = Math.atan2(look.x, look.z);
       g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, g.rotation.y + shortest(g.rotation.y, yaw), 0.15);
     }
-    // Pha trộn đi/chạy theo tốc độ
+    // Vừa bắn xong: chuyển sang động tác giương súng bắn; còn lại pha trộn đi/chạy theo tốc độ
+    const firing = d.state === "chase" && clock - d.firedAt < 0.9 ? 1 : 0;
     const k = THREE.MathUtils.clamp((speed - 2) / 3, 0, 1);
+    if (shoot) shoot.weight = THREE.MathUtils.lerp(shoot.weight, firing, 0.2);
+    const rest = 1 - (shoot?.weight ?? 0);
     if (walk) {
-      walk.weight = 1 - k;
+      walk.weight = (1 - k) * rest;
       walk.timeScale = THREE.MathUtils.clamp(speed / 1.6, 0.15, 1.6);
     }
     if (run) {
-      run.weight = k;
+      run.weight = k * rest;
       run.timeScale = THREE.MathUtils.clamp(speed / 5, 0.5, 1.4);
     }
     const hurt = clock - d.hurtAt < 0.12;
@@ -520,7 +558,9 @@ export function Enemies() {
     const car = game.mode === "drive" && game.carId !== null ? handles.cars.get(game.carId) : null;
     const player = handles.player;
     // Trong vault thì drone ngoài phố mất dấu người chơi
-    const alive = game.flatlinedAt === null && !!player && game.location === "city";
+    // Trong Vùng An toàn (Hub) người chơi không bị truy đuổi hay bắn
+    const safe = inSafeZone(_target.x, _target.z);
+    const alive = game.flatlinedAt === null && !!player && game.location === "city" && !safe;
     if (car) _target.copy(car.currPos).setY(car.currPos.y + 0.6);
     else if (player) _target.copy(player.currPos).setY(player.currPos.y + 0.5);
     const targetSpeed = car ? car.currLinVel.length() : (player?.currLinVel.length() ?? 0);
@@ -609,6 +649,17 @@ export function Enemies() {
       d.pos.addScaledVector(d.vel, step);
       d.pos.y = d.kind === "boss" ? BOSS_CENTER : d.kind === "trooper" ? TROOPER_CENTER : THREE.MathUtils.clamp(d.pos.y - (d.pos.y > 14 ? 8 * step : 0), 2.5, 32);
       pushOutOfBuildings(d.pos);
+      // Địch không bước vào Vùng An toàn (trừ trùm sự kiện, vốn chỉ xuất hiện khi đang làm hợp đồng)
+      if (d.kind !== "boss") {
+        const dx = d.pos.x - SAFE_ZONE.x;
+        const dz = d.pos.z - SAFE_ZONE.z;
+        const r = Math.hypot(dx, dz);
+        const edge = SAFE_ZONE.r + 4;
+        if (r < edge && r > 0.01) {
+          d.pos.x = SAFE_ZONE.x + (dx / r) * edge;
+          d.pos.z = SAFE_ZONE.z + (dz / r) * edge;
+        }
+      }
     }
   });
 
@@ -634,10 +685,10 @@ export function Enemies() {
 function shoot(d: Drone, dist: number, targetSpeed: number, inCar: boolean, wanted: number) {
   const hitChance = THREE.MathUtils.clamp(0.8 - dist / 70 - (targetSpeed > 6 ? 0.25 : 0), 0.15, 0.85);
   const hit = Math.random() < hitChance;
+  d.firedAt = clock;
   if (hit) {
     // Súng của Legion là súng EMP: trúng Mech thì có thể trừ thời gian biến hình
     const boss = d.kind === "boss";
-    d.firedAt = clock;
     fx.tracer(d.pos, _target, boss ? "#ff7a1f" : "#ff1f3d");
     useGame.getState().damagePlayer(((inCar ? 3 : 6) + wanted) * (boss ? 3 : 1), { emp: boss || Math.random() < 0.25 });
   } else {

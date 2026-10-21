@@ -1,0 +1,246 @@
+[
+ {
+  "name": "zmb_walker",
+  "prompt": "full body cyber zombie, rotting grey skin with exposed glowing green circuitry, torn office clothes, broken neon implants on the head, hunched posture, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.75
+ },
+ {
+  "name": "zmb_runner",
+  "prompt": "full body fast feral cyber zombie, lean body, ripped hoodie, glowing green eyes, cracked chrome jaw implant, bare feet, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.7
+ },
+ {
+  "name": "zmb_brute",
+  "prompt": "full body huge mutated cyber zombie brute, swollen muscles fused with scrap metal plates and cables, green glowing veins, massive fists, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 2.4
+ },
+ {
+  "name": "zmb_soldier",
+  "prompt": "full body undead cyber soldier zombie, broken tactical armor, cracked helmet with flickering visor, rotten skin, green bio-glow, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.85
+ },
+ {
+  "name": "zmb_nurse",
+  "prompt": "full body creepy cyber zombie nurse, torn white uniform with neon cross, mechanical spider-like arm implants, glowing green eyes, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.7
+ },
+ {
+  "name": "mon_mutant",
+  "prompt": "full body grotesque cyberpunk mutant creature, humanoid, four arms, exposed muscles with purple bioluminescent tumors, mechanical spine, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 2.2
+ },
+ {
+  "name": "mon_cyborg_hound_rider",
+  "prompt": "full body cyberpunk gang raider in spiked scrap armor, gas mask with red lenses, mohawk, chains, wasteland style, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.85
+ },
+ {
+  "name": "mon_psycho",
+  "prompt": "full body cyberpsycho killer, heavily augmented madman, mantis blade arms, cracked face plate, wild glowing red eyes, blood-red jacket, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.9
+ },
+ {
+  "name": "mon_alien",
+  "prompt": "full body tall slender alien invader humanoid, glossy black exoskeleton, elongated head, cyan glowing veins, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 2.3
+ },
+ {
+  "name": "mon_robot_reaper",
+  "prompt": "full body skeletal killer robot, chrome endoskeleton, red glowing eyes, exposed hydraulic joints, menacing, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 2.0
+ },
+ {
+  "name": "npc_bartender",
+  "prompt": "full body cyberpunk bartender woman, undercut purple hair, vest with glowing trims, cybernetic arm, apron, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.72
+ },
+ {
+  "name": "npc_medic",
+  "prompt": "full body street ripperdoc medic, lab coat with neon green trims, surgical goggles, mechanical hand tools, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.78
+ },
+ {
+  "name": "npc_cop",
+  "prompt": "full body cyberpunk riot police officer, heavy blue and white armor, helmet with blue visor, shock baton, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.88
+ },
+ {
+  "name": "npc_child",
+  "prompt": "full body cyberpunk street kid, oversized neon jacket, light-up sneakers, holographic headphones, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.35
+ },
+ {
+  "name": "npc_monk",
+  "prompt": "full body cyber monk, orange robes with glowing circuit embroidery, bald head with LED tattoos, prayer beads, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.75
+ },
+ {
+  "name": "npc_dj",
+  "prompt": "full body cyberpunk DJ, LED mask helmet, shiny jacket with equalizer lights, headphones, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "npc_gangster",
+  "prompt": "full body yakuza cyberpunk gangster, white suit open shirt, dragon tattoos with neon glow, chrome sunglasses, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.82
+ },
+ {
+  "name": "npc_android_maid",
+  "prompt": "full body android servant, porcelain white synthetic skin, black and white uniform, visible joint seams, glowing blue eyes, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.7
+ },
+ {
+  "name": "veh_hoverbike",
+  "prompt": "futuristic hover motorcycle with no wheels, glowing anti-gravity pads, sleek red and black fairings, neon underglow, side view, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_hovertruck",
+  "prompt": "cyberpunk hover cargo truck, heavy boxy chassis with anti-gravity thrusters, warning stripes, cargo container, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_tank",
+  "prompt": "futuristic hover tank, angular armor, twin plasma cannon turret, dark grey with red stripes, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_ambulance",
+  "prompt": "cyberpunk ambulance van, white and neon green, light bar, armored windows, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_bus",
+  "prompt": "cyberpunk city bus, long electric bus with neon advertising screens on sides, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_buggy",
+  "prompt": "wasteland cyberpunk dune buggy, roll cage, big off-road tires, scrap armor plates, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_limo",
+  "prompt": "cyberpunk luxury limousine, long glossy black car with gold neon trim, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_scooter",
+  "prompt": "cyberpunk electric scooter moped, compact, neon pink lights, delivery box on back, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "vending_kiosk",
+  "prompt": "cyberpunk street vending machine kiosk, glowing screen panels, neon signs, ramen and drinks, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "holo_tower",
+  "prompt": "cyberpunk holographic advertisement tower pole, tall slim metal pole with projectors and glowing screen panels, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "bld_megacorp",
+  "prompt": "cyberpunk megacorporation headquarters skyscraper, dark glass and steel, glowing red corporate trims, tall, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "bld_noodle_bar",
+  "prompt": "small cyberpunk noodle bar building, one story, open front counter, lanterns and neon signs, stools, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "bld_capsule_hotel",
+  "prompt": "cyberpunk capsule hotel building, stacked pod windows with lights, 6 floors, compact, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "bld_police_station",
+  "prompt": "cyberpunk police station building, armored concrete, blue light strips, 3 floors, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "map_zombie_barricade",
+  "prompt": "post-apocalyptic barricade wall of wrecked cars, concrete blocks and barbed wire, cyberpunk, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "map_crashed_mech",
+  "prompt": "giant crashed destroyed mech wreck lying on the ground, burnt armor, broken limbs, cyberpunk war, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "map_bio_lab",
+  "prompt": "ruined biotech laboratory pod, broken glass tank with green glowing liquid, cables, cyberpunk zombie outbreak, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "map_watchtower",
+  "prompt": "cyberpunk military watchtower with searchlight and armor plates on stilts, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "prop_neon_arch",
+  "prompt": "cyberpunk neon gateway arch over a street, japanese style torii shape with glowing pink and cyan tubes, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "prop_trash_pile",
+  "prompt": "cyberpunk street garbage pile, trash bags, broken screens, cables and scrap, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ }
+]

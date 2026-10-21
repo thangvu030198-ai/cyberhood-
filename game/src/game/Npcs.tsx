@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { extraModel, models, type ExtraModel } from "./assets";
+import { inPlace } from "./meshyAnim";
 import { fitCharacter } from "./Player";
 import { PALETTE } from "./config";
 import { fx } from "./Effects";
@@ -97,8 +98,11 @@ const PACE = 1.6;
 function NpcMeshy({ id, model }: { id: NpcId; model: ExtraModel }) {
   const npc = NPCS[id];
   const gltf = use(extraModel(model));
+  // Rig cũ chỉ có clip đi/chạy: mượn clip đứng thở và nói chuyện của nhân vật Meshy khác (cùng bộ xương)
+  const idleGltf = use(extraModel("mx_civ_worker_idle"));
+  const talkGltf = use(extraModel("mx_vane_human_talk"));
   const group = useRef<THREE.Group>(null);
-  const { scene, mixer, action } = useMemo(() => {
+  const { scene, mixer, action, idle, talk } = useMemo(() => {
     const s = cloneSkinned(gltf.scene);
     fitCharacter(s, id === "vex" ? 1.7 : 1.8, 0);
     s.traverse((o) => {
@@ -114,10 +118,14 @@ function NpcMeshy({ id, model }: { id: NpcId; model: ExtraModel }) {
       }
     });
     const mixer = new THREE.AnimationMixer(s);
-    const action = gltf.animations[0] ? mixer.clipAction(gltf.animations[0]) : null;
-    action?.play();
-    return { scene: s, mixer, action };
-  }, [gltf, id]);
+    const action = gltf.animations[0] ? mixer.clipAction(inPlace(gltf.animations[0])) : null;
+    const idle = idleGltf.animations[0] ? mixer.clipAction(inPlace(idleGltf.animations[0])) : null;
+    const talk = talkGltf.animations[0] ? mixer.clipAction(inPlace(talkGltf.animations[0])) : null;
+    for (const a of [action, idle, talk]) a?.play();
+    if (idle) idle.weight = 0;
+    if (talk) talk.weight = 0;
+    return { scene: s, mixer, action, idle, talk };
+  }, [gltf, idleGltf, talkGltf, id]);
 
   const quest = useGame((s) => s.quest);
   const marker = useMemo(() => npcMarker(id), [id, quest]);
@@ -129,13 +137,18 @@ function NpcMeshy({ id, model }: { id: NpcId; model: ExtraModel }) {
     if (!g) return;
     const step = Math.min(dt, 0.1);
     const p = handles.player?.currPos;
-    const near = !!p && Math.hypot(p.x - npc.pos[0], p.z - npc.pos[2]) < 7;
+    const dist = p ? Math.hypot(p.x - npc.pos[0], p.z - npc.pos[2]) : 99;
+    const near = dist < 7;
+    // Đi qua lại khi vắng người; người chơi lại gần thì đứng thở, sát bên thì quay sang nói chuyện
+    const w = { walk: near ? 0 : 1, idle: near && dist >= 3.5 ? 1 : 0, talk: dist < 3.5 ? 1 : 0 };
+    if (action) action.weight = THREE.MathUtils.damp(action.weight, w.walk, 6, step);
+    if (idle) idle.weight = THREE.MathUtils.damp(idle.weight, w.idle, 6, step);
+    if (talk) talk.weight = THREE.MathUtils.damp(talk.weight, w.talk, 6, step);
     const side = [Math.cos(npc.yaw), -Math.sin(npc.yaw)];
     let targetYaw: number;
     if (near && p) {
       // Đứng lại, quay về phía người chơi
       targetYaw = Math.atan2(p.x - g.position.x, p.z - g.position.z);
-      if (action) action.timeScale = THREE.MathUtils.damp(action.timeScale, 0, 8, step);
     } else {
       t.current += step;
       const phase = (t.current * 0.45) % 2;
@@ -144,7 +157,7 @@ function NpcMeshy({ id, model }: { id: NpcId; model: ExtraModel }) {
       const off = (k * 2 - 1) * PACE;
       g.position.set(npc.pos[0] + side[0] * off, npc.pos[1], npc.pos[2] + side[1] * off);
       targetYaw = Math.atan2(side[0] * dir, side[1] * dir);
-      if (action) action.timeScale = THREE.MathUtils.damp(action.timeScale, 0.8, 6, step);
+      if (action) action.timeScale = 0.8;
     }
     const diff = ((((targetYaw - g.rotation.y) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     g.rotation.y += diff * Math.min(1, step * 6);

@@ -12,6 +12,8 @@ import { handles } from "./refs";
 import { uiBlocking, useGame, type Emote } from "./store";
 import { Gun } from "./Weapons";
 import { useHunter } from "./hunter";
+import { inPlace } from "./meshyAnim";
+import type { HunterSkin } from "./skins";
 import { GAME } from "../sim/config";
 
 const CAR_REACH = 3.6;
@@ -178,6 +180,147 @@ function CharacterModel() {
   return (
     // Model Soldier dựng mặt hướng -Z, còn ecctrl coi +Z là phía trước: quay 180° để không chạy giật lùi
     <group ref={group} rotation-y={Math.PI}>
+      <group ref={pose}>
+        <primitive object={scene} />
+      </group>
+      {arm && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
+    </group>
+  );
+}
+
+/** Thân người chơi theo lớp nhân vật đã chọn; model Meshy tải nền nên tạm hiện Soldier trong lúc chờ */
+function PlayerBody() {
+  const hunter = useGame((s) => s.profile?.hunter ?? "soldier");
+  if (hunter === "soldier") return <CharacterModel />;
+  return (
+    <Suspense fallback={<CharacterModel />}>
+      <MeshyHunterModel key={hunter} skin={hunter} />
+    </Suspense>
+  );
+}
+
+const MESHY_CLIP_FOR_STATE: Record<string, string> = {
+  IDLE: "idle",
+  WALK: "walk",
+  RUN: "run",
+  JUMP_START: "jump",
+  JUMP_IDLE: "jump",
+  JUMP_FALL: "jump",
+  JUMP_LAND: "idle",
+};
+const MESHY_CLIP_FOR_EMOTE: Record<Emote, string> = { wave: "wave", dance: "dance", thumbsUp: "talk" };
+
+/** Nhân vật Meshy (đã rig): clip riêng của lớp + biểu cảm mượn từ nhân vật Meshy khác (chung tên xương) */
+function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
+  const base = `mx_cls_${skin}` as const;
+  const walkGltf = use(extraModel(`${base}_walk`));
+  const sources = {
+    run: use(extraModel(`${base}_run`)),
+    idle: use(extraModel(`${base}_idle`)),
+    jump: use(extraModel(`${base}_jump`)),
+    death: use(extraModel(`${base}_death`)),
+    wave: use(extraModel("mx_civ_worker_wave")),
+    dance: use(extraModel("mx_civ_dancer_dance")),
+    talk: use(extraModel("mx_vane_human_talk")),
+  };
+  const group = useRef<THREE.Group>(null);
+  const pose = useRef<THREE.Group>(null);
+  const { scene, mixer, actions, arm } = useMemo(() => {
+    const s = cloneSkinned(walkGltf.scene);
+    fitCharacter(s, PLAYER.modelHeight, FEET_Y);
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      if (mat.map && !mat.emissiveMap) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#ffffff");
+        mat.emissiveIntensity = 0.25;
+      }
+      m.material = mat;
+    });
+    const mixer = new THREE.AnimationMixer(s);
+    const actions: Record<string, THREE.AnimationAction> = {};
+    const add = (name: string, clip?: THREE.AnimationClip) => {
+      if (!clip) return;
+      const c = inPlace(clip);
+      c.name = name;
+      actions[name] = mixer.clipAction(c);
+    };
+    add("walk", walkGltf.animations[0]);
+    for (const [name, g] of Object.entries(sources)) add(name, g.animations[0]);
+    const bones: Record<string, THREE.Bone> = {};
+    s.traverse((o) => {
+      if ((o as THREE.Bone).isBone) bones[o.name] = o as THREE.Bone;
+    });
+    const arm =
+      bones.RightArm && bones.RightForeArm && bones.RightHand
+        ? { upper: bones.RightArm, lower: bones.RightForeArm, hand: bones.RightHand }
+        : null;
+    return { scene: s, mixer, actions, arm };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walkGltf, ...Object.values(sources)]);
+
+  const animationState = useEcctrlAnimationStore((s) => s.animationState);
+  const emote = useGame((s) => s.emote);
+  const setEmote = useGame((s) => s.setEmote);
+  const flatlined = useGame((s) => s.flatlinedAt !== null);
+  const setReady = useGame((s) => s.setReady);
+  useEffect(setReady, [setReady]);
+  const current = useRef<string | null>(null);
+
+  const clip = flatlined
+    ? "death"
+    : emote && animationState === "IDLE"
+      ? MESHY_CLIP_FOR_EMOTE[emote]
+      : (MESHY_CLIP_FOR_STATE[animationState] ?? "idle");
+
+  useEffect(() => {
+    if (emote && animationState !== "IDLE") setEmote(null);
+  }, [animationState, emote, setEmote]);
+
+  useEffect(() => {
+    if (current.current === clip) return;
+    const next = actions[clip] ?? actions.idle;
+    if (!next) return;
+    const prev = current.current ? actions[current.current] : null;
+    const once = clip === "death" || clip === "wave";
+    next.reset();
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    next.clampWhenFinished = true;
+    next.fadeIn(0.2).play();
+    if (prev && prev !== next) prev.fadeOut(0.2);
+    current.current = clip;
+  }, [actions, clip]);
+
+  const camera = useThree((s) => s.camera);
+  useFrame((_, dt) => {
+    mixer.update(Math.min(dt, 0.1));
+    const blend = handles.mechBlend;
+    if (group.current) {
+      const k = Math.max(0.001, 1 - blend);
+      group.current.scale.setScalar(k);
+      group.current.position.y = FEET_Y * (1 - k);
+      group.current.visible = blend < 0.98;
+    }
+    if (!arm || !handles.player || flatlined) return;
+    const aimingNow = useGame.getState().aiming || handles.player.lockForward;
+    if (!aimingNow || useGame.getState().mode !== "foot") return;
+    camera.getWorldDirection(_aimDir);
+    _aimDir.y = THREE.MathUtils.clamp(_aimDir.y + 0.06, -0.6, 0.8);
+    _aimDir.normalize();
+    // Xương tay Meshy cũng chạy dọc trục +Y: quay +Y của cánh tay trên về hướng ngắm
+    _worldQ.setFromUnitVectors(_up, _aimDir);
+    arm.upper.parent!.getWorldQuaternion(_parentQ);
+    arm.upper.quaternion.copy(_parentQ.invert().multiply(_worldQ));
+    arm.lower.quaternion.identity();
+    arm.hand.quaternion.identity();
+  });
+
+  // Model Meshy dựng mặt hướng +Z, trùng phía trước của ecctrl nên không cần quay
+  return (
+    <group ref={group}>
       <group ref={pose}>
         <primitive object={scene} />
       </group>
@@ -372,7 +515,7 @@ export function Player() {
         enabledRotations={[false, true, false]}
       >
         <group ref={model}>
-          <CharacterModel />
+          <PlayerBody />
           <Suspense fallback={null}>
             <MechModel />
           </Suspense>

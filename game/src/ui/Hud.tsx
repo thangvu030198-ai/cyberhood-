@@ -7,6 +7,7 @@ import { pointer } from "../game/pointer";
 import { loadProgress } from "../game/assets";
 import { ContractHud, DropBanner, HunterPanels, MechMeter } from "./HunterUi";
 import { useHunter } from "../game/hunter";
+import { inSafeZone } from "../game/config";
 import { CharacterCreator, DialoguePanel, InventoryPanel, QuestTracker, Toast, interactLabel } from "./Panels";
 
 const EMOTE_KEYS: Record<string, Emote> = { Digit1: "wave", Digit2: "dance", Digit3: "thumbsUp" };
@@ -112,6 +113,15 @@ function Wanted() {
       </span>
     </div>
   );
+}
+
+/** Nhãn Vùng An toàn khi đứng trong Hub */
+function SafeZoneTag() {
+  const x = useGame((s) => s.x);
+  const z = useGame((s) => s.z);
+  const location = useGame((s) => s.location);
+  if (location !== "city" || !inSafeZone(x, z)) return null;
+  return <div className="safe-tag">VÙNG AN TOÀN · Legion không vào được</div>;
 }
 
 function Crosshair() {
@@ -324,6 +334,7 @@ export function Hud() {
           <span className="brand__build">{profile ? `${profile.handle} · ` : ""}build 0.3 · hạ gục {kills}</span>
         </div>
         <Wanted />
+        <SafeZoneTag />
         <div className="hud__right">
           <div className="loc">
             <span className="loc__label">DISTRICT</span>

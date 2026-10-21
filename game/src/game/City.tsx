@@ -1,9 +1,11 @@
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, use, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { MeshReflectorMaterial } from "@react-three/drei";
 import { useGame } from "./store";
+import { extraModel } from "./assets";
+import { mergeParts, type Part } from "./mergeParts";
 import {
   BLOCK_CENTERS,
   BOARD_SPOT,
@@ -30,7 +32,27 @@ export type Building = {
   face: [number, number];
   neon: string | null;
   sign: number | null;
+  /** Toà nhà dựng bằng model Meshy thay cho khối hộp; khi đó w/d/h là kích thước thật của model */
+  model?: BuildingModel;
+  /** Hệ số phóng đều theo XZ và hệ số kéo thêm theo chiều cao */
+  scale?: [number, number];
+  yaw?: number;
 };
+
+/** Kích thước chuẩn hoá (x, y, z) của các model nhà Meshy, đo sẵn từ file (mặt tiền hướng +Z) */
+export const BUILDING_MODELS = {
+  mx_bld_apartment: [1.61, 1.9, 1.54],
+  mx_bld_clinic: [1.72, 1.1, 1.9],
+  mx_bld_factory: [1.86, 1.82, 1.84],
+  mx_bld_hotel: [1.89, 1.36, 1.85],
+  mx_bld_nightclub: [1.9, 0.74, 1.36],
+  mx_bld_pagoda: [0.88, 1.9, 0.88],
+  mx_bld_shoprow: [1.9, 1.32, 1.9],
+  mx_bld_skyscraper: [0.44, 1.9, 0.49],
+  mx_bld_tower_round: [1.04, 1.9, 1.04],
+} as const;
+export type BuildingModel = keyof typeof BUILDING_MODELS;
+const MODEL_LIMIT: Partial<Record<BuildingModel, number>> = { mx_bld_pagoda: 3, mx_bld_factory: 4 };
 
 const WINDOW_VARIANTS = 4;
 
@@ -89,6 +111,44 @@ function generateBuildings(): Building[] {
         });
       }
     }
+  }
+  return list;
+}
+
+/** Thay khoảng 40% khối hộp bằng nhà cyberpunk Meshy: chọn model có tỉ lệ cao/rộng gần nhất,
+ * thu phóng cho vừa lô đất rồi cập nhật lại kích thước để va chạm và minimap khớp với model */
+function assignModels(list: Building[]) {
+  const rand = mulberry32(5150);
+  const used: Partial<Record<BuildingModel, number>> = {};
+  const names = Object.keys(BUILDING_MODELS) as BuildingModel[];
+  for (const b of list) {
+    if (rand() > 0.42) continue;
+    // Mặt tiền (+Z của model) quay ra đường
+    const yaw = Math.atan2(b.face[0], b.face[1]);
+    const side = b.face[0] !== 0;
+    const fits = names
+      .filter((n) => (used[n] ?? 0) < (MODEL_LIMIT[n] ?? Infinity))
+      .map((n) => {
+        const [mx, my, mz] = BUILDING_MODELS[n];
+        const ex = side ? mz : mx;
+        const ez = side ? mx : mz;
+        const s = Math.min(b.w / ex, b.d / ez);
+        const natural = my * s;
+        return { n, ex, ez, s, natural, err: Math.abs(Math.log(b.h / natural)) };
+      })
+      .sort((a, c) => a.err - c.err);
+    const pick = fits[rand() < 0.65 ? 0 : Math.min(1, fits.length - 1)];
+    if (!pick) continue;
+    const sy = Math.min(1.4, Math.max(0.85, b.h / pick.natural));
+    used[pick.n] = (used[pick.n] ?? 0) + 1;
+    b.model = pick.n;
+    b.scale = [pick.s, sy];
+    b.yaw = yaw;
+    b.w = pick.ex * pick.s;
+    b.d = pick.ez * pick.s;
+    b.h = pick.natural * sy;
+    b.neon = null;
+    b.sign = null;
   }
   return list;
 }
@@ -158,7 +218,7 @@ function useWindowMaterials() {
 
 /** Tầng thu nhỏ trên đỉnh toà cao: lệch về một góc, cao khoảng 1/4 thân nhà */
 export function buildingTier(b: Building) {
-  if (b.h < 32) return null;
+  if (b.h < 32 || b.model) return null;
   const k = Math.abs(Math.sin(b.x * 12.9898 + b.z * 78.233)) % 1;
   if (k < 0.25) return null;
   const w = b.w * (0.5 + k * 0.2);
@@ -175,9 +235,14 @@ export function buildingTier(b: Building) {
 function Buildings({ list, withColliders }: { list: Building[]; withColliders: boolean }) {
   const materials = useWindowMaterials();
   const meshes = useMemo(
-    () => list.map((b) => ({ b, geo: buildingGeometry(b.w, b.h, b.d) })),
+    () => list.filter((b) => !b.model).map((b) => ({ b, geo: buildingGeometry(b.w, b.h, b.d) })),
     [list],
   );
+  // Nhà dựng bằng model: hộp vô hình để chặn camera, thay cho raycast vào lưới chi tiết
+  const blockers = useMemo(() => {
+    const boxes = list.filter((b) => b.model).map((b) => buildingGeometry(b.w, b.h, b.d).translate(b.x, CITY.SIDEWALK_HEIGHT, b.z));
+    return boxes.length ? mergeGeometries(boxes, false) : null;
+  }, [list]);
   // Toà cao có thêm tầng thu nhỏ trên đỉnh để phá dáng hộp
   const tiers = useMemo(
     () =>
@@ -203,6 +268,9 @@ function Buildings({ list, withColliders }: { list: Building[]; withColliders: b
     <>
       {merged.map((geo, i) =>
         geo ? <mesh key={i} geometry={geo} material={materials[i]} userData={{ cameraCollider: withColliders }} /> : null,
+      )}
+      {withColliders && blockers && (
+        <mesh geometry={blockers} visible={false} userData={{ cameraCollider: true }} />
       )}
       {withColliders && (
         <RigidBody type="fixed" colliders={false}>
@@ -385,7 +453,84 @@ function Ground() {
 
 
 /** Toà nhà trong khu chơi được, dùng chung cho va chạm, tầm nhìn của drone và minimap. */
-export const BUILDINGS = generateBuildings();
+export const BUILDINGS = assignModels(generateBuildings());
+
+/** Các lưới của một model nhà, chuẩn hoá theo BUILDING_MODELS: tâm XZ ở gốc, đáy ở y = 0 */
+function useBuildingParts(name: BuildingModel) {
+  const gltf = use(extraModel(name));
+  return useMemo(() => {
+    const scene = gltf.scene;
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(scene);
+    const dim = box.getSize(new THREE.Vector3());
+    const k = BUILDING_MODELS[name][1] / dim.y;
+    const c = box.getCenter(new THREE.Vector3());
+    const fix = new THREE.Matrix4().makeScale(k, k, k).premultiply(new THREE.Matrix4().makeTranslation(-c.x * k, -box.min.y * k, -c.z * k));
+    const parts: Part[] = [];
+    scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mat = m.material as THREE.MeshStandardMaterial;
+      // Ban đêm: tự sáng nhẹ theo texture để mặt tiền không chìm vào bóng tối
+      if (mat.map && !mat.emissiveMap) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#ffffff");
+        mat.emissiveIntensity = 0.35;
+      }
+      parts.push({ geometry: m.geometry, material: mat, matrix: new THREE.Matrix4().multiplyMatrices(fix, m.matrixWorld) });
+    });
+    return mergeParts(parts);
+  }, [gltf, name]);
+}
+
+function ModelBuildingGroup({ name, list }: { name: BuildingModel; list: Building[] }) {
+  const parts = useBuildingParts(name);
+  const setRef = (pi: number) => (r: THREE.InstancedMesh | null) => {
+    if (!r) return;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    list.forEach((b, i) => {
+      const [s, sy] = b.scale!;
+      m.compose(new THREE.Vector3(b.x, CITY.SIDEWALK_HEIGHT, b.z), q.setFromAxisAngle(up, b.yaw ?? 0), new THREE.Vector3(s, s * sy, s));
+      r.setMatrixAt(i, m.multiply(parts[pi].matrix));
+    });
+    r.instanceMatrix.needsUpdate = true;
+    r.computeBoundingSphere();
+  };
+  return (
+    <>
+      {parts.map((p, i) => (
+        <instancedMesh key={i} ref={setRef(i)} args={[p.geometry, p.material, list.length]} />
+      ))}
+    </>
+  );
+}
+
+/** Nhà cyberpunk dựng bằng model Meshy, mỗi loại model là một nhóm instancing */
+function ModelBuildings({ list }: { list: Building[] }) {
+  // Chia theo model và góc phần tư thành phố: nhóm nằm sau lưng camera bị loại khỏi lượt vẽ
+  const groups = useMemo(() => {
+    const out = new Map<string, { name: BuildingModel; list: Building[] }>();
+    for (const b of list) {
+      if (!b.model) continue;
+      const key = `${b.model}:${b.x >= 0 ? 1 : 0}${b.z >= 0 ? 1 : 0}`;
+      const g = out.get(key) ?? { name: b.model, list: [] };
+      g.list.push(b);
+      out.set(key, g);
+    }
+    return [...out.entries()];
+  }, [list]);
+  return (
+    <>
+      {groups.map(([key, g]) => (
+        <Suspense key={key} fallback={null}>
+          <ModelBuildingGroup name={g.name} list={g.list} />
+        </Suspense>
+      ))}
+    </>
+  );
+}
 
 export function City() {
   const buildings = BUILDINGS;
@@ -394,8 +539,9 @@ export function City() {
     <>
       <Ground />
       <Buildings list={buildings} withColliders />
+      <ModelBuildings list={buildings} />
       <Buildings list={skyline} withColliders={false} />
-      <NeonTrim list={buildings} />
+      <NeonTrim list={buildings.filter((b) => !b.model)} />
       <NeonTrim list={skyline} />
     </>
   );

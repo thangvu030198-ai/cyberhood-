@@ -19,7 +19,7 @@ const K = (k: KitName, h: number): Small => ({ k, h });
 
 /** Đạo cụ nhỏ theo bối cảnh: dùng hết model đã có (Meshy, model sảnh, kit) để mỗi map một kiểu đồ vật */
 const SMALLS: Record<ThemeId, Small[]> = {
-  quarantine: [X("mx_prop_trash_pile", 1.3), X("mx_supply_crate", 1), X("mx_vending_kiosk", 2.2), X("mx_car_taxi", 1.5), X("mx_wz_sandbags", 1.1), X("mx_battery_cell", 1.1), X("mx_police_hovercar", 1.5), X("computers", 1.1), X("fridge", 1.9), X("forklift", 2.2), X("crate", 0.9), K("ElectricBox01_Art", 1.4), K("WarningSign01_Art", 1.6), K("Kiosco", 2.4), K("PoapMachine", 2.1), K("containers_A", 2.4), K("Pot_Vapor_02", 1.2)],
+  quarantine: [X("mx_prop_trash_pile", 1.3), X("mx_supply_crate", 1), X("mx_vending_kiosk", 2.2), X("mx_car_taxi", 1.5), X("mx_wz_sandbags", 1.1), X("mx_battery_cell", 1.1), X("mx_police_hovercar", 1.5), X("computers", 1.1), X("fridge", 1.9), X("forklift", 2.2), X("crate", 0.9), K("ElectricBox01_Art", 1.4), K("WarningSign01_Art", 1.6), K("Kiosco", 2.4), K("PoapMachine", 2.1), K("Pot_Vapor_02", 1.2)],
   harbor: [X("mx_prop_trash_pile", 1.2), X("mx_vending_kiosk", 2.2), X("mx_noodle_stall", 2.4), X("mx_veh_scooter", 1.2), X("mx_supply_crate", 1), X("mx_car_taxi", 1.5), K("Kiosco", 2.2), K("PoapMachine", 2), K("containers_B", 2.2), K("cargo_A_stacked", 2.2), K("Robot", 1.6), X("crate", 0.9), K("Pot_Vapor_01", 1.2), K("WarningSign02_Art", 1.5)],
   hotel: [X("mx_hh_planter", 2.4), X("mx_hh_luggage_cart", 1.6), X("mx_hh_armchair", 1.3), X("mx_hh_piano", 1.6), K("Pot_Retro_03", 1.2), K("Screen_Retro_02", 1.4), K("Shrine_Art", 2.4), X("crate", 0.9), X("mx_ct_brazier", 1.8)],
   warzone: [X("mx_wz_ammo", 1.2), X("mx_wz_sandbags", 1.2), X("mx_supply_crate", 1), X("mx_battery_cell", 1.1), K("containers_A", 2.4), K("cargo_A_stacked", 2.4)],
@@ -137,7 +137,7 @@ const lazy = (el: React.ReactNode, key: string | number) => (
 );
 
 /** Màn nhìn ngang: đạo cụ trên mặt khối nền phía sau làn chơi, đèn đường, biển neon, dãy nhà tầng giữa */
-export function SideDressing({ sim, entry }: { sim: PlatformerSim; entry: LevelEntry }) {
+export function SideDressing({ sim, entry, painted = false }: { sim: PlatformerSim; entry: LevelEntry; painted?: boolean }) {
   const items = useMemo(() => {
     const r = rng(sim.width * 131 + sim.height);
     const theme = sim.def.theme;
@@ -164,7 +164,14 @@ export function SideDressing({ sim, entry }: { sim: PlatformerSim; entry: LevelE
       }
     }
     // Phố phía sau làn chơi (vùng cách ly, pháo đài): mặt tiền cửa hàng 3D, biển dọc kiểu Nhật, cột điện, quảng cáo
-    if (!climb && (theme === "quarantine" || theme === "skyline")) {
+    // Có phông vẽ sẵn: chỉ giữ cột điện sát làn chơi, mặt tiền / biển / quảng cáo đã có trong ảnh
+    if (!climb && painted) {
+      for (let x = 16, i = 0; x < sim.width; x += 15, i++) {
+        const y = top(Math.floor(x));
+        if (y > 0) out.push(<KitPiece key={`e${i}`} name={i % 2 ? "ElectricPost01_Art" : "ElectricPost02_Art"} height={7} position={[x, y, -2.3]} />);
+      }
+    }
+    if (!climb && !painted && (theme === "quarantine" || theme === "skyline")) {
       for (let x = -2, i = 0; x < sim.width + 6; x += 4.6, i++)
         out.push(<KitPiece key={`w${i}`} name={WALL_MODULES[Math.floor(r() * WALL_MODULES.length)]} height={5.2} position={[x, 0, -3.6]} rotY={0} />);
       for (let x = 5, i = 0; x < sim.width; x += 6 + r() * 5, i++)
@@ -178,20 +185,20 @@ export function SideDressing({ sim, entry }: { sim: PlatformerSim; entry: LevelE
     }
     // Biển neon và dãy nhà giữa: đứng trên nền phía sau
     // Hang gothic (Hollow Hotel) không treo biển neon, không đèn đường
-    const cave = theme === "hotel";
+    const cave = theme === "hotel" || painted;
     for (let x = 6; !cave && x < sim.width + 10; x += 9 + r() * 6) {
       const h = climb ? 4 + r() * (sim.height - 8) : 4 + r() * 5;
       out.push(
         <NeonSign key={`n${x.toFixed(1)}`} position={[x, h, climb ? -6 - r() * 4 : -4.3 - r() * 0.5]} text={SIGNS[Math.floor(r() * SIGNS.length)]} color={NEON[Math.floor(r() * NEON.length)]} width={2.4 + r() * 1.6} />,
       );
     }
-    if (entry.backBuildings.length)
+    if (entry.backBuildings.length && !painted)
       for (let x = 2, i = 0; x < sim.width + 20; x += 14 + r() * 6, i++) {
         const name = entry.backBuildings[(i * 3 + 1) % entry.backBuildings.length];
         out.push(lazy(<FittedProp name={name} height={12 + r() * 8} position={[x, 0, -22 - r() * 8]} rotY={(r() - 0.5) * 0.4} selfLit={0.32} />, `b${i}`));
       }
     return out;
-  }, [sim, entry]);
+  }, [sim, entry, painted]);
   return <group>{items}</group>;
 }
 

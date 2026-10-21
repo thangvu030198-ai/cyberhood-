@@ -288,6 +288,44 @@ describe("trùm có mẹo", () => {
     expect(hit(sim)).toBeCloseTo(2 * T.boss.stunMul, 5);
   });
 
+  it("trùm đang choáng đè lên chỗ mình đứng: không mất máu, bị đẩy ra ngoài thân nó", () => {
+    const sim = arena("charger");
+    const boss = sim.boss!;
+    boss.stunUntil = sim.time + 2;
+    sim.player.x = boss.x;
+    sim.player.invuln = 0;
+    const hp = sim.player.hp;
+    play(sim, 30, {});
+    expect(sim.player.hp).toBe(hp);
+    expect(Math.abs(sim.player.x - boss.x)).toBeGreaterThan(boss.w / 2);
+  });
+
+  it("chết trong phòng trùm: lính trùm gọi ra biến mất, khiên/choáng đặt lại", () => {
+    const sim = arena("phantom");
+    for (let f = 0; f < 60 * 12 && !sim.enemies.some((e) => e.minion); f++) {
+      sim.player.invuln = 9;
+      sim.step(NO_INPUT);
+    }
+    expect(sim.enemies.some((e) => e.minion)).toBe(true);
+    sim.player.invuln = 0;
+    sim.hurt(999, 1);
+    play(sim, Math.ceil(T.respawnDelay / T.step) + 3, {});
+    expect(sim.status).toBe("playing");
+    expect(sim.enemies.some((e) => e.minion)).toBe(false);
+  });
+
+  it("overlord: tên lửa hạ xuống ngang tầm nòng, đứng yên bắn là hạ được; kiếm chém rơi cũng tính", () => {
+    const sim = arena("overlord");
+    const boss = sim.boss!;
+    sim.shots.push({ x: 35, y: 6, vx: -4, vy: 0, r: 0.35, dmg: 3, pierce: false, life: 6, enemy: true, level: 1, missile: true });
+    play(sim, 60, () => { sim.player.invuln = 9; return {}; });
+    const m = sim.shots.find((s) => s.missile)!;
+    expect(Math.abs(m.y - (sim.player.y + 1.15))).toBeLessThan(0.3);
+    const before = boss.broken;
+    play(sim, 90, (f) => ({ shoot: f % 6 < 3 }));
+    expect(boss.broken + (sim.time < boss.stunUntil ? T.boss.overlordBreak : 0)).toBeGreaterThan(before);
+  });
+
   it("phantom: ẩn hình thì miễn sát thương, hiện hình thì trúng và gọi hồn ma", () => {
     const sim = arena("phantom");
     let sawGuard = false;
@@ -335,5 +373,17 @@ describe("trùm có mẹo", () => {
     let top2 = 0;
     play(two, 90, (f) => ((top2 = Math.max(top2, two.player.y)), { jump: f < 20 || (f > 24 && f < 50) }));
     expect(top2).toBeGreaterThan(top1 + 1);
+  });
+});
+
+describe("cảm giác điều khiển", () => {
+  it("nhảy cụng mép trần lệch một chút thì tự lách qua (sửa góc trần)", () => {
+    const def = testLevel((b) => b.block(10, 20, 6, 1));
+    const sim = ready(def);
+    sim.player.x = 9.75; // thân 9.35–10.15: lấn 0.15 ô vào dưới mép trần
+    let top = 0;
+    play(sim, 50, (f) => ((top = Math.max(top, sim.player.y)), { jump: f < 30 }));
+    // Không sửa góc: cụng trần ở y≈3.2; có sửa góc: lách ra bay tiếp lên cao
+    expect(top).toBeGreaterThan(3.8);
   });
 });

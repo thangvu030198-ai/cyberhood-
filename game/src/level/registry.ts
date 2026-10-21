@@ -45,6 +45,10 @@ export type LevelEntry = {
   props: Prop[];
   /** Cốt truyện: tên chương, lời dẫn khi vào màn, câu thoại trùm, kết chương */
   story: { chapter: string; intro: string; boss: string; outro: string };
+  /** Phông nền vẽ sẵn (public/mattes/<tên>.webp) thay cho lớp cảnh xa dựng bằng 3D */
+  matte?: string;
+  /** Ảnh sàn khi nhìn từ trên (public/mattes/<tên>.webp, lặp đối xứng) */
+  floorTex?: string;
 };
 
 const TROOPER: RigLook = { base: "mx_legion_android", clips: { walk: "walk", idle: "idle", shoot: "walkshoot", death: "death" }, height: 1.9 };
@@ -73,6 +77,7 @@ const still = (name: string, height: number, motion: StaticLook["motion"]): Stat
 export const LEVELS: LevelEntry[] = [
   {
     def: LEVEL_1,
+    matte: "quarantine",
     story: { chapter: "Chương 1 · Vùng Cách Ly", intro: "Virus NX-0 biến dân khu ven thành zombie cyber. Robot Reaper của Legion canh cổng cách ly — trong lõi nó là mảnh Chìa Đồng.", boss: 'ROBOT REAPER: "Khu này đã bị xoá khỏi bản đồ. Ngươi cũng vậy."', outro: "Robot Reaper sụp đổ. Lõi của nó chứa toạ độ Hollow Hotel — nơi Legion giấu Chìa Ngọc Bích." },
     mapId: "neon_city",
     key: "copper",
@@ -107,6 +112,7 @@ export const LEVELS: LevelEntry[] = [
   },
   {
     def: LEVEL_HOTEL,
+    matte: "hollow_hotel",
     story: { chapter: "Chương 2 · Hollow Hotel", intro: "Khách sạn xa hoa nhất Neon City đã sụp vào lòng đất. Những vị khách cuối cùng chưa từng rời đi…", boss: 'LA MADRE: "Các con ta ở lại đây mãi mãi… con cũng vậy."', outro: "Tiếng khóc tắt dần. La Madre để lại Chìa Ngọc Bích và tấm bản đồ một hẻm núi pha lê ngoài quỹ đạo." },
     mapId: "hollow_hotel",
     key: "jade",
@@ -141,6 +147,7 @@ export const LEVELS: LevelEntry[] = [
   },
   {
     def: LEVEL_WARZONE,
+    matte: "warzone",
     story: { chapter: "Chương 3 · Hẻm Pha Lê", intro: "Legion khai thác pha lê năng lượng trên một hành tinh chiến tranh. Lái tàu xuyên hẻm núi trước khi Rồng Vàng phát hiện.", boss: 'RỒNG VÀNG gầm vang — vảy nó cứng như hợp kim, chỉ khi há miệng mới lộ điểm yếu.', outro: "Chìa Pha Lê đã về tay. Ba chìa ghép lại, cổng Citadel bắt đầu rung chuyển." },
     mapId: "warzone",
     key: "crystal",
@@ -175,6 +182,7 @@ export const LEVELS: LevelEntry[] = [
   },
   {
     def: LEVEL_CITADEL,
+    matte: "citadel_raid",
     story: { chapter: "Chương cuối · Pháo Đài Citadel", intro: "Ba chìa mở cổng. Director Vane chờ trên ngai sắt giữa pháo đài.", boss: 'DIRECTOR VANE: "Thành phố này cần một chủ nhân, không cần anh hùng."', outro: "Lõi Ký Ức được giải phóng, Neon City thở lại. Nhưng ở đâu đó, Legion vẫn còn người kế vị…" },
     mapId: "citadel_raid",
     key: null,
@@ -247,6 +255,7 @@ LEVELS.push({
 
 LEVELS.push({
   def: LEVEL_PARISH,
+  floorTex: "parish_floor",
   story: { chapter: "Truyền thuyết · Giáo Xứ Neon", intro: "Chuông nhà thờ bỏ hoang lại vang lúc nửa đêm. Người chết bị cấy chip đứng dậy — Kẻ Canh Giữ đã thức.", boss: 'KẺ CANH GIỮ mở con mắt duy nhất… rồi khép lại.', outro: "Chuông im bặt. Con mắt khép vĩnh viễn, giáo xứ chìm lại trong ánh neon." },
   mapId: "hollow_hotel",
   key: "jade",

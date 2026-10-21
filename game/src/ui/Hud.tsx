@@ -181,7 +181,8 @@ function Crosshair() {
   const aiming = useGame((s) => s.aiming);
   const lastHitAt = useGame((s) => s.lastHitAt);
   const now = useNow(30);
-  if (mode !== "foot") return null;
+  const safe = useGame((s) => HUB_PEACEFUL && s.location === "city");
+  if (mode !== "foot" || safe) return null;
   const hit = now - lastHitAt < 0.18;
   return <div className={`crosshair${aiming ? " crosshair--aim" : ""}${hit ? " crosshair--hit" : ""}`} aria-hidden="true" />;
 }

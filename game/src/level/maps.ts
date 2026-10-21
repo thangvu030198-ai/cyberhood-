@@ -359,9 +359,10 @@ function huntZone(): LevelDef {
     mode: "topdown",
     rows: b.rows(),
     start: [3.5, 3],
+    // Checkpoint nằm trên đường đi chính và ngay trước khu mục tiêu (chết khi đánh trùm không phải đi lại từ đầu)
     checkpoints: [
-      [15.5, 20],
-      [38.5, 25],
+      [26.5, 2],
+      [45.5, 12],
     ],
     enemies: [
       e("trooper", 14, 8),
@@ -425,6 +426,7 @@ function hollowParish(): LevelDef {
     checkpoints: [
       [22.5, 12],
       [42.5, 30],
+      [44.5, 20],
     ],
     enemies: [
       e("zombie", 8, 6),

@@ -120,7 +120,7 @@ function Pages({ width }: { width: number }) {
   );
 }
 
-export function CaveScenery({ sim }: { sim: PlatformerSim }) {
+export function CaveScenery({ sim, painted = false }: { sim: PlatformerSim; painted?: boolean }) {
   const W = sim.width;
   const data = useMemo(() => {
     const r = rng(W * 13);
@@ -159,31 +159,31 @@ export function CaveScenery({ sim }: { sim: PlatformerSim }) {
   const pillarMat = useMemo(() => data.wallMat(1, 4), [data]);
   return (
     <group>
-      {/* Vách hang có cửa nhìn ra thành phố */}
-      {data.walls.map((w, i) => (
+      {/* Vách hang có cửa nhìn ra thành phố (phông vẽ sẵn thì chỉ giữ đèn chùm, đèn nến, giấy bay) */}
+      {!painted && data.walls.map((w, i) => (
         <mesh key={i} position={[w.x, w.y, -16]} material={mats[i]}>
           <planeGeometry args={[w.w, w.h]} />
         </mesh>
       ))}
       {/* Trần hang */}
-      <mesh position={[W / 2, 25, -6]} rotation-x={Math.PI / 2} material={ceilMat}>
+      <mesh visible={!painted} position={[W / 2, 25, -6]} rotation-x={Math.PI / 2} material={ceilMat}>
         <planeGeometry args={[W + 60, 22]} />
       </mesh>
       {/* Nhũ đá */}
-      {data.stalactites.map((s, i) => (
+      {!painted && data.stalactites.map((s, i) => (
         <mesh key={`t${i}`} position={[s.x, 25 - s.h / 2, s.z]} rotation-x={Math.PI}>
           <coneGeometry args={[s.r, s.h, 6]} />
           <meshStandardMaterial color="#4a3c34" roughness={1} />
         </mesh>
       ))}
       {/* Đáy vực tối có ánh lửa */}
-      <mesh position={[W / 2, -24, -6]} rotation-x={-Math.PI / 2}>
+      <mesh visible={!painted} position={[W / 2, -24, -6]} rotation-x={-Math.PI / 2}>
         <planeGeometry args={[W + 60, 30]} />
         <meshStandardMaterial color="#1a100c" emissive="#3a1a08" emissiveIntensity={0.6} roughness={1} />
       </mesh>
       {/* Trụ gothic khổng lồ */}
       {/* Cột đá chạm khắc đỡ trần hang, đứng lùi sau làn chơi */}
-      {data.pillars.map((x, i) => (
+      {!painted && data.pillars.map((x, i) => (
         <group key={`p${i}`} position={[x, 1, -12.5]}>
           <mesh material={pillarMat}>
             <cylinderGeometry args={[1.3, 1.6, 50, 10]} />

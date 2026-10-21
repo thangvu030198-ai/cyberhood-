@@ -4,7 +4,7 @@ import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import { useButtonStore } from "ecctrl/input";
 import { models, playSfx } from "./assets";
 import { alarm } from "./trafficWorld";
-import { PALETTE } from "./config";
+import { HUB_PEACEFUL, PALETTE } from "./config";
 import { damageDrone, hitDrones, nearestVisibleDrone } from "./Enemies";
 import { fx } from "./Effects";
 import { handles } from "./refs";
@@ -71,6 +71,9 @@ export function Gun({ hand, offset }: { hand: THREE.Object3D; offset: THREE.Vect
   );
 }
 
+/** Đang ở sảnh hoà bình: không rút súng */
+export const peaceful = () => HUB_PEACEFUL && useGame.getState().location === "city" && !mechActive();
+
 const _origin = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _end = new THREE.Vector3();
@@ -100,7 +103,7 @@ export function PlayerCombat() {
           requestLock(dom);
           return;
         }
-        if (e.button === 2) s.setAiming(true);
+        if (e.button === 2 && !peaceful()) s.setAiming(true);
         if (e.button === 0) {
           downX = e.clientX;
           downY = e.clientY;
@@ -110,7 +113,7 @@ export function PlayerCombat() {
         return;
       }
       // Đã khoá chuột: trái bắn (giữ để bắn liên tục), phải ngắm
-      if (e.button === 2) s.setAiming(true);
+      if (e.button === 2 && !peaceful()) s.setAiming(true);
       if (e.button === 0) {
         pendingShot.current = true;
         triggerHeld.current = true;
@@ -142,7 +145,8 @@ export function PlayerCombat() {
     const s = useGame.getState();
     const player = handles.player;
     if (!player) return;
-    const canFire = s.mode === "foot" && s.flatlinedAt === null && !s.shopOpen && !s.panelOpen;
+    // Vùng an toàn: súng cất đi, không ngắm, nhân vật quay theo hướng chạy với hai tay buông tự nhiên
+    const canFire = s.mode === "foot" && s.flatlinedAt === null && !s.shopOpen && !s.panelOpen && !peaceful();
     const touchFire = !!useButtonStore.getState().buttons.fire;
 
     // Nhân vật luôn quay theo hướng camera (kiểu bắn góc nhìn thứ 3): xoay camera tới đâu thân quay tới đó

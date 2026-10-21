@@ -266,6 +266,8 @@ export class PlatformerSim {
     this.enemies = def.enemies.map((e) => {
       const en = makeEnemy(id++, e.kind, e.x, e.y);
       en.hp = en.maxHp = Math.round(en.maxHp * D.hp * 10) / 10;
+      // Nhìn từ trên: thân địch là ô vuông trên mặt đất (chiều cao đứng không còn là chiều sâu)
+      if (this.mode === "topdown") en.h = Math.min(en.h, en.w);
       return en;
     });
     this.nextId = id;
@@ -358,6 +360,18 @@ export class PlatformerSim {
     return { ground, wall };
   }
 
+  /** Lệch tối đa `max` theo hướng (sx, sy) thì đi tiếp được theo hướng đang bị chặn không: trả về độ lệch cần */
+  private freeShift(e: { x: number; y: number; vx: number; vy: number; w: number; h: number }, sx: number, sy: number, max: number, dirX = Math.sign(e.vx), dirY = Math.sign(e.vy)) {
+    const step = 0.02;
+    for (let d = step; d <= max + 1e-9; d += step) {
+      const x = e.x + sx * d;
+      const y = e.y + sy * d;
+      if (this.hits(x, y, e.w, e.h)) continue;
+      if (!this.hits(x + dirX * 0.05, y + dirY * 0.05, e.w, e.h)) return sx !== 0 ? sx * d : sy * d;
+    }
+    return null;
+  }
+
   private touchingWall(x: number, y: number, w: number, h: number, dir: -1 | 1, reach = 0.06) {
     return this.hits(x + dir * reach, y + 0.2, w, h - 0.4);
   }
@@ -408,7 +422,11 @@ export class PlatformerSim {
             boss.x = boss.homeX;
             boss.y = boss.homeY;
             boss.awake = false;
+            boss.broken = 0;
+            boss.stunUntil = -1;
           }
+          // Lính trùm gọi ra biến mất theo, vào lại phòng là trận đấu mới
+          this.enemies = this.enemies.filter((e) => !e.minion);
         }
         this.shots = this.shots.filter((s) => !s.enemy);
       }
@@ -548,7 +566,18 @@ export class PlatformerSim {
     p.vy = Math.max(p.slam ? -P.slamSpeed : p.wall !== 0 ? -P.wallSlide : -P.maxFall, p.vy);
 
     const wasGround = p.onGround;
+    const rising = p.vy;
     const m = this.move(p, dt);
+    // Sửa góc trần (kiểu Celeste): nhảy lên cụng mép trần mà chỉ lệch chút xíu thì tự lách qua, giữ đà nhảy
+    if (rising > 0 && p.vy === 0 && !m.ground)
+      for (const sx of p.vx >= 0 ? [1, -1] : [-1, 1]) {
+        const off = this.freeShift(p, sx, 0, P.cornerCorrect, 0, 1);
+        if (off !== null) {
+          p.x += off;
+          p.vy = rising;
+          break;
+        }
+      }
     p.onGround = m.ground || this.standing(p.x, p.y, p.w);
     if (p.onGround && p.vy <= 0) p.dashCarry = false;
     p.wallNear = 0;
@@ -679,7 +708,28 @@ export class PlatformerSim {
       p.vx *= 0.9;
       p.vy *= 0.9;
     }
+    const want = { vx: p.vx, vy: p.vy };
     this.move(p, dt);
+    // Trượt góc (kiểu Zelda): bị góc tường chặn mà chỉ lệch chút xíu thì tự lách vào lối đi
+    const A = T.topdown.cornerAssist;
+    if (want.vx !== 0 && p.vx === 0 && want.vy === 0)
+      for (const s of [1, -1]) {
+        const off = this.freeShift(p, 0, s, A);
+        if (off !== null) {
+          p.y += Math.sign(off) * Math.min(Math.abs(off), W.speed * dt);
+          break;
+        }
+      }
+    if (want.vy !== 0 && p.vy === 0 && want.vx === 0)
+      for (const s of [1, -1]) {
+        const off = this.freeShift(p, s, 0, A);
+        if (off !== null) {
+          p.x += Math.sign(off) * Math.min(Math.abs(off), W.speed * dt);
+          break;
+        }
+      }
+    p.vx = want.vx;
+    p.vy = want.vy;
     p.onGround = true;
     p.invuln -= dt;
     this.handleShoot(input, pressed, dt);
@@ -857,6 +907,9 @@ export class PlatformerSim {
             dx: m.dx * side,
             dy: m.dy * side,
           });
+        // Cưỡi xe bay: mỗi nhát chém kèm một tia kiếm nhỏ bay thẳng, để kiếm vẫn với tới mục tiêu xa
+        if (this.mode === "shmup" && W.wave)
+          push({ ...at(m.dx, m.dy, W.wave.speed), r: W.wave.r * 0.6, dmg: W.wave.dmg * S.blade.beamMul, pierce: false, life: S.blade.beamLife, level: 0, kind: "wave", freeze: W.freeze });
       } else if (W.wave) {
         // Nạp: phóng sóng kiếm; nạp đầy thì sóng to và đi xuyên tường
         push({ ...at(m.dx, m.dy, W.wave.speed), r: W.wave.r * (level === 2 ? 1.25 : 1), dmg: W.wave.dmg * (level === 2 ? 1 : 0.6), pierce: true, life: S.blade.waveLife, level, kind: "wave", freeze: W.freeze });
@@ -876,7 +929,7 @@ export class PlatformerSim {
       // Đi 8 hướng: bắn theo hướng đang nhìn, xuất phát từ tâm thân
       const ox = p.x + p.aimX * 0.6;
       const oy = p.y + p.h / 2 + p.aimY * 0.6;
-      this.shots.push({ x: ox, y: oy, vx: p.aimX * spec.speed, vy: p.aimY * spec.speed, r: spec.r, dmg: spec.dmg, pierce: level === 2, life: S.life, enemy: false, level });
+      this.shots.push({ x: ox, y: oy, vx: p.aimX * spec.speed, vy: p.aimY * spec.speed, r: spec.r, dmg: spec.dmg, pierce: level === 2, life: S.life, enemy: false, level, hitIds: [] });
       p.shootTimer = 0.3;
       this.fx.push({ kind: "shot", x: ox, y: oy, at: this.time });
       return;
@@ -894,9 +947,29 @@ export class PlatformerSim {
       life: S.life,
       enemy: false,
       level,
+      // Đạn xuyên chỉ trúng mỗi địch một lần (không cộng dồn mỗi khung hình khi đi qua thân)
+      hitIds: [],
     });
     p.shootTimer = 0.3;
     this.fx.push({ kind: "shot", x: p.x + dir * 0.7, y: p.y + 1.15, at: this.time });
+  }
+
+  /** Đẩy người chơi ra khỏi thân trùm đang choáng, về phía còn chỗ trống (kẹt sát tường thì sang phía bên kia) */
+  private slipOut(e: Enemy) {
+    const p = this.player;
+    const free = (x: number) => {
+      for (let y = Math.floor(p.y); y <= Math.floor(p.y + p.h - 0.01); y++)
+        if (this.solid(Math.floor(x - p.w / 2), y) || this.solid(Math.floor(x + p.w / 2), y)) return false;
+      return true;
+    };
+    const first = p.x < e.x ? -1 : 1;
+    for (const side of [first, -first]) {
+      const x = e.x + side * (e.w / 2 + p.w / 2 + 0.05);
+      if (free(x)) {
+        p.x += (x - p.x) * 0.35;
+        return;
+      }
+    }
   }
 
   hurt(amount: number, from: 1 | -1) {
@@ -1005,8 +1078,11 @@ export class PlatformerSim {
       } else if (e.kind === "boss") {
         this.bossByStyle(e, dt);
       }
-      // Chạm thân địch
-      if (overlap(p, e)) this.hurt(e.kind === "boss" ? E.boss.contactDamage : E.contactDamage, p.x < e.x ? -1 : 1);
+      // Chạm thân địch. Trùm đang choáng thì vô hại: nó đổ sập lên chỗ mình đứng (vd. lao vào tường) thì đẩy mình ra
+      if (overlap(p, e)) {
+        if (e.kind === "boss" && this.time < e.stunUntil) this.slipOut(e);
+        else this.hurt(e.kind === "boss" ? E.boss.contactDamage : E.contactDamage, p.x < e.x ? -1 : 1);
+      }
     }
   }
 
@@ -1070,37 +1146,45 @@ export class PlatformerSim {
     e.x = Math.max(ax + e.w / 2, Math.min(bx - e.w / 2 + 1, e.x));
   }
 
+  /** Tên lửa trùm bị bắn/chém nổ: đủ số lần thì khiên vỡ, trùm choáng */
+  private popMissile(m: Shot) {
+    m.life = 0;
+    this.fx.push({ kind: "boom", x: m.x, y: m.y, at: this.time });
+    const boss = this.boss;
+    if (!boss || !boss.alive) return;
+    boss.broken++;
+    if (boss.broken >= T.boss.overlordBreak) {
+      boss.broken = 0;
+      boss.stunUntil = this.time + T.boss.stunTime + 1;
+    }
+  }
+
   private updateShots(dt: number) {
     const p = this.player;
     // Tên lửa trùm: đuổi theo người chơi; đạn người chơi bắn trúng là nổ (đếm để vỡ khiên)
     for (const m of this.shots) {
       if (!m.missile || m.life <= 0) continue;
-      const tx = p.x - m.x;
-      const ty = p.y + 1 - m.y;
-      const l = Math.hypot(tx, ty) || 1;
-      const sp = Math.hypot(m.vx, m.vy);
-      m.vx += ((tx / l) * sp - m.vx) * Math.min(1, dt * 1.4);
-      m.vy += ((ty / l) * sp - m.vy) * Math.min(1, dt * 1.4);
+      // Hạ dần xuống ngang tầm nòng súng của người chơi rồi bay ngang tới: đứng yên bắn là hạ được (không cần ngắm chéo)
+      const dir = p.x < m.x ? -1 : 1;
+      const ty = this.mode === "platform" || this.mode === "climb" ? p.y + 1.15 : p.y + 1;
+      m.vx += (dir * T.boss.missileSpeed - m.vx) * Math.min(1, dt * 1.6);
+      m.vy = Math.max(-4, Math.min(4, (ty - m.y) * 2.4));
+      // Đo theo cả đoạn đạn sắp bay trong khung này, để đạn nhanh (súng ngắm, tên) không bay lọt qua tên lửa
       for (const b of this.shots)
-        if (!b.enemy && b.life > 0 && Math.hypot(b.x - m.x, b.y - m.y) < m.r + b.r + 0.15) {
-          m.life = 0;
-          if (!b.pierce) b.life = 0;
-          this.fx.push({ kind: "boom", x: m.x, y: m.y, at: this.time });
-          const boss = this.boss;
-          if (boss && boss.alive) {
-            boss.broken++;
-            if (boss.broken >= T.boss.overlordBreak) {
-              boss.broken = 0;
-              boss.stunUntil = this.time + T.boss.stunTime + 1;
-            }
-          }
+        if (!b.enemy && b.life > 0 && segDist(m.x, m.y, b.x, b.y, b.x + b.vx * dt, b.y + b.vy * dt) < m.r + b.r + T.boss.missileSlack) {
+          if (!b.pierce && b.kind !== "slash") b.life = 0;
+          this.popMissile(m);
           break;
         }
     }
-    // Nhát chém chặt rơi đạn địch bay vào nó
+    // Nhát chém chặt rơi đạn địch bay vào nó (chém rơi tên lửa cũng tính để vỡ khiên)
     for (const s of this.shots) {
       if (s.kind !== "slash" || s.life <= 0) continue;
-      for (const b of this.shots) if (b.enemy && b.life > 0 && Math.hypot(b.x - s.x, b.y - s.y) < s.r + b.r) b.life = 0;
+      for (const b of this.shots)
+        if (b.enemy && b.life > 0 && Math.hypot(b.x - s.x, b.y - s.y) < s.r + b.r) {
+          if (b.missile) this.popMissile(b);
+          else b.life = 0;
+        }
     }
     for (const s of this.shots) {
       s.x += s.vx * dt;
@@ -1247,6 +1331,7 @@ export class PlatformerSim {
     const alive = this.enemies.filter((x) => x.minion && x.alive).length;
     for (let i = 0; i < Math.min(n, T.boss.maxMinions - alive); i++) {
       const m = makeEnemy(this.nextId++, "zombie", e.x + (i % 2 ? 2.5 : -2.5), e.y + (this.mode === "topdown" ? (i % 2 ? 1.5 : -1.5) : 0.5));
+      if (this.mode === "topdown") m.h = m.w;
       m.minion = true;
       m.awake = true;
       m.hp = m.maxHp = 3;
@@ -1407,7 +1492,7 @@ export class PlatformerSim {
         if (e.timer <= 0) {
           e.move = "walk";
           e.timer = 2.5;
-          e.stunUntil = this.time + B.stunTime;
+          e.stunUntil = this.time + B.stunTime + 0.8;
           this.fx.push({ kind: "slam", x: e.x, y: e.y, at: this.time });
           for (let k = 0; k < 14; k++) shoot(T.enemy.boss.waveSpeed, T.enemy.boss.waveDamage, (k / 14) * Math.PI * 2, 0.35, 2);
         }
@@ -1417,7 +1502,7 @@ export class PlatformerSim {
       e.vx = (dx / d) * T.enemy.boss.walk * 0.8 * rage;
       e.vy = (dy / d) * T.enemy.boss.walk * 0.8 * rage;
       this.move(e, dt);
-      if (e.timer <= 0 && d < 5) {
+      if (e.timer <= 0 && d < T.boss.slamRange) {
         e.move = "windup";
         e.timer = B.windup;
       } else if (e.timer <= 0) {
@@ -1473,6 +1558,15 @@ export class PlatformerSim {
   get boss() {
     return this.enemies.find((e) => e.kind === "boss") ?? null;
   }
+}
+
+/** Khoảng cách từ điểm (px, py) tới đoạn thẳng (ax, ay)–(bx, by) */
+function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const vx = bx - ax;
+  const vy = by - ay;
+  const l = vx * vx + vy * vy;
+  const t = l ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / l)) : 0;
+  return Math.hypot(px - ax - vx * t, py - ay - vy * t);
 }
 
 function overlap(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {

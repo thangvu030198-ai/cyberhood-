@@ -7,10 +7,10 @@ import { Ecctrl, type EcctrlHandle } from "ecctrl";
 import { EcctrlAnimationStateController, useEcctrlAnimationStore } from "ecctrl/animation";
 import { useButtonStore, useJoystickStore } from "ecctrl/input";
 import { extraModel, models } from "./assets";
-import { PLAYER } from "./config";
+import { HUB_PEACEFUL, PLAYER } from "./config";
 import { handles } from "./refs";
 import { uiBlocking, useGame, type Emote } from "./store";
-import { Gun } from "./Weapons";
+import { Gun, peaceful } from "./Weapons";
 import { useHunter } from "./hunter";
 import { inPlace } from "./meshyAnim";
 import { clipRootSpeed, Locomotion } from "./locomotion";
@@ -123,6 +123,8 @@ function CharacterModel() {
   const emote = useGame((s) => s.emote);
   const setEmote = useGame((s) => s.setEmote);
   const flatlined = useGame((s) => s.flatlinedAt !== null);
+  // Ở sảnh an toàn súng được cất đi, hai tay buông theo clip đi/đứng
+  const armed = useGame((s) => !(HUB_PEACEFUL && s.location === "city"));
   const setReady = useGame((s) => s.setReady);
   useEffect(setReady, [setReady]);
 
@@ -156,7 +158,7 @@ function CharacterModel() {
     }
     if (!arm || !handles.player || flatlined) return;
     const aimingNow = useGame.getState().aiming || handles.player.lockForward;
-    if (!aimingNow || useGame.getState().mode !== "foot") return;
+    if (!aimingNow || useGame.getState().mode !== "foot" || peaceful()) return;
     camera.getWorldDirection(_aimDir);
     _aimDir.y = THREE.MathUtils.clamp(_aimDir.y + 0.06, -0.6, 0.8);
     _aimDir.normalize();
@@ -174,7 +176,7 @@ function CharacterModel() {
       <group ref={pose}>
         <primitive object={scene} />
       </group>
-      {arm && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
+      {arm && armed && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
     </group>
   );
 }
@@ -256,6 +258,8 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
   const emote = useGame((s) => s.emote);
   const setEmote = useGame((s) => s.setEmote);
   const flatlined = useGame((s) => s.flatlinedAt !== null);
+  // Ở sảnh an toàn súng được cất đi, hai tay buông theo clip đi/đứng
+  const armed = useGame((s) => !(HUB_PEACEFUL && s.location === "city"));
   const setReady = useGame((s) => s.setReady);
   useEffect(setReady, [setReady]);
 
@@ -285,7 +289,7 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
     }
     if (!arm || !handles.player || flatlined) return;
     const aimingNow = useGame.getState().aiming || handles.player.lockForward;
-    if (!aimingNow || useGame.getState().mode !== "foot") return;
+    if (!aimingNow || useGame.getState().mode !== "foot" || peaceful()) return;
     camera.getWorldDirection(_aimDir);
     _aimDir.y = THREE.MathUtils.clamp(_aimDir.y + 0.06, -0.6, 0.8);
     _aimDir.normalize();
@@ -303,7 +307,7 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
       <group ref={pose}>
         <primitive object={scene} />
       </group>
-      {arm && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
+      {arm && armed && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
     </group>
   );
 }

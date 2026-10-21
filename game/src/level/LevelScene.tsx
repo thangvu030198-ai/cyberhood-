@@ -40,6 +40,7 @@ import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
 import { CityBlocks } from "./cityBlocks";
 import { SideScenery } from "./sideScenery";
 import { CaveScenery } from "./caveScenery";
+import { Matte } from "./matte";
 
 /** Model tải lỗi (mạng, file thiếu) chỉ làm món đó biến mất, không làm sập cả màn */
 export class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -90,6 +91,8 @@ export function LevelCanvas() {
   if (!sim) return null;
   const th = THEMES[sim.def.theme];
   const top = isTop(sim);
+  // Map có phông nền vẽ sẵn: bỏ lớp cảnh xa dựng bằng 3D để ảnh hiện đúng như bản vẽ
+  const matte = levelById(sim.def.id).matte;
   return (
     <Canvas
       className="level-canvas"
@@ -119,14 +122,15 @@ export function LevelCanvas() {
         intensity={th.rim.intensity}
         color={th.rim.color}
       />
+      {matte && <Matte file={matte} scroll={top ? "top" : "x"} parallax={top ? 0.35 : 0.25} />}
       {top ? (
         sim.mode === "topdown" ? (
           <FloorGround sim={sim} theme={th} entry={levelById(sim.def.id)} />
         ) : (
-          <TopGround sim={sim} theme={th} />
+          <TopGround sim={sim} theme={th} painted={!!matte} />
         )
       ) : (
-        <Sky theme={th} />
+        !matte && <Sky theme={th} />
       )}
       <group rotation-x={top ? -Math.PI / 2 : 0}>
         <Tiles sim={sim} theme={th} />
@@ -139,7 +143,7 @@ export function LevelCanvas() {
         <Chests sim={sim} />
         {sim.mode === "climb" && <GhostFog sim={sim} />}
         <Fx sim={sim} />
-        {!top && (
+        {!top && !matte && (
           <Suspense fallback={null}>
             <Backdrop
               width={sim.width}
@@ -148,11 +152,11 @@ export function LevelCanvas() {
             />
           </Suspense>
         )}
-        {!top && <SideScenery sim={sim} />}
-        {sim.def.theme === "hotel" && <CaveScenery sim={sim} />}
+        {!top && !matte && <SideScenery sim={sim} />}
+        {sim.def.theme === "hotel" && <CaveScenery sim={sim} painted={!!matte} />}
         {!top && <SkyTraffic sim={sim} />}
         {!top && (
-          <SideDressing sim={sim} entry={levelById(sim.def.id)} />
+          <SideDressing sim={sim} entry={levelById(sim.def.id)} painted={!!matte} />
         )}
         <Suspense fallback={<PlaceholderHero sim={sim} />}>
           <Hero sim={sim} theme={th} />
@@ -169,11 +173,15 @@ export function LevelCanvas() {
   );
 }
 
+/** Cảm giác đánh (game feel): khựng hình một nhịp khi hạ địch / trúng trùm / đập đất, rung màn hình */
+const feel = { stopUntil: 0, shake: 0 };
+
 /** Chạy mô phỏng theo thời gian thật, phát âm thanh theo sự kiện */
 function SimDriver({ sim }: { sim: PlatformerSim }) {
   const seen = useRef(0);
-  useFrame((_, dt) => {
-    if (!levelInput.paused) {
+  useFrame(({ clock }, dt) => {
+    const now = clock.elapsedTime;
+    if (!levelInput.paused && now >= feel.stopUntil) {
       const i = levelInput.state();
       // Nhìn từ trên: lên màn hình = tiến (x mô phỏng), trái/phải màn hình = trục y mô phỏng
       const v = viewById(levelById(sim.def.id).view);
@@ -206,6 +214,12 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
     }
     for (let i = seen.current; i < sim.fx.length; i++) {
       const f = sim.fx[i];
+      // Khựng hình và rung theo độ nặng của cú đánh
+      const kick = f.kind === "boom" ? [0.06, 0.3] : f.kind === "slam" ? [0.08, 0.55] : f.kind === "hurt" ? [0.05, 0.4] : f.kind === "block" ? [0.02, 0.08] : f.kind === "hit" ? [0.015, 0.06] : null;
+      if (kick) {
+        feel.stopUntil = Math.max(feel.stopUntil, now + kick[0]);
+        feel.shake = Math.max(feel.shake, kick[1]);
+      }
       if (f.kind === "shot") playSfx("blaster", 0.35);
       else if (f.kind === "hit") playSfx("enemyHurt", 0.4);
       else if (f.kind === "boom") playSfx("enemyDestroy", 0.6);
@@ -347,6 +361,13 @@ function LevelCamera({
       Math.cos(b.yaw) * dist,
     );
     camera.lookAt(look.current.x, look.current.y, 0);
+    // Rung màn hình: lệch ngẫu nhiên, tắt dần
+    if (feel.shake > 0.005) {
+      const a = feel.shake;
+      camera.position.x += (Math.random() - 0.5) * a;
+      camera.position.y += (Math.random() - 0.5) * a;
+      feel.shake *= Math.exp(-12 * dt);
+    }
   });
   return null;
 }
@@ -413,11 +434,20 @@ function FloorGround({
   entry: LevelEntry;
 }) {
   const tex = useMemo(() => {
+    // Sàn vẽ sẵn từ ảnh mẫu: mỗi ô ảnh phủ ~11 × 20 m, lặp đối xứng cho liền mạch
+    if (entry.floorTex) {
+      const t = new THREE.TextureLoader().load(`mattes/${entry.floorTex}.webp`);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping;
+      t.anisotropy = 4;
+      t.repeat.set(sim.width / 11, sim.height / 20);
+      return t;
+    }
     const t = theme.floor === "neon" ? neonFloorTexture() : panelTexture();
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(sim.width / 2, sim.height / 2);
     return t;
-  }, [sim, theme]);
+  }, [sim, theme, entry]);
   return (
     <group>
       <mesh
@@ -425,7 +455,9 @@ function FloorGround({
         position={[sim.width / 2, -2.02, -sim.height / 2]}
       >
         <planeGeometry args={[sim.width, sim.height]} />
-        {theme.floor === "neon" ? (
+        {entry.floorTex ? (
+          <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.7} roughness={0.6} />
+        ) : theme.floor === "neon" ? (
           <meshStandardMaterial
             map={tex}
             emissiveMap={tex}
@@ -470,7 +502,7 @@ function FloorGround({
 
 /** Nền hẻm núi nhìn từ trên: khoảng không vũ trụ (sao + tinh vân) sâu bên dưới, đảo đá lơ lửng mọc pha lê
  * dọc hai mép vách, xác tàu và UFO trôi dưới vực, thành phố tương lai ở xa; vách hẻm dựng bằng CityBlocks */
-function TopGround({ sim }: { sim: PlatformerSim; theme: LevelTheme }) {
+function TopGround({ sim, painted = false }: { sim: PlatformerSim; theme: LevelTheme; painted?: boolean }) {
   const space = useMemo(() => spaceTexture(), []);
   const islands = useMemo(() => {
     const list: { x: number; z: number; y: number; s: number; rot: number }[] = [];
@@ -498,8 +530,8 @@ function TopGround({ sim }: { sim: PlatformerSim; theme: LevelTheme }) {
   ];
   return (
     <group>
-      {/* Vũ trụ phía dưới: không bị sương che */}
-      <mesh rotation-x={-Math.PI / 2} position={[sim.width / 2, -80, -sim.height / 2]}>
+      {/* Vũ trụ phía dưới: không bị sương che (map có phông vẽ sẵn thì dùng ảnh) */}
+      <mesh visible={!painted} rotation-x={-Math.PI / 2} position={[sim.width / 2, -80, -sim.height / 2]}>
         <planeGeometry args={[sim.width + 500, 500]} />
         <meshBasicMaterial map={space} fog={false} toneMapped={false} color={[1.3, 1.3, 1.4]} />
       </mesh>
@@ -517,14 +549,14 @@ function TopGround({ sim }: { sim: PlatformerSim; theme: LevelTheme }) {
           </Quiet>
         </group>
       ))}
-      {wrecks.map(([name, h, at, rot], i) => (
+      {!painted && wrecks.map(([name, h, at, rot], i) => (
         <Quiet key={`w${i}`}>
           <Suspense fallback={null}>
             <Prop name={name} height={h} position={at} rotationY={rot} selfLit={0.4} />
           </Suspense>
         </Quiet>
       ))}
-      {city.map(([name, h, at], i) => (
+      {!painted && city.map(([name, h, at], i) => (
         <Quiet key={`c${i}`}>
           <Suspense fallback={null}>
             <Prop name={name} height={h} position={at} rotationY={0} selfLit={0.55} />
@@ -1597,7 +1629,8 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     if (!o) return;
     dt = Math.min(dt, 0.1);
     // Cưỡi xe bay: ngồi cao hơn mặt xe một chút
-    o.position.set(p.x, p.y + (sim.mode === "shmup" ? 0.55 : 0), zFloor(sim));
+    // Nhìn từ trên: thân là ô vuông (y là mép dưới), vẽ model ở giữa ô cho khớp va chạm
+    o.position.set(p.x, p.y + (sim.mode === "shmup" ? 0.55 : sim.mode === "topdown" ? p.h / 2 : 0), zFloor(sim));
     // Sát tường trên không: quay mặt vào tường để bám/leo; còn lại quay theo hướng chạy
     const onWall = p.wallNear !== 0 && sim.status === "playing" && p.knock <= 0;
     yaw.current = THREE.MathUtils.damp(
@@ -1985,7 +2018,7 @@ function StaticEnemy({
     const top = sim.mode === "topdown";
     // Nhìn từ trên: thân sinh vật nổi khỏi mặt sàn theo trục z (đã xoay thế giới)
     const lift = spec.motion === "float" ? 0.4 + Math.sin(t * 1.8) * 0.25 : spec.motion === "fly" ? 0.9 + Math.sin(t * 5) * 0.35 : 0;
-    o.position.set(e.x, e.y + (top ? 0 : lift), zFloor(sim) + (top ? lift + (spec.motion === "crawl" ? 0 : 0.3) : enemy.kind === "boss" ? -0.3 : 0));
+    o.position.set(e.x, e.y + (top ? e.h / 2 : lift), zFloor(sim) + (top ? lift + (spec.motion === "crawl" ? 0 : 0.3) : enemy.kind === "boss" ? -0.3 : 0));
     o.rotation.x = upright(sim);
     yaw.current = THREE.MathUtils.damp(
       yaw.current,
@@ -2074,7 +2107,7 @@ function RiggedEnemy({
     if (!nearCam) return;
     o.position.set(
       e.x,
-      e.y,
+      e.y + (sim.mode === "topdown" ? e.h / 2 : 0),
       zFloor(sim) +
         (enemy.kind === "boss" && sim.mode !== "topdown" ? -0.3 : 0),
     );

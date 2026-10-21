@@ -22,8 +22,11 @@ npm run build    # bản production trong game/dist
 
 - `game/src/game/City.tsx`: thành phố sinh theo seed (toà nhà, viền neon, biển hiệu, đèn đường, va chạm)
 - `game/src/game/Atmosphere.tsx`: bầu trời, mưa, xe bay, ánh sáng, sương
-- `game/src/game/Player.tsx`: nhân vật, animation, camera, input
-- `game/src/game/store.ts`: trạng thái game (vị trí, District, biểu cảm)
+- `game/src/game/Player.tsx`: nhân vật, animation, input, lên/xuống xe
+- `game/src/game/Vehicles.tsx`: xe (thân xe, bánh, đèn), danh sách xe đậu, lật xe
+- `game/src/game/CameraRig.tsx`: camera góc nhìn thứ 3, tự bám đuôi xe, phím F/R
+- `game/src/game/store.ts`: trạng thái game (vị trí, District, biểu cảm, đang lái xe nào)
+- `game/src/game/refs.ts`: handle vật lý của nhân vật và xe, đọc mỗi frame
 - `game/src/game/config.ts`: thông số thế giới và bảng màu
 
 ## Asset và giấy phép
@@ -34,9 +37,19 @@ npm run build    # bản production trong game/dist
 ## Lộ trình
 
 - [x] Giai đoạn 0: khu phố neon, nhân vật đi/chạy/nhảy, camera góc nhìn thứ 3, deploy web
-- [ ] Giai đoạn 1: lên xuống xe, lái xe, cảm giác di chuyển, cảm ứng trên điện thoại
+- [x] Giai đoạn 1: lên xuống xe, lái xe, camera ngửa lên, cảm ứng trên điện thoại
 - [ ] Giai đoạn 2: chiến đấu, kẻ địch OMNI-DYNE, $CRED off-chain, shop, truy nã
 - [ ] Giai đoạn 3: tạo nhân vật, túi đồ, NPC, nhiệm vụ
 - [ ] Giai đoạn 4: multiplayer
 - [ ] Giai đoạn 5: token và NFT
 - [ ] Giai đoạn 6: Root Protocol Hunt
+
+## Ghi chú kỹ thuật
+
+- Bước vật lý do `PhysicsStepper` trong `App.tsx` điều khiển: mỗi frame một bước, tối đa 1/30 giây.
+  ecctrl cộng lực theo từng frame, nên bước cố định (nhiều bước/frame) làm xe yếu, còn bước theo frame
+  không giới hạn làm vật lý nổ khi FPS thấp.
+- Bánh xe chỉ được gắn sau khi thân xe đọc được trọng lực (`wheelsOn` trong `Vehicles.tsx`).
+  Nếu không, frame đầu ecctrl chia cho 0 và sinh NaN làm Rapier panic.
+- Thêm `?debug` vào URL để lộ `window.__game`, `window.__handles`, `window.__r3f` khi kiểm thử;
+  `?nofx` tắt hậu kỳ, `?nocars` bỏ xe.

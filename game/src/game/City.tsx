@@ -302,7 +302,7 @@ function Ground() {
         ))}
       </RigidBody>
 
-      <mesh rotation-x={-Math.PI / 2} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} userData={{ cameraCollider: true }}>
         <planeGeometry args={[size, size]} />
         <meshStandardMaterial map={road} color="#9a93b0" roughness={0.28} metalness={0.65} />
       </mesh>
@@ -321,7 +321,7 @@ function Ground() {
       {BLOCK_CENTERS.flatMap((bx) =>
         BLOCK_CENTERS.map((bz) => (
           <group key={`${bx}:${bz}`} position={[bx, 0, bz]}>
-            <mesh position={[0, CITY.SIDEWALK_HEIGHT / 2, 0]}>
+            <mesh position={[0, CITY.SIDEWALK_HEIGHT / 2, 0]} userData={{ cameraCollider: true }}>
               <boxGeometry args={[CITY.BLOCK, CITY.SIDEWALK_HEIGHT, CITY.BLOCK]} />
               <meshStandardMaterial color={PALETTE.concrete} roughness={0.6} metalness={0.3} />
             </mesh>

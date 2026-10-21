@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { BLOCK_CENTERS, CITY_PITCH } from "./config";
 
 export type Emote = "wave" | "dance" | "thumbsUp";
+export type Mode = "foot" | "drive";
 
 const DISTRICTS = ["Neon Bazaar", "Chrome Arena", "Data Haven", "The Undergrid"];
 
@@ -24,9 +25,20 @@ type GameState = {
   z: number;
   emote: Emote | null;
   ready: boolean;
+  mode: Mode;
+  /** Xe đang lái */
+  carId: number | null;
+  /** Xe gần nhất đủ gần để lên */
+  nearCarId: number | null;
+  /** km/h, chỉ cập nhật khi đang lái */
+  speed: number;
   setReady: () => void;
   setPosition: (x: number, z: number) => void;
   setEmote: (e: Emote | null) => void;
+  setNearCar: (id: number | null) => void;
+  setSpeed: (kmh: number) => void;
+  enterCar: (id: number) => void;
+  exitCar: () => void;
 };
 
 export const useGame = create<GameState>((set) => ({
@@ -34,7 +46,15 @@ export const useGame = create<GameState>((set) => ({
   z: 0,
   emote: null,
   ready: false,
+  mode: "foot",
+  carId: null,
+  nearCarId: null,
+  speed: 0,
   setReady: () => set({ ready: true }),
   setPosition: (x, z) => set({ x, z }),
   setEmote: (emote) => set({ emote }),
+  setNearCar: (nearCarId) => set({ nearCarId }),
+  setSpeed: (speed) => set({ speed }),
+  enterCar: (carId) => set({ mode: "drive", carId, nearCarId: null, emote: null }),
+  exitCar: () => set({ mode: "foot", carId: null, speed: 0 }),
 }));

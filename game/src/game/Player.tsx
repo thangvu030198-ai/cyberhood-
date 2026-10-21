@@ -1,16 +1,18 @@
 import { use, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { useAnimations, useKeyboardControls } from "@react-three/drei";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { Ecctrl, type EcctrlHandle } from "ecctrl";
 import { EcctrlAnimationStateController, useEcctrlAnimationStore } from "ecctrl/animation";
-import { EcctrlCameraControls, type EcctrlCameraControlsHandle } from "ecctrl/camera";
 import { useButtonStore, useJoystickStore } from "ecctrl/input";
 import robotDataUrl from "../assets/robot.glb?inline";
 import { PLAYER } from "./config";
+import { handles } from "./refs";
 import { useGame, type Emote } from "./store";
+
+const CAR_REACH = 3.6;
 
 // Model được nhúng sẵn trong bundle và parse trực tiếp, không cần fetch file ngoài.
 const robotPromise: Promise<GLTF> = (() => {
@@ -136,40 +138,75 @@ function useDriveInput(ecctrl: React.RefObject<EcctrlHandle | null>) {
 
 export function Player() {
   const ecctrl = useRef<EcctrlHandle>(null);
-  const cameraControls = useRef<EcctrlCameraControlsHandle>(null);
-  const scene = useThree((s) => s.scene);
+  const model = useRef<THREE.Group>(null);
+  const mode = useGame((s) => s.mode);
   const setPosition = useGame((s) => s.setPosition);
+  const setNearCar = useGame((s) => s.setNearCar);
   useDriveInput(ecctrl);
 
-  // Camera không xuyên qua toà nhà.
   useEffect(() => {
-    const cc = cameraControls.current;
-    if (!cc) return;
-    const colliders: THREE.Object3D[] = [];
-    scene.traverse((o) => {
-      if (o.userData.cameraCollider) colliders.push(o);
-    });
-    cc.colliderMeshes = colliders;
-    cc.distance = 6;
-    cc.rotateTo(Math.PI, Math.PI * 0.42, false);
-  }, [scene]);
+    handles.player = ecctrl.current;
+    return () => {
+      handles.player = null;
+    };
+  }, []);
+
+  // Lên xe: tắt thân vật lý và ẩn model. Xuống xe: đặt nhân vật cạnh cửa lái.
+  const prevCar = useRef<number | null>(null);
+  useEffect(() => {
+    const body = ecctrl.current?.body;
+    if (!body) return;
+    if (mode === "drive") {
+      prevCar.current = useGame.getState().carId;
+      body.setEnabled(false);
+      if (model.current) model.current.visible = false;
+      return;
+    }
+    const car = prevCar.current !== null ? handles.cars.get(prevCar.current) : null;
+    if (car) {
+      const side = car.bodyXAxis;
+      const p = car.currPos;
+      body.setTranslation({ x: p.x + side.x * 1.9, y: p.y + 1.2, z: p.z + side.z * 1.9 }, true);
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    }
+    body.setEnabled(true);
+    body.wakeUp();
+    if (model.current) model.current.visible = true;
+    prevCar.current = null;
+  }, [mode]);
 
   const lastReport = useRef(0);
   useFrame(({ clock }) => {
     const ctrl = ecctrl.current;
-    const cc = cameraControls.current;
-    if (!ctrl || !cc) return;
-    const p = ctrl.currPos;
+    if (!ctrl) return;
+    const state = useGame.getState();
+    const driving = state.mode === "drive" && state.carId !== null ? handles.cars.get(state.carId) : null;
+    const p = driving ? driving.currPos : ctrl.currPos;
+
     // Rơi khỏi bản đồ thì đưa về điểm xuất phát.
-    if (p.y < -20 && ctrl.body) {
+    if (!driving && p.y < -20 && ctrl.body) {
       ctrl.body.setTranslation({ x: PLAYER.spawn[0], y: PLAYER.spawn[1], z: PLAYER.spawn[2] }, true);
       ctrl.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     }
-    cc.moveTo(p.x, p.y + 0.9, p.z, true);
-    if (clock.elapsedTime - lastReport.current > 0.25) {
-      lastReport.current = clock.elapsedTime;
-      setPosition(p.x, p.z);
+
+    if (clock.elapsedTime - lastReport.current < 0.2) return;
+    lastReport.current = clock.elapsedTime;
+    setPosition(p.x, p.z);
+    if (driving) {
+      useGame.getState().setSpeed(Math.round(driving.currLinVel.length() * 3.6));
+      return;
     }
+    // Tìm xe gần nhất trong tầm với
+    let near: number | null = null;
+    let best = CAR_REACH;
+    handles.cars.forEach((car, id) => {
+      const d = car.currPos.distanceTo(p);
+      if (d < best) {
+        best = d;
+        near = id;
+      }
+    });
+    if (near !== state.nearCarId) setNearCar(near);
   });
 
   return (
@@ -177,6 +214,7 @@ export function Player() {
       <EcctrlAnimationStateController ecctrl={ecctrl} />
       <Ecctrl
         ref={ecctrl}
+        enable={mode === "foot"}
         position={PLAYER.spawn}
         capsuleHalfHeight={PLAYER.capsuleHalfHeight}
         capsuleRadius={PLAYER.capsuleRadius}
@@ -187,17 +225,10 @@ export function Player() {
         // Thế giới phẳng: khoá nghiêng để nhân vật không ngã khi FPS thấp.
         enabledRotations={[false, true, false]}
       >
-        <RobotModel />
+        <group ref={model}>
+          <RobotModel />
+        </group>
       </Ecctrl>
-      <EcctrlCameraControls
-        ref={cameraControls}
-        makeDefault
-        smoothTime={0.08}
-        minDistance={2.5}
-        maxDistance={14}
-        minPolarAngle={0.35}
-        maxPolarAngle={Math.PI * 0.49}
-      />
     </>
   );
 }

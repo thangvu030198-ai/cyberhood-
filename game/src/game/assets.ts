@@ -38,11 +38,17 @@ function parseGlb(url: string): Promise<GLTF> {
 /** Tiến độ tải model lớn, đọc bởi màn hình tải */
 export const loadProgress = { loaded: 0, total: 0, files: 0, done: 0, error: null as string | null };
 
+/**
+ * Artifact chỉ phục vụ một số đuôi file; .glb không nằm trong đó nên bản build đóng gói model
+ * dưới tên "*.glb.wasm" (nội dung giữ nguyên). Khi chạy dev thì đọc thẳng .glb.
+ */
+const MODEL_SUFFIX = import.meta.env.PROD ? ".wasm" : "";
+
 /** Tải model từ public/models, đếm byte để hiện tiến độ */
 function fetchGlb(name: string, sizeHint: number): Promise<GLTF> {
   loadProgress.total += sizeHint;
   loadProgress.files++;
-  return fetch(`models/${name}`)
+  return fetch(`models/${name}${MODEL_SUFFIX}`)
     .then(async (res) => {
       if (!res.ok || !res.body) throw new Error(`Không tải được ${name} (${res.status})`);
       const reader = res.body.getReader();

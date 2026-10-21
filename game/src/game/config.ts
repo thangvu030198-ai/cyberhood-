@@ -65,6 +65,9 @@ export function mulberry32(seed: number) {
 
 /** Vùng An toàn (Hub) quanh điểm xuất phát: địch không vào, không bắn (GDD mục 4A.2) */
 export const SAFE_ZONE = { x: 0, z: 6, r: 26 };
+/** Vùng cách ly phía tây ngoài thành phố: tàn tích sau đợt bùng phát, zombie cyber lang thang */
+export const QUARANTINE = { x: -CITY_HALF - 58, z: 48, r: 48 };
+export const inQuarantine = (x: number, z: number, pad = 0) => Math.hypot(x - QUARANTINE.x, z - QUARANTINE.z) < QUARANTINE.r + pad;
 export const inSafeZone = (x: number, z: number) => Math.hypot(x - SAFE_ZONE.x, z - SAFE_ZONE.z) < SAFE_ZONE.r;
 
 /** Bảng hợp đồng ở Vùng An toàn, trên vỉa hè cạnh điểm xuất phát */

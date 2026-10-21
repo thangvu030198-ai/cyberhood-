@@ -5,7 +5,7 @@ import { extraModel, models, playSfx } from "./assets";
 import { inPlace, once } from "./meshyAnim";
 import { fitCharacter } from "./Player";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, SAFE_ZONE, inSafeZone, mulberry32 } from "./config";
+import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, QUARANTINE, SAFE_ZONE, inQuarantine, inSafeZone, mulberry32 } from "./config";
 import { fx } from "./Effects";
 import { handles } from "./refs";
 import { useGame } from "./store";
@@ -20,7 +20,7 @@ type DroneState = "patrol" | "chase" | "flee" | "dead";
  * legion: drone thường; trooper: lính Legion đi bộ (model Meshy); courier: drone đưa thư bỏ chạy (nhiệm vụ rượt đuổi);
  * boss: trùm Mech sự kiện phút 4
  */
-export type DroneKind = "legion" | "trooper" | "courier" | "boss";
+export type DroneKind = "legion" | "trooper" | "courier" | "boss" | "zombie";
 
 export type Drone = {
   id: number;
@@ -41,7 +41,41 @@ export type Drone = {
   /** Lần bắn gần nhất (để trùm chạy động tác giật pháo) */
   firedAt: number;
   orbit: number;
+  /** Kiểu zombie (model + chỉ số) */
+  look?: ZombieLook;
+  /** Thời điểm đòn vồ của zombie chạm tới (theo đồng hồ game), -1 nếu không có */
+  strikeAt?: number;
 };
+
+export type ZombieLook =
+  | "zmb_walker"
+  | "zmb_runner"
+  | "zmb_soldier"
+  | "zmb_nurse"
+  | "zmb_brute"
+  | "mon_psycho"
+  | "mon_mutant"
+  | "mon_alien"
+  | "mon_robot_reaper"
+  | "mon_cyborg_hound_rider"
+  | "zmb_hazmat"
+  | "zmb_cyborg";
+/** Chỉ số theo kiểu: máu, tốc độ lảo đảo / lao tới, sát thương mỗi đòn, chiều cao model */
+const ZOMBIE_STATS: Record<ZombieLook, { hp: number; walk: number; chase: number; dmg: number; height: number; count: number }> = {
+  zmb_walker: { hp: 60, walk: 0.9, chase: 2.6, dmg: 8, height: 1.75, count: 5 },
+  zmb_runner: { hp: 45, walk: 1.2, chase: 6.2, dmg: 6, height: 1.7, count: 4 },
+  zmb_soldier: { hp: 110, walk: 0.9, chase: 3, dmg: 10, height: 1.85, count: 3 },
+  zmb_nurse: { hp: 60, walk: 1, chase: 3.4, dmg: 9, height: 1.7, count: 2 },
+  zmb_brute: { hp: 420, walk: 0.8, chase: 2.4, dmg: 24, height: 2.5, count: 2 },
+  mon_psycho: { hp: 260, walk: 1.4, chase: 6.8, dmg: 18, height: 1.95, count: 1 },
+  mon_mutant: { hp: 700, walk: 1, chase: 3.2, dmg: 30, height: 2.4, count: 1 },
+  mon_alien: { hp: 300, walk: 1.1, chase: 5, dmg: 16, height: 2.3, count: 1 },
+  mon_robot_reaper: { hp: 350, walk: 1, chase: 4.5, dmg: 20, height: 2, count: 1 },
+  mon_cyborg_hound_rider: { hp: 150, walk: 1.2, chase: 4, dmg: 12, height: 1.85, count: 2 },
+  zmb_hazmat: { hp: 90, walk: 0.9, chase: 3, dmg: 9, height: 1.8, count: 2 },
+  zmb_cyborg: { hp: 140, walk: 1, chase: 3.6, dmg: 12, height: 1.85, count: 2 },
+};
+const ZOMBIE_REACH = 1.7;
 
 const DRONE_COUNT = 14;
 const TROOPER_COUNT = 8;
@@ -127,6 +161,34 @@ export const drones: Drone[] = (() => {
       firedAt: -1,
       orbit: rand() * Math.PI * 2,
     });
+  }
+  // Zombie cyber lang thang trong Vùng cách ly phía tây
+  for (const look of Object.keys(ZOMBIE_STATS) as ZombieLook[]) {
+    const st = ZOMBIE_STATS[look];
+    for (let k = 0; k < st.count; k++) {
+      const a = rand() * Math.PI * 2;
+      const r = Math.sqrt(rand()) * QUARANTINE.r * 0.85;
+      const home = new THREE.Vector3(QUARANTINE.x + Math.cos(a) * r, TROOPER_CENTER, QUARANTINE.z + Math.sin(a) * r);
+      list.push({
+        id: list.length,
+        kind: "zombie",
+        look,
+        maxHp: st.hp,
+        size: st.height / 1.8,
+        home,
+        pos: home.clone(),
+        vel: new THREE.Vector3(),
+        wander: home.clone(),
+        nextWander: 0,
+        hp: st.hp,
+        state: "patrol",
+        nextShot: 0,
+        deadAt: 0,
+        hurtAt: -1,
+        firedAt: -1,
+        orbit: rand() * Math.PI * 2,
+      });
+    }
   }
   // Hai suất đặc biệt cho hợp đồng, nằm im (dead) tới khi được kích hoạt và không tự hồi sinh
   for (const kind of ["courier", "boss"] as const) {
@@ -377,7 +439,7 @@ function TrooperModel({ index }: { index: number }) {
   const heavy = drones[index].size > 1;
   // Lính thường xoay vòng giữa bốn kiểu giáp Legion; lính nặng dùng model riêng
   const look = heavy ? "heavy" : TROOPER_LOOKS[index % TROOPER_LOOKS.length];
-  const combat = OWN_COMBAT_CLIPS.has(look) ? look : "officer";
+  const combat = (OWN_COMBAT_CLIPS.has(look) ? look : "officer") as "sniper" | "officer" | "android";
   const walkGltf = use(extraModel(`mx_legion_${look}_walk`));
   const runGltf = use(extraModel(`mx_legion_${look}_run`));
   const shootGltf = use(extraModel(`mx_legion_${combat}_walkshoot`));
@@ -458,6 +520,112 @@ function TrooperModel({ index }: { index: number }) {
     if (run) {
       run.weight = k * rest;
       run.timeScale = THREE.MathUtils.clamp(speed / 5, 0.5, 1.4);
+    }
+    const hurt = clock - d.hurtAt < 0.12;
+    for (const { mat, base } of mats) {
+      if (hurt) mat.emissive.setRGB(1, 0.15, 0.15);
+      else mat.emissive.copy(base);
+    }
+    if (camera.position.distanceTo(d.pos) < 55) mixer.update(Math.min(dt, 0.1));
+  });
+  return (
+    <group ref={ref} visible={false}>
+      <primitive object={scene} />
+    </group>
+  );
+}
+
+/** Zombie cyber (Meshy, đã gắn xương): lảo đảo khi lang thang, chạy khi lao tới, vồ đánh, gào khi phát hiện, ngã khi chết */
+function ZombieModel({ index }: { index: number }) {
+  const d0 = drones[index];
+  const look = d0.look ?? "zmb_walker";
+  const st = ZOMBIE_STATS[look];
+  const g = {
+    body: use(extraModel(`mx_${look}_walk`)),
+    stagger: use(extraModel(`mx_${look}_stagger`)),
+    run: use(extraModel(`mx_${look}_run`)),
+    attack: use(extraModel(`mx_${look}_attack`)),
+    scream: use(extraModel(`mx_${look}_scream`)),
+    death: use(extraModel(`mx_${look}_death`)),
+  };
+  const ref = useRef<THREE.Group>(null);
+  const prev = useRef({ state: "patrol" as DroneState, firedAt: -1, deadSeen: false, screamAt: -99 });
+  const { scene, mixer, acts, mats } = useMemo(() => {
+    const s = cloneSkinned(g.body.scene);
+    fitCharacter(s, st.height, -TROOPER_CENTER);
+    const mats: { mat: THREE.MeshStandardMaterial; base: THREE.Color }[] = [];
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      if (mat.map && !mat.emissiveMap) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#b6ffb0");
+        mat.emissiveIntensity = 0.3;
+      }
+      m.material = mat;
+      mats.push({ mat, base: mat.emissive.clone() });
+    });
+    const mixer = new THREE.AnimationMixer(s);
+    const act = (gl: { animations: THREE.AnimationClip[] }) => (gl.animations[0] ? mixer.clipAction(inPlace(gl.animations[0])) : null);
+    const acts = { stagger: act(g.stagger), run: act(g.run), attack: act(g.attack), scream: act(g.scream), death: act(g.death) };
+    for (const a of [acts.attack, acts.scream, acts.death]) if (a) once(a);
+    acts.stagger?.play();
+    acts.run?.play();
+    if (acts.run) acts.run.weight = 0;
+    return { scene: s, mixer, acts, mats };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...Object.values(g), st.height]);
+  useFrame(({ camera }, dt) => {
+    const d = drones[index];
+    const grp = ref.current;
+    if (!grp) return;
+    const p = prev.current;
+    const dead = d.state === "dead";
+    const dying = dead && clock - d.deadAt < DEATH_SHOW;
+    grp.visible = (!dead || dying) && d.pos.distanceTo(camera.position) < 80;
+    if (!dead) p.deadSeen = false;
+    if (!grp.visible) return;
+    const oneShot = (a: THREE.AnimationAction | null) => a?.reset().setEffectiveWeight(1).fadeIn(0.15).play();
+    if (dying) {
+      if (!p.deadSeen) {
+        p.deadSeen = true;
+        for (const a of [acts.stagger, acts.run, acts.attack, acts.scream]) a?.stop();
+        oneShot(acts.death);
+      }
+      mixer.update(Math.min(dt, 0.1));
+      return;
+    }
+    if (acts.death?.isRunning()) acts.death.stop();
+    if (!acts.stagger?.isRunning()) acts.stagger?.play();
+    if (!acts.run?.isRunning()) acts.run?.play();
+    // Vừa phát hiện người chơi: gào lên
+    if (d.state === "chase" && p.state !== "chase" && clock - p.screamAt > 12) {
+      p.screamAt = clock;
+      oneShot(acts.scream);
+    }
+    p.state = d.state;
+    if (d.firedAt !== p.firedAt) {
+      p.firedAt = d.firedAt;
+      if (d.state === "chase" && clock - d.firedAt < 0.2) oneShot(acts.attack);
+    }
+    grp.position.copy(d.pos);
+    const speed = Math.hypot(d.vel.x, d.vel.z);
+    const face = d.state === "chase" ? _aim.subVectors(_target, d.pos) : d.vel;
+    if (face.lengthSq() > 0.01) {
+      const yaw = Math.atan2(face.x, face.z);
+      grp.rotation.y = THREE.MathUtils.lerp(grp.rotation.y, grp.rotation.y + shortest(grp.rotation.y, yaw), 0.12);
+    }
+    const busy = (acts.attack?.isRunning() ? 1 : 0) || (acts.scream?.isRunning() ? 1 : 0);
+    const k = THREE.MathUtils.clamp((speed - 1.8) / 2, 0, 1);
+    if (acts.stagger) {
+      acts.stagger.weight = (1 - k) * (1 - busy);
+      acts.stagger.timeScale = THREE.MathUtils.clamp(speed / 0.9, 0.3, 1.6);
+    }
+    if (acts.run) {
+      acts.run.weight = k * (1 - busy);
+      acts.run.timeScale = THREE.MathUtils.clamp(speed / 5, 0.5, 1.4);
     }
     const hurt = clock - d.hurtAt < 0.12;
     for (const { mat, base } of mats) {
@@ -568,18 +736,22 @@ export function Enemies() {
 
     for (const d of drones) {
       if (d.state === "dead") {
-        if (d.kind !== "legion" && d.kind !== "trooper") continue;
-        if (clock - d.deadAt > respawnDelay(game.wanted)) {
-          d.state = game.wanted >= 2 ? "chase" : "patrol";
+        if (d.kind !== "legion" && d.kind !== "trooper" && d.kind !== "zombie") continue;
+        if (clock - d.deadAt > (d.kind === "zombie" ? 30 : respawnDelay(game.wanted))) {
+          d.state = game.wanted >= 2 && d.kind !== "zombie" ? "chase" : "patrol";
           d.hp = d.maxHp;
-          // Drone bay xuống từ trên cao, lính hiện lại ở điểm gốc
-          d.pos.set(d.home.x, d.kind === "trooper" ? TROOPER_CENTER : 30, d.home.z);
+          // Drone bay xuống từ trên cao, lính và zombie hiện lại ở điểm gốc
+          d.pos.set(d.home.x, d.kind === "legion" ? 30 : TROOPER_CENTER, d.home.z);
           d.vel.set(0, 0, 0);
         }
         continue;
       }
 
       const dist = d.pos.distanceTo(_target);
+      if (d.kind === "zombie") {
+        updateZombie(d, dist, alive && !car, step);
+        continue;
+      }
       const sees = alive && dist < aggro * 1.6 && lineOfSight(d.pos, _target);
 
       if (d.state === "flee") {
@@ -670,6 +842,10 @@ export function Enemies() {
           <Suspense key={d.id} fallback={<KenneyDrone index={d.id} />}>
             <BossModel index={d.id} />
           </Suspense>
+        ) : d.kind === "zombie" ? (
+          <Suspense key={d.id} fallback={null}>
+            <ZombieModel index={d.id} />
+          </Suspense>
         ) : d.kind === "trooper" ? (
           <Suspense key={d.id} fallback={null}>
             <TrooperModel index={d.id} />
@@ -680,6 +856,53 @@ export function Enemies() {
       )}
     </>
   );
+}
+
+/** Zombie: lảo đảo quanh điểm gốc trong Vùng cách ly; thấy người chơi trong tầm 22m thì lao tới,
+ * sát bên thì vồ đánh. Không rời khỏi vùng quá 30m (người chơi chạy thoát được) */
+function updateZombie(d: Drone, dist: number, alive: boolean, step: number) {
+  const st = ZOMBIE_STATS[d.look ?? "zmb_walker"];
+  if (d.state === "patrol") {
+    if (alive && dist < 22 && inQuarantine(_target.x, _target.z, 30)) {
+      d.state = "chase";
+      d.firedAt = clock - 10;
+      d.nextShot = clock + 0.6;
+    }
+    if (clock > d.nextWander) {
+      d.wander.set(d.home.x + (Math.random() - 0.5) * 14, TROOPER_CENTER, d.home.z + (Math.random() - 0.5) * 14);
+      d.nextWander = clock + 5 + Math.random() * 6;
+    }
+    _desired.subVectors(d.wander, d.pos).setY(0);
+    const len = _desired.length();
+    _desired.multiplyScalar(len > 0.8 ? st.walk / len : 0);
+  } else {
+    if (!alive || dist > 40 || !inQuarantine(d.pos.x, d.pos.z, 30)) {
+      d.state = "patrol";
+      d.wander.copy(d.home);
+      return;
+    }
+    _desired.subVectors(_target, d.pos).setY(0);
+    const len = _desired.length();
+    const reach = ZOMBIE_REACH * d.size;
+    _desired.multiplyScalar(len > reach * 0.8 ? st.chase / len : 0);
+    // Đứng sát thì vồ: ra đòn sau 0.45s vung tay
+    if (len < reach && clock > d.nextShot) {
+      d.firedAt = clock;
+      d.strikeAt = clock + 0.45;
+      d.nextShot = clock + 1.4 + Math.random() * 0.5;
+    }
+    if (d.strikeAt !== undefined && d.strikeAt >= 0 && clock >= d.strikeAt) {
+      d.strikeAt = -1;
+      // Người chơi lùi ra kịp trước khi đòn chạm tới thì né được
+      if (len <= reach + 0.6) {
+        useGame.getState().damagePlayer(st.dmg);
+        playSfx("enemyAttack", 0.7);
+      }
+    }
+  }
+  d.vel.lerp(_desired, 1 - Math.exp(-4 * step));
+  d.pos.addScaledVector(d.vel, step);
+  d.pos.y = TROOPER_CENTER;
 }
 
 function shoot(d: Drone, dist: number, targetSpeed: number, inCar: boolean, wanted: number) {

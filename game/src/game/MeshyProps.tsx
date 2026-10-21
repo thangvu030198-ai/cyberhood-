@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { extraModel, type ExtraModel } from "./assets";
-import { CITY, CITY_HALF } from "./config";
+import { CITY, CITY_HALF, QUARANTINE } from "./config";
 import { useFitted } from "./Showcase";
 import { fitCharacter } from "./Player";
 import { runtime } from "./contracts";
@@ -311,13 +311,77 @@ function Landmarks() {
         <Landmark name="mx_map_dropship" height={9} position={[160, 0, -70]} rotationY={-2.2} />
       </Suspense>
       <Suspense fallback={null}>
-        <Landmark name="mx_map_ruins" height={4.5} position={[-158, 0, 62]} rotationY={0.4} solid={false} drawWithin={220} />
+        <Landmark name="mx_map_ruins" height={2.2} position={[-158, 0, 62]} rotationY={0.4} solid={false} drawWithin={220} />
       </Suspense>
       <Suspense fallback={null}>
         <Landmark name="mx_map_bunker" height={11} position={[-CITY_HALF - 16, 0, 104]} rotationY={Math.PI / 2} />
       </Suspense>
+      <Quarantine />
+      {/* Cột quảng cáo hologram dọc đại lộ qua Hub */}
+      <Suspense fallback={null}>
+        {[
+          [-9.4, -16],
+          [9.4, -16],
+          [-9.4, 22],
+          [9.4, 22],
+        ].map(([hx, hz]) => (
+          <Landmark key={`${hx}${hz}`} name="mx_holo_tower" height={8} position={[hx, CITY.SIDEWALK_HEIGHT, hz]} rotationY={hx < 0 ? Math.PI / 2 : -Math.PI / 2} selfLit={0.7} drawWithin={160} />
+        ))}
+      </Suspense>
+      {/* Cổng neon kiểu torii đánh dấu hai đầu đại lộ qua Vùng An toàn */}
+      <Suspense fallback={null}>
+        <Landmark name="mx_prop_neon_arch" height={7.5} position={[0, 0, -26]} solid={false} selfLit={0.6} drawWithin={220} />
+        <Landmark name="mx_prop_neon_arch" height={7.5} position={[0, 0, 38]} solid={false} selfLit={0.6} drawWithin={220} />
+      </Suspense>
       <Suspense fallback={null}>
         <Landmark name="mx_map_hollow_hotel" height={42} position={[70, 0, CITY_HALF + 50]} rotationY={Math.PI} drawWithin={360} />
+      </Suspense>
+    </>
+  );
+}
+
+/** Vùng cách ly phía tây: rào chắn xác xe ở mép giáp thành phố, phòng thí nghiệm sinh học vỡ ở giữa,
+ * xác mech khổng lồ, tháp canh bỏ hoang */
+function Quarantine() {
+  const { x, z, r } = QUARANTINE;
+  // Rào chắn chạy dọc mép đông: đống rác xen xác xe, chừa lối vào ở giữa
+  const barricades = [-26, -20, -14, -8.5, 8.5, 14, 20, 26].map((dz, i) => ({ bx: x + r * 0.92, bz: z + dz, car: i % 2 === 1 }));
+  return (
+    <>
+      <Suspense fallback={null}>
+        {barricades.map(({ bx, bz, car }) =>
+          car ? (
+            <Landmark key={bz} name="mx_car_armored" height={2.2} position={[bx, 0, bz]} rotationY={bz * 0.3} selfLit={0.1} drawWithin={200} />
+          ) : (
+            <Landmark key={bz} name="mx_prop_trash_pile" height={1.8} position={[bx, 0, bz]} rotationY={bz} drawWithin={200} />
+          ),
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_bio_lab" height={6} position={[x, 0, z]} rotationY={0.6} selfLit={0.5} drawWithin={200} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_radio_tower" height={30} position={[x - 30, 0, z + 22]} rotationY={0.3} selfLit={0.3} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_veh_tank" height={3} position={[x + 22, 0, z - 8]} rotationY={2.6} drawWithin={200} />
+        <Landmark name="mx_veh_buggy" height={2} position={[x - 8, 0, z + 30]} rotationY={-0.7} drawWithin={160} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_crashed_mech" height={4} position={[x - 22, 0, z - 24]} rotationY={1.9} drawWithin={220} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Landmark name="mx_map_watchtower" height={12} position={[x + r * 0.8, 0, z - 42]} rotationY={-Math.PI / 2} />
+        <Landmark name="mx_map_watchtower" height={12} position={[x + r * 0.8, 0, z + 42]} rotationY={-Math.PI / 2} />
+      </Suspense>
+      <Suspense fallback={null}>
+        {[
+          [x + 12, z + 20, 0.4],
+          [x - 18, z + 6, 2.1],
+          [x + 6, z - 28, 4],
+        ].map(([px, pz, ry]) => (
+          <Landmark key={px} name="mx_prop_trash_pile" height={1.2} position={[px, 0, pz]} rotationY={ry} solid={false} drawWithin={150} />
+        ))}
       </Suspense>
     </>
   );
@@ -338,6 +402,9 @@ export function MeshyStatic() {
         <Placed name="mx_noodle_stall" size={3.2} position={[11.4, Y, 30]} rotationY={-Math.PI / 2} collider={[1.4, 1.3, 0.9]} />
       </Suspense>
       <ItemShelf />
+      <Suspense fallback={null}>
+        <Placed name="mx_vending_kiosk" size={2.6} position={[-11.4, Y, 15]} rotationY={Math.PI / 2} collider={[1.2, 1.2, 1.2]} />
+      </Suspense>
       <Landmarks />
     </>
   );

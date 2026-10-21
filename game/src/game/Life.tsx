@@ -163,7 +163,7 @@ function Crowd({ count }: { count: number }) {
 /** Clip đứng chờ / vẫy tay của dân thường; nhân vật rig từ key cũ mượn clip của công nhân (cùng bộ xương Meshy) */
 const OWN_IDLE = new Set(["courier", "elder", "dancer", "worker", "student", "biker"]);
 const civClip = (model: ExtraModel, kind: "idle" | "wave") => {
-  const who = model.replace(/^mx_civ_|_walk$/g, "");
+  const who = model.replace(/^mx_(civ|npc)_|_walk$/g, "");
   if (kind === "idle" && who === "dancer") return "mx_civ_dancer_dance" as ExtraModel;
   return `mx_civ_${OWN_IDLE.has(who) ? who : "worker"}_${kind}` as ExtraModel;
 };
@@ -177,7 +177,7 @@ function MeshyWalker({ model, seed }: { model: ExtraModel; seed: number }) {
   const ped = useMemo(() => {
     const rand = mulberry32(seed);
     const s = cloneSkinned(gltf.scene);
-    fitCharacter(s, 1.7 + rand() * 0.1, 0);
+    fitCharacter(s, CIV_HEIGHT[model] ?? 1.7 + rand() * 0.1, 0);
     s.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
@@ -271,7 +271,17 @@ const CIVILIANS: ExtraModel[] = [
   "mx_civ_worker_walk",
   "mx_civ_student_walk",
   "mx_civ_biker_walk",
+  "mx_npc_bartender_walk",
+  "mx_npc_medic_walk",
+  "mx_npc_cop_walk",
+  "mx_npc_child_walk",
+  "mx_npc_monk_walk",
+  "mx_npc_dj_walk",
+  "mx_npc_gangster_walk",
+  "mx_npc_android_maid_walk",
 ];
+/** Chiều cao riêng cho nhân vật không cao cỡ người lớn bình thường */
+const CIV_HEIGHT: Partial<Record<ExtraModel, number>> = { mx_npc_child_walk: 1.3, mx_npc_cop_walk: 1.88 };
 
 /** Robot RobotExpressive đi dạo quanh các khối gần Hub, thỉnh thoảng vẫy tay */
 function Robots({ count }: { count: number }) {
@@ -485,7 +495,8 @@ function StreetProps({ density }: { density: number }) {
 
 // Xe cyberpunk tạo bằng Meshy; model gốc có đầu xe hướng -X nên quay +90° cho đầu xe hướng +Z
 const CAR_YAW = Math.PI / 2;
-const CAR_MODELS: { name: ExtraModel; length: number }[] = [
+type CarModel = { name: ExtraModel; length: number; yaw?: number; park?: boolean; drive?: boolean };
+const CAR_MODELS: CarModel[] = [
   { name: "mx_car_sedan", length: 4.8 },
   { name: "mx_car_taxi", length: 4.3 },
   { name: "mx_car_police", length: 4.9 },
@@ -494,7 +505,18 @@ const CAR_MODELS: { name: ExtraModel; length: number }[] = [
   { name: "mx_car_van", length: 5.2 },
   { name: "mx_car_truck", length: 9 },
   { name: "mx_car_armored", length: 5.4 },
+  { name: "mx_veh_ambulance", length: 5.6 },
+  { name: "mx_veh_limo", length: 6.4 },
+  // Xe buýt dựng đầu xe hướng +X
+  { name: "mx_veh_bus", length: 11, yaw: -Math.PI / 2, park: false },
+  { name: "mx_veh_hovertruck", length: 7, park: false },
+  { name: "mx_veh_hoverbike", length: 2.3, drive: false },
+  { name: "mx_veh_scooter", length: 1.8, drive: false },
+  { name: "mx_veh_police_bike", length: 2.3, drive: false },
+  { name: "mx_veh_garbage_truck", length: 8, park: false },
 ];
+const PARK_MODELS = CAR_MODELS.filter((m) => m.park !== false);
+const DRIVE_MODELS = CAR_MODELS.filter((m) => m.drive !== false);
 const PARK_OFFSET = 6.3;
 
 /** Xe đậu sát lề đường, có va chạm */
@@ -515,18 +537,18 @@ function ParkedCars({ count }: { count: number }) {
       const z = alongX ? street + side * PARK_OFFSET : along;
       if (!clear(x, z) || Math.hypot(x - PLAYER.spawn[0], z - PLAYER.spawn[2]) < 14) continue;
       const yaw = (alongX ? Math.PI / 2 : 0) + (rand() < 0.5 ? Math.PI : 0);
-      const model = CAR_MODELS[Math.floor(rand() * CAR_MODELS.length)];
+      const model = PARK_MODELS[Math.floor(rand() * PARK_MODELS.length)];
       const list = byName.get(model.name) ?? [];
       list.push(place(x, 0, z, yaw));
       byName.set(model.name, list);
       made++;
     }
-    return CAR_MODELS.filter((m) => byName.has(m.name)).map((m) => ({ ...m, matrices: byName.get(m.name)! }));
+    return PARK_MODELS.filter((m) => byName.has(m.name)).map((m) => ({ ...m, matrices: byName.get(m.name)! }));
   }, [count]);
   return (
     <>
       {groups.map((g) => (
-        <SetInstances key={g.name} file={g.name} name="" size={g.length} by="longest" yaw={CAR_YAW} matrices={g.matrices} colliders />
+        <SetInstances key={g.name} file={g.name} name="" size={g.length} by="longest" yaw={g.yaw ?? CAR_YAW} matrices={g.matrices} colliders />
       ))}
     </>
   );
@@ -537,7 +559,7 @@ function Traffic({ count }: { count: number }) {
   const lanes = useMemo(() => {
     const rand = mulberry32(4242);
     return Array.from({ length: count }, (_, i) => ({
-      model: CAR_MODELS[i % CAR_MODELS.length].name,
+      model: DRIVE_MODELS[i % DRIVE_MODELS.length].name,
       alongX: i % 2 === 0,
       street: STREETS[1 + Math.floor(rand() * (STREETS.length - 2))],
       dir: rand() < 0.5 ? -1 : 1,
@@ -547,9 +569,9 @@ function Traffic({ count }: { count: number }) {
   }, [count]);
   return (
     <>
-      {CAR_MODELS.map((m) => {
+      {DRIVE_MODELS.map((m) => {
         const mine = lanes.filter((l) => l.model === m.name);
-        return mine.length ? <TrafficGroup key={m.name} name={m.name} length={m.length} lanes={mine} /> : null;
+        return mine.length ? <TrafficGroup key={m.name} name={m.name} length={m.length} yaw={m.yaw ?? CAR_YAW} lanes={mine} /> : null;
       })}
     </>
   );
@@ -557,8 +579,8 @@ function Traffic({ count }: { count: number }) {
 
 type Lane = { alongX: boolean; street: number; dir: number; pos: number; speed: number };
 
-function TrafficGroup({ name, length, lanes }: { name: ExtraModel; length: number; lanes: Lane[] }) {
-  const { parts } = useSetParts(name, "", length, "longest", CAR_YAW);
+function TrafficGroup({ name, length, yaw, lanes }: { name: ExtraModel; length: number; yaw: number; lanes: Lane[] }) {
+  const { parts } = useSetParts(name, "", length, "longest", yaw);
   const refs = useRef<(THREE.InstancedMesh | null)[]>([]);
   const m = useMemo(() => new THREE.Matrix4(), []);
   const out = useMemo(() => new THREE.Matrix4(), []);
@@ -687,18 +709,18 @@ export function LifeDynamic({ quality }: { quality: "high" | "low" }) {
   return (
     <>
       <Suspense fallback={null}>
-        <Crowd count={high ? 22 : 10} />
+        <Crowd count={high ? 14 : 8} />
       </Suspense>
       <Suspense fallback={null}>
         <Robots count={high ? 5 : 2} />
       </Suspense>
-      {(high ? CIVILIANS : CIVILIANS.slice(0, 4)).map((m, i) => (
+      {(high ? CIVILIANS : CIVILIANS.slice(0, 6)).map((m, i) => (
         <Suspense key={m} fallback={null}>
           <MeshyWalker model={m} seed={100 + i * 10} />
         </Suspense>
       ))}
       <Suspense fallback={null}>
-        <Traffic count={high ? 10 : 5} />
+        <Traffic count={high ? 14 : 7} />
       </Suspense>
       <Suspense fallback={null}>
         <Helicopter />

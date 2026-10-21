@@ -1506,3 +1506,4 @@ canvas {
 .skin__img--solid { background: #3a1a4a; }
 .skin__name { font-size: 10px; letter-spacing: 0.04em; }
 @media (max-width: 520px) { .skins { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.safe-tag--danger { color: #b6ff9e; border-color: rgba(125, 255, 90, 0.6); background: rgba(20, 40, 10, 0.75); }

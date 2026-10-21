@@ -8,7 +8,7 @@ import { Lights, Rain, Sky } from "./game/Atmosphere";
 import { Player } from "./game/Player";
 import { CameraRig, Interaction } from "./game/CameraRig";
 import { Vehicles } from "./game/Vehicles";
-import { Enemies, drones } from "./game/Enemies";
+import { Enemies, damageDrone, drones } from "./game/Enemies";
 import { Effects } from "./game/Effects";
 import { PlayerCombat, combatDebug } from "./game/Weapons";
 import { Shop } from "./game/Shop";
@@ -83,6 +83,7 @@ function DebugHook() {
       __game: useGame,
       __handles: handles,
       __drones: drones,
+      __damageDrone: damageDrone,
       __combat: combatDebug,
       __quests: { questProgress },
       __hunter: useHunter,

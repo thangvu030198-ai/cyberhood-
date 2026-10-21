@@ -1,0 +1,43 @@
+[
+ {
+  "name": "vending_kiosk",
+  "prompt": "cyberpunk street vending machine kiosk, glowing screen panels, neon signs, ramen and drinks, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "holo_tower",
+  "prompt": "cyberpunk holographic advertisement tower pole, tall slim metal pole with projectors and glowing screen panels, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "zmb_hazmat",
+  "prompt": "full body cyber zombie in torn yellow hazmat suit, cracked gas mask with green glow inside, oxygen tank on back, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.8
+ },
+ {
+  "name": "zmb_cyborg",
+  "prompt": "full body half-destroyed cyborg zombie, missing skin on one side showing chrome skull and robotic arm, sparking wires, green glow, standing in T-pose, game character, cyberpunk, original design, no logos, no text, highly detailed game asset",
+  "polycount": 30000,
+  "pose": "t-pose",
+  "rig": true,
+  "height": 1.85
+ },
+ {
+  "name": "veh_police_bike",
+  "prompt": "cyberpunk police motorcycle, black and white fairings, blue and red light bar, side view, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "veh_garbage_truck",
+  "prompt": "cyberpunk garbage truck, rusty heavy vehicle with robotic arm and graffiti, warning lights, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ },
+ {
+  "name": "map_radio_tower",
+  "prompt": "tall cyberpunk radio transmission tower, lattice steel with red warning lights and satellite dishes, game asset, cyberpunk, original design, no logos, no text, highly detailed, PBR",
+  "polycount": 30000
+ }
+]

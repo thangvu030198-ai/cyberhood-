@@ -27,8 +27,8 @@ export function mergeParts(parts: Part[]): Part[] {
       g.morphAttributes = {};
       // Thuộc tính có thể bị lượng tử hoá (Int16/Uint16 normalized) khác nhau giữa các lưới: đưa hết về Float32
       for (const [name, attr] of Object.entries(g.attributes)) {
-        const a = attr as THREE.BufferAttribute;
-        if (a.isInterleavedBufferAttribute || !(a.array instanceof Float32Array)) {
+        const a = attr as THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+        if ("isInterleavedBufferAttribute" in a || !(a.array instanceof Float32Array)) {
           const f = new Float32Array(a.count * a.itemSize);
           for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) f[i * a.itemSize + k] = a.getComponent(i, k);
           g.setAttribute(name, new THREE.BufferAttribute(f, a.itemSize));

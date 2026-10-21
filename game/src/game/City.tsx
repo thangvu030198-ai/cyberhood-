@@ -50,9 +50,13 @@ export const BUILDING_MODELS = {
   mx_bld_shoprow: [1.9, 1.32, 1.9],
   mx_bld_skyscraper: [0.44, 1.9, 0.49],
   mx_bld_tower_round: [1.04, 1.9, 1.04],
+  mx_bld_megacorp: [0.96, 1.9, 1.0],
+  mx_bld_noodle_bar: [1.88, 1.32, 1.9],
+  mx_bld_capsule_hotel: [0.88, 1.9, 0.9],
+  mx_bld_police_station: [1.9, 1.11, 1.9],
 } as const;
 export type BuildingModel = keyof typeof BUILDING_MODELS;
-const MODEL_LIMIT: Partial<Record<BuildingModel, number>> = { mx_bld_pagoda: 3, mx_bld_factory: 4 };
+const MODEL_LIMIT: Partial<Record<BuildingModel, number>> = { mx_bld_pagoda: 3, mx_bld_factory: 4, mx_bld_megacorp: 3, mx_bld_noodle_bar: 3, mx_bld_police_station: 3 };
 
 const WINDOW_VARIANTS = 4;
 
@@ -122,7 +126,7 @@ function assignModels(list: Building[]) {
   const used: Partial<Record<BuildingModel, number>> = {};
   const names = Object.keys(BUILDING_MODELS) as BuildingModel[];
   for (const b of list) {
-    if (rand() > 0.42) continue;
+    if (rand() > 0.5) continue;
     // Mặt tiền (+Z của model) quay ra đường
     const yaw = Math.atan2(b.face[0], b.face[1]);
     const side = b.face[0] !== 0;

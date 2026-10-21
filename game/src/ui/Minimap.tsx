@@ -124,7 +124,7 @@ export function Minimap({ size }: { size: number }) {
       for (const d of drones) {
         if (d.state === "dead") continue;
         const [x, y] = map(d.pos.x, d.pos.z);
-        const special = d.kind === "courier" ? "#ffd23d" : d.kind === "boss" ? "#ff7a1f" : null;
+        const special = d.kind === "courier" ? "#ffd23d" : d.kind === "boss" ? "#ff7a1f" : d.kind === "zombie" ? "#7dff5a" : null;
         ctx.fillStyle = special ?? (d.state === "chase" ? "#ff1f3d" : "rgba(255, 31, 61, 0.55)");
         ctx.beginPath();
         ctx.arc(x, y, special ? 5 : d.state === "chase" ? 3.5 : 2.5, 0, Math.PI * 2);

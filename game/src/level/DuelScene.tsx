@@ -33,13 +33,13 @@ export function DuelCanvas() {
       gl={{ antialias: false, powerPreference: "high-performance" }}
       camera={{ fov: 34, near: 0.3, far: 300, position: [0, 2.2, 11] }}
     >
-      <color attach="background" args={["#3a1c12"]} />
-      <fog attach="fog" args={["#5a2a18", 18, 60]} />
+      <color attach="background" args={["#07040f"]} />
+      <fog attach="fog" args={["#1a0a26", 16, 62]} />
       <DuelDriver sim={sim} />
       <DuelCamera sim={sim} />
-      <hemisphereLight args={["#ffe2c0", "#3a2a20", 1.6]} />
-      <directionalLight position={[-6, 12, 8]} intensity={2.4} color="#fff0d8" />
-      <directionalLight position={[8, 5, -6]} intensity={1.2} color="#ff8a4a" />
+      <hemisphereLight args={["#b0b8ff", "#1a0a24", 1.0]} />
+      <directionalLight position={[-6, 12, 8]} intensity={2.2} color="#f0e8ff" />
+      <directionalLight position={[8, 5, -6]} intensity={1.6} color="#ff4fd8" />
       <Arena />
       <Quiet>
         <Suspense fallback={null}>
@@ -100,60 +100,192 @@ function DuelCamera({ sim }: { sim: DuelSim }) {
 }
 
 /** Sàn đấu: ô vuông rêu phong, mép đá, hàng cọc gỗ phía sau, khán đài tối */
+/** Võ đài ngầm Neon: sàn thép vòng bát giác phát sáng, lồng lưới thép, khán giả bóng tối giơ đèn, màn hình lớn, giàn đèn */
 function Arena() {
   const tex = useMemo(() => {
     const cv = document.createElement("canvas");
-    cv.width = cv.height = 256;
+    cv.width = 1024;
+    cv.height = 256;
     const g = cv.getContext("2d")!;
-    for (let y = 0; y < 4; y++)
-      for (let x = 0; x < 4; x++) {
-        g.fillStyle = (x + y) % 2 ? "#5d6b4a" : "#6f7a55";
-        g.fillRect(x * 64, y * 64, 64, 64);
-        // vệt rêu và vết nứt
-        g.fillStyle = "rgba(40,60,30,0.45)";
-        for (let k = 0; k < 6; k++) g.fillRect(x * 64 + ((k * 37 + y * 11) % 56), y * 64 + ((k * 23 + x * 17) % 56), 10, 6);
-        g.strokeStyle = "rgba(20,20,15,0.5)";
-        g.strokeRect(x * 64 + 1, y * 64 + 1, 62, 62);
+    g.fillStyle = "#14131c";
+    g.fillRect(0, 0, 1024, 256);
+    // Tấm thép chống trượt
+    for (let y = 0; y < 256; y += 32)
+      for (let x = 0; x < 1024; x += 64) {
+        const v = 26 + ((x * 7 + y * 3) % 13);
+        g.fillStyle = `rgb(${v},${v},${v + 8})`;
+        g.fillRect(x + 1, y + 1, 62, 30);
+        g.fillStyle = "rgba(255,255,255,0.05)";
+        for (let k = 0; k < 6; k++) g.fillRect(x + 6 + k * 10, y + 8 + (k % 2) * 10, 6, 2);
       }
+    // Vòng bát giác neon giữa sàn + vạch xuất phát hai bên
+    const ring = (r: number, col: string, w: number) => {
+      g.strokeStyle = col;
+      g.lineWidth = w;
+      g.shadowColor = col;
+      g.shadowBlur = 18;
+      g.beginPath();
+      for (let k = 0; k <= 8; k++) {
+        const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+        const px = 512 + Math.cos(a) * r * 3.2;
+        const py = 128 + Math.sin(a) * r;
+        if (k) g.lineTo(px, py);
+        else g.moveTo(px, py);
+      }
+      g.stroke();
+    };
+    ring(110, "#00f0ff", 6);
+    ring(70, "#ff2fd0", 3);
+    g.shadowBlur = 0;
+    g.fillStyle = "rgba(0,240,255,0.18)";
+    g.font = "900 64px sans-serif";
+    g.textAlign = "center";
+    g.fillText("CYBERHOOD", 512, 150);
     const t = new THREE.CanvasTexture(cv);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(5, 2);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }, []);
-  const posts = useMemo(() => Array.from({ length: 23 }, (_, i) => -11 + i), []);
+  // Lưới thép lồng đấu (trong suốt theo kênh alpha)
+  const cage = useMemo(() => {
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 64;
+    const g = cv.getContext("2d")!;
+    g.strokeStyle = "rgba(170,180,200,0.9)";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(64, 64);
+    g.moveTo(64, 0);
+    g.lineTo(0, 64);
+    g.stroke();
+    const t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(30, 4);
+    return t;
+  }, []);
+  // Khán giả: bóng người tối, lấm tấm đèn điện thoại và que neon
+  const crowd = useMemo(() => {
+    const cv = document.createElement("canvas");
+    cv.width = 2048;
+    cv.height = 256;
+    const g = cv.getContext("2d")!;
+    g.clearRect(0, 0, 2048, 256);
+    let seed = 5;
+    const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let row = 0; row < 3; row++)
+      for (let x = -20; x < 2068; x += 26 + r() * 14) {
+        const y = 70 + row * 60 + r() * 10;
+        const sh = 14 + r() * 6;
+        g.fillStyle = `rgb(${8 + row * 6},${6 + row * 4},${16 + row * 8})`;
+        g.beginPath();
+        g.arc(x, y, sh * 0.6, 0, Math.PI * 2);
+        g.fill();
+        g.fillRect(x - sh, y + sh * 0.5, sh * 2, 80);
+        if (r() < 0.25) {
+          const col = ["#ff2fd0", "#00f0ff", "#ffe14a", "#ffffff"][Math.floor(r() * 4)];
+          g.fillStyle = col;
+          g.shadowColor = col;
+          g.shadowBlur = 12;
+          g.fillRect(x + (r() - 0.5) * 20, y - 30 - r() * 20, 4, r() < 0.5 ? 6 : 26);
+          g.shadowBlur = 0;
+        }
+      }
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+  const screen = useMemo(() => {
+    const cv = document.createElement("canvas");
+    cv.width = 512;
+    cv.height = 256;
+    const g = cv.getContext("2d")!;
+    const gr = g.createLinearGradient(0, 0, 512, 256);
+    gr.addColorStop(0, "#2a0a3a");
+    gr.addColorStop(1, "#06223a");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 512, 256);
+    g.textAlign = "center";
+    g.fillStyle = "#ff2fd0";
+    g.shadowColor = "#ff2fd0";
+    g.shadowBlur = 20;
+    g.font = "900 64px sans-serif";
+    g.fillText("FIGHT NIGHT", 256, 120);
+    g.fillStyle = "#00f0ff";
+    g.shadowColor = "#00f0ff";
+    g.font = "700 30px sans-serif";
+    g.fillText("CYBERHOOD · VÕ ĐÀI NGẦM", 256, 180);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+  const posts = useMemo(() => Array.from({ length: 12 }, (_, i) => -11 + i * 2), []);
+  const W = DUEL.arenaHalf * 2 + 4;
   return (
     <group>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]}>
-        <planeGeometry args={[DUEL.arenaHalf * 2 + 4, 8]} />
-        <meshStandardMaterial map={tex} roughness={0.85} />
+        <planeGeometry args={[W, 8]} />
+        <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.9} roughness={0.35} metalness={0.55} />
       </mesh>
-      {/* Mép sàn */}
+      {/* Mép sàn neon */}
       <mesh position={[0, -0.25, 4.05]}>
-        <boxGeometry args={[DUEL.arenaHalf * 2 + 4, 0.5, 0.1]} />
-        <meshStandardMaterial color="#3d3a30" roughness={0.9} />
+        <boxGeometry args={[W, 0.5, 0.1]} />
+        <meshStandardMaterial color="#101018" metalness={0.7} roughness={0.4} />
       </mesh>
-      {/* Hàng cọc gỗ và dây thừng phía sau */}
+      <mesh position={[0, 0.02, 4.06]}>
+        <boxGeometry args={[W, 0.06, 0.06]} />
+        <meshBasicMaterial color={[3.2, 0.5, 2.4]} toneMapped={false} />
+      </mesh>
+      {/* Lồng lưới thép trên cột kim loại, đèn led xanh dọc đỉnh */}
       {posts.map((x) => (
-        <mesh key={x} position={[x, 1.3, -3.6]}>
-          <cylinderGeometry args={[0.12, 0.15, 2.6 + ((x * 7) % 3) * 0.2, 6]} />
-          <meshStandardMaterial color="#8a4a26" roughness={0.8} />
+        <mesh key={x} position={[x, 1.6, -3.6]}>
+          <cylinderGeometry args={[0.08, 0.1, 3.2, 8]} />
+          <meshStandardMaterial color="#2a2a36" metalness={0.85} roughness={0.3} />
         </mesh>
       ))}
-      {[1.6, 2.3].map((y) => (
-        <mesh key={y} position={[0, y, -3.6]} rotation-z={Math.PI / 2}>
-          <cylinderGeometry args={[0.03, 0.03, 23, 6]} />
-          <meshStandardMaterial color="#c9a46a" />
-        </mesh>
-      ))}
-      {/* Khán đài phía xa */}
-      <mesh position={[0, 4, -16]}>
-        <boxGeometry args={[60, 10, 2]} />
-        <meshStandardMaterial color="#4a2416" roughness={1} />
+      <mesh position={[0, 1.6, -3.62]}>
+        <planeGeometry args={[23, 3.2]} />
+        <meshStandardMaterial map={cage} alphaMap={cage} transparent depthWrite={false} color="#8890a8" metalness={0.8} roughness={0.4} side={THREE.DoubleSide} />
       </mesh>
-      {[-12, -4, 4, 12].map((x) => (
-        <pointLight key={x} position={[x, 7, -6]} intensity={14} distance={20} color="#ffb070" />
+      <mesh position={[0, 3.22, -3.6]}>
+        <boxGeometry args={[23, 0.06, 0.06]} />
+        <meshBasicMaterial color={[0.4, 2.6, 3.2]} toneMapped={false} />
+      </mesh>
+      {/* Khán đài: ba hàng khán giả bóng tối */}
+      <mesh position={[0, 4, -13]}>
+        <planeGeometry args={[64, 8]} />
+        <meshBasicMaterial map={crowd} transparent />
+      </mesh>
+      <mesh position={[0, 1.2, -13.4]}>
+        <boxGeometry args={[64, 10, 0.5]} />
+        <meshStandardMaterial color="#0b0814" roughness={1} />
+      </mesh>
+      {/* Hai màn hình lớn treo cao */}
+      {[-13, 13].map((x) => (
+        <group key={x} position={[x, 8.5, -11]} rotation-y={-x * 0.02}>
+          <mesh>
+            <planeGeometry args={[9, 4.5]} />
+            <meshBasicMaterial map={screen} toneMapped={false} color={[1.4, 1.4, 1.4]} />
+          </mesh>
+          <mesh position={[0, 0, -0.1]}>
+            <boxGeometry args={[9.4, 4.9, 0.15]} />
+            <meshStandardMaterial color="#111" metalness={0.8} />
+          </mesh>
+        </group>
       ))}
+      {/* Giàn đèn và ánh đèn màu */}
+      <mesh position={[0, 11, -6]}>
+        <boxGeometry args={[34, 0.3, 0.3]} />
+        <meshStandardMaterial color="#222" metalness={0.8} />
+      </mesh>
+      {[-14, -7, 0, 7, 14].map((x) => (
+        <mesh key={x} position={[x, 10.7, -6]}>
+          <boxGeometry args={[0.8, 0.4, 0.5]} />
+          <meshBasicMaterial color={[3, 3, 3]} toneMapped={false} />
+        </mesh>
+      ))}
+      <pointLight position={[-9, 6, 2]} intensity={22} distance={22} color="#ff2fd0" />
+      <pointLight position={[9, 6, 2]} intensity={22} distance={22} color="#00f0ff" />
+      <pointLight position={[0, 9, -1]} intensity={26} distance={24} color="#ffffff" />
     </group>
   );
 }

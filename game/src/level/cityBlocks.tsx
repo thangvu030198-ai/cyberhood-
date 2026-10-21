@@ -9,6 +9,7 @@ import * as THREE from "three";
 import type { ExtraModel } from "../game/assets";
 import { useFitted } from "../game/Showcase";
 import type { PlatformerSim } from "./platformer";
+import { topSkinned } from "./terrainSkin";
 
 const FLOOR = -2;
 const NEON = ["#ff2fd0", "#00f0ff", "#ffe14a", "#7dff5a", "#ff6a2a", "#b46bff"];
@@ -344,10 +345,13 @@ function TallSign({ position, rotY, text, color }: { position: [number, number, 
   );
 }
 
-const SKYLINE: ExtraModel[] = ["mx_bld_skyscraper", "mx_bld_megacorp", "mx_bld_tower_round", "mx_bld_apartment", "mx_bld_capsule_hotel", "mx_bld_hotel", "mx_bld_arcade"];
+// Chỉ cao ốc mảnh (rộng ≤ ~½ chiều cao): model bè ngang co theo chiều cao 30–50 m sẽ phình ra lấn vào map
+const SKYLINE: ExtraModel[] = ["mx_bld_skyscraper", "mx_bld_megacorp", "mx_bld_tower_round", "mx_bld_capsule_hotel", "mx_bld_pagoda"];
 
 export function CityBlocks({ sim }: { sim: PlatformerSim }) {
   const farm = sim.def.theme === "parish";
+  // Map đã có da model (terrainSkin.tsx): chỉ giữ dãy cao ốc và biển neon bao quanh
+  const skinned = topSkinned(sim);
   // Bay bắn trong không gian: vách pháo đài tím cao bằng cả khối nền, không có cao ốc / biển hiệu bao quanh
   const space = sim.mode === "shmup";
   const data = useMemo(() => {
@@ -377,23 +381,24 @@ export function CityBlocks({ sim }: { sim: PlatformerSim }) {
     const signs: { pos: [number, number, number]; rot: number; text: string; color: string }[] = [];
     for (let x = -6; !space && x < sim.width + 12; x += 9 + r() * 4) {
       const h = 26 + r() * 22;
-      sky.push({ name: SKYLINE[Math.floor(r() * SKYLINE.length)], pos: [x, FLOOR, -(sim.height + 9 + r() * 6)], h, rot: r() * 0.6 - 0.3 });
+      sky.push({ name: SKYLINE[Math.floor(r() * SKYLINE.length)], pos: [x, FLOOR, -(sim.height + 16 + r() * 8)], h, rot: r() * 0.6 - 0.3 });
       signs.push({ pos: [x, FLOOR + 6 + r() * (h - 10), -(sim.height + 3.5)], rot: 0, text: VN_SIGNS[Math.floor(r() * VN_SIGNS.length)], color: NEON[Math.floor(r() * NEON.length)] });
     }
     if (!farm && !space)
       for (let y = -6; y < sim.height + 6; y += 9 + r() * 4) {
         const h = 26 + r() * 22;
-        sky.push({ name: SKYLINE[Math.floor(r() * SKYLINE.length)], pos: [-(9 + r() * 6), FLOOR, -y], h, rot: Math.PI / 2 + r() * 0.6 - 0.3 });
+        sky.push({ name: SKYLINE[Math.floor(r() * SKYLINE.length)], pos: [-(16 + r() * 8), FLOOR, -y], h, rot: Math.PI / 2 + r() * 0.6 - 0.3 });
         signs.push({ pos: [-3.5, FLOOR + 6 + r() * (h - 10), -y], rot: Math.PI / 2, text: VN_SIGNS[Math.floor(r() * VN_SIGNS.length)], color: NEON[Math.floor(r() * NEON.length)] });
       }
     return { blocks, roofs, sky, signs };
   }, [sim, farm]);
   return (
     <group>
-      {data.blocks.map((b) => (
-        <Block key={b.seed} rect={b.rect} height={b.height} seed={b.seed} barrier={b.barrier} space={space} />
-      ))}
-      {data.roofs.map((p) =>
+      {!skinned &&
+        data.blocks.map((b) => (
+          <Block key={b.seed} rect={b.rect} height={b.height} seed={b.seed} barrier={b.barrier} space={space} />
+        ))}
+      {!skinned && data.roofs.map((p) =>
         p.el === "ac" ? (
           <AcUnit key={p.key} position={p.pos} rotY={p.rot} />
         ) : (

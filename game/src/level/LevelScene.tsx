@@ -37,6 +37,7 @@ import { THEMES, type LevelTheme } from "./themes";
 import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } from "./registry";
 import { GearDrops, HeldWeapon, WeaponShots, WornArmor } from "./gearView";
 import { CombatFx } from "./combatFx";
+import { SideSkin, TopSkin, asphaltTexture, skinSkips } from "./terrainSkin";
 import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
 import { CityBlocks } from "./cityBlocks";
 import { SideScenery } from "./sideScenery";
@@ -99,6 +100,9 @@ export function LevelCanvas() {
       className="level-canvas"
       dpr={quality === "high" ? [1, 1.25] : 1}
       gl={{ antialias: false, powerPreference: "high-performance" }}
+      onCreated={(state) => {
+        if (new URLSearchParams(location.search).has("debug")) Object.assign(window, { __lvl: state });
+      }}
       camera={{
         fov: CAM.fov,
         near: 0.5,
@@ -135,6 +139,7 @@ export function LevelCanvas() {
       )}
       <group rotation-x={top ? -Math.PI / 2 : 0}>
         <Tiles sim={sim} theme={th} />
+        {!top && <SideSkin sim={sim} />}
         {!top && <Checkpoints sim={sim} />}
         <BossDoors sim={sim} />
         <Shots sim={sim} />
@@ -457,6 +462,12 @@ function FloorGround({
       t.repeat.set(sim.width / 11, sim.height / 20);
       return t;
     }
+    // Khu Săn: mặt đường nhựa ướt như phố ở sảnh
+    if (sim.def.theme === "harbor") {
+      const t = asphaltTexture();
+      t.repeat.set(sim.width / 8, sim.height / 8);
+      return t;
+    }
     const t = theme.floor === "neon" ? neonFloorTexture() : panelTexture();
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(sim.width / 2, sim.height / 2);
@@ -470,7 +481,9 @@ function FloorGround({
       >
         <planeGeometry args={[sim.width, sim.height]} />
         {entry.floorTex ? (
-          <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.7} roughness={0.6} />
+          <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.36} roughness={0.6} color="#8f88a8" />
+        ) : sim.def.theme === "harbor" ? (
+          <meshStandardMaterial map={tex} roughness={0.35} metalness={0.25} color="#b8bccc" />
         ) : theme.floor === "neon" ? (
           <meshStandardMaterial
             map={tex}
@@ -497,6 +510,7 @@ function FloorGround({
       </mesh>
       <TopDressing sim={sim} />
       <CityBlocks sim={sim} />
+      <TopSkin sim={sim} />
       {entry.props.map((pr, i) => (
         <Quiet key={i}>
           <Suspense fallback={null}>
@@ -550,6 +564,7 @@ function TopGround({ sim, painted = false }: { sim: PlatformerSim; theme: LevelT
         <meshBasicMaterial map={space} fog={false} toneMapped={false} color={[1.3, 1.3, 1.4]} />
       </mesh>
       <CityBlocks sim={sim} />
+      <TopSkin sim={sim} />
       {islands.map((c, i) => (
         <group key={i} position={[c.x, c.y, c.z]} rotation-y={c.rot}>
           <Quiet>
@@ -718,6 +733,45 @@ function neonFloorTexture() {
 }
 
 /** Sàn lưới sắt gỉ của cầu treo: khung thép, ô lưới, đinh tán, vệt gỉ cam */
+/** Gạch đá gothic: khối đá xám nâu xây so le, mạch vữa tối, rêu và vết ố, mỗi viên một sắc */
+function stoneTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#2a2522";
+  g.fillRect(0, 0, 256, 256);
+  const rows = 4;
+  const h = 256 / rows;
+  let seed = 7;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let y = 0; y < rows; y++) {
+    const off = y % 2 ? 64 : 0;
+    for (let x = -1; x < 3; x++) {
+      const bx = x * 128 + off;
+      const v = 92 + r() * 40;
+      g.fillStyle = `rgb(${v},${v - 8},${v - 16})`;
+      g.fillRect(bx + 3, y * h + 3, 122, h - 6);
+      // Vân đá, vết nứt
+      for (let k = 0; k < 60; k++) {
+        const d = (r() - 0.5) * 30;
+        g.fillStyle = `rgba(${v + d},${v + d - 8},${v + d - 14},0.5)`;
+        g.fillRect(bx + 3 + r() * 118, y * h + 3 + r() * (h - 8), 2 + r() * 6, 2 + r() * 3);
+      }
+      // Rêu ở mép dưới, ố đen
+      const gr = g.createLinearGradient(0, y * h + h * 0.6, 0, y * h + h);
+      gr.addColorStop(0, "rgba(40,60,30,0)");
+      gr.addColorStop(1, `rgba(40,70,30,${0.25 + r() * 0.3})`);
+      g.fillStyle = gr;
+      g.fillRect(bx + 3, y * h + 3, 122, h - 6);
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
 function grateTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
@@ -776,11 +830,14 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     const edges: [number, number][] = [];
     const ledges: [number, number][] = [];
     const spikes: [number, number][] = [];
+    // Map có da model (terrainSkin.tsx): bỏ khối hộp ở những ô đã có model thay
+    const skip = skinSkips(sim);
     for (let c = 0; c < sim.width; c++)
       for (let r = 0; r < sim.height; r++) {
         const t = sim.tile(c, r);
         // Đi 8 hướng: khối nền do CityBlocks dựng thành toà nhà
         if (t === "#" && (sim.mode === "topdown" || sim.mode === "shmup")) continue;
+        if (skip?.(c, r, t)) continue;
         if (t === "#") {
           solid.push([c, r]);
           if (sim.tile(c, r + 1) !== "#") edges.push([c, r]);
@@ -789,7 +846,7 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       }
     return { solid, edges, ledges, spikes };
   }, [sim]);
-  const tex = useMemo(() => (theme.tiles === "grate" ? grateTexture() : panelTexture()), [theme]);
+  const tex = useMemo(() => (theme.tiles === "stone" ? stoneTexture() : theme.tiles === "grate" ? grateTexture() : panelTexture()), [theme]);
   const refs = {
     solid: useRef<THREE.InstancedMesh>(null),
     edges: useRef<THREE.InstancedMesh>(null),

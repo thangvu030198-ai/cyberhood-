@@ -1,5 +1,6 @@
-// Đua kart camera sau lưng (học từ Chocobo Racing PS1): đường nhựa có lề sọc đỏ trắng, cổng thép gỉ đỏ,
-// cọc tiêu, đồi cỏ, trời xanh mây trắng. Xe là xe Meshy của thành phố; HUD: thời gian, vòng, tốc độ, hạng, bản đồ.
+// Đua kart camera sau lưng (học từ Chocobo Racing PS1) trên đường đua đêm giữa Neon City: mặt nhựa ướt
+// có dải neon hai mép, rào chắn gạch chéo phát sáng, cổng vòm neon bắc qua đường, cao ốc bao quanh trường đua,
+// trời đêm có sao và quầng sáng thành phố. Xe là xe Meshy của thành phố; HUD: thời gian, vòng, tốc độ, hạng, bản đồ.
 
 import { Suspense, use, useEffect, useMemo, useRef, useState } from "react";
 import { DIFF_MODS, useDifficulty } from "../game/difficulty";
@@ -16,6 +17,7 @@ import { KART, KartSim, type KartInput } from "./kart";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { RetroGrade } from "./retroEffects";
 import { Quiet } from "./LevelScene";
+import { asphaltTexture } from "./terrainSkin";
 
 /** Thưởng theo thứ hạng về đích (CRED) */
 export const KART_REWARD = [120, 80, 55, 35, 20, 10];
@@ -63,12 +65,14 @@ export function KartCanvas() {
       gl={{ antialias: false, powerPreference: "high-performance" }}
       camera={{ fov: 62, near: 0.3, far: 900, position: [0, 4, -8] }}
     >
-      <color attach="background" args={["#8fc4ff"]} />
-      <fog attach="fog" args={["#c9e2ff", 80, 420]} />
+      <color attach="background" args={["#07041a"]} />
+      <fog attach="fog" args={["#1b0d33", 70, 420]} />
       <KartDriver sim={sim} />
       <ChaseCamera sim={sim} />
-      <hemisphereLight args={["#ffffff", "#5f8f3a", 1.7]} />
-      <directionalLight position={[60, 120, 40]} intensity={2.4} color="#fff4e0" />
+      <hemisphereLight args={["#8a9cff", "#1a0a24", 0.9]} />
+      <directionalLight position={[60, 120, 40]} intensity={1.3} color="#c8d4ff" />
+      <directionalLight position={[-80, 30, -60]} intensity={1.2} color="#ff4fd8" />
+      <NightSky />
       <Scenery sim={sim} />
       <Road sim={sim} />
       <Pads sim={sim} />
@@ -141,7 +145,7 @@ function ChaseCamera({ sim }: { sim: KartSim }) {
 
 /** Dải đường nhựa + lề sọc + vạch đích, dựng từ các điểm mẫu của đường đua */
 function Road({ sim }: { sim: KartSim }) {
-  const { road, curbs, start } = useMemo(() => {
+  const { road, curbs, edges, start, checker } = useMemo(() => {
     const t = sim.track;
     const n = t.pts.length;
     const W = KART.halfWidth + 1.2;
@@ -172,14 +176,15 @@ function Road({ sim }: { sim: KartSim }) {
       c.width = 128;
       c.height = 128;
       const g = c.getContext("2d")!;
-      g.fillStyle = "#6f7378";
+      // Nhựa ướt tối, vạch giữa đứt khúc xanh ngọc phát sáng
+      g.fillStyle = "#1d1c26";
       g.fillRect(0, 0, 128, 128);
-      for (let i = 0; i < 500; i++) {
-        g.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)";
+      for (let i = 0; i < 900; i++) {
+        g.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.12)";
         g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
       }
-      g.fillStyle = "#e9e3c8";
-      g.fillRect(61, 0, 6, 64); // vạch giữa đứt khúc
+      g.fillStyle = "#38f6ff";
+      g.fillRect(62, 0, 4, 64);
       const tex = new THREE.CanvasTexture(c);
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -187,13 +192,26 @@ function Road({ sim }: { sim: KartSim }) {
     })();
     const curbTex = (() => {
       const c = document.createElement("canvas");
-      c.width = 8;
-      c.height = 16;
+      // Rào gạch chéo neon hồng / đen
+      c.width = 32;
+      c.height = 32;
       const g = c.getContext("2d")!;
-      g.fillStyle = "#d8262a";
-      g.fillRect(0, 0, 8, 8);
-      g.fillStyle = "#f4f4f4";
-      g.fillRect(0, 8, 8, 8);
+      g.fillStyle = "#0b0612";
+      g.fillRect(0, 0, 32, 32);
+      g.fillStyle = "#ff2fd0";
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.lineTo(12, 0);
+      g.lineTo(32, 20);
+      g.lineTo(32, 32);
+      g.closePath();
+      g.fill();
+      g.beginPath();
+      g.moveTo(0, 20);
+      g.lineTo(12, 32);
+      g.lineTo(0, 32);
+      g.closePath();
+      g.fill();
       const tex = new THREE.CanvasTexture(c);
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.magFilter = THREE.NearestFilter;
@@ -202,109 +220,220 @@ function Road({ sim }: { sim: KartSim }) {
     })();
     const road = { geo: strip(-W, W, 0.02), map: asphalt };
     const curbs = [strip(-W - 1, -W, 0.05), strip(W, W + 1, 0.05)].map((geo) => ({ geo, map: curbTex }));
+    const edges = [strip(-W - 0.12, -W + 0.12, 0.08), strip(W - 0.12, W + 0.12, 0.08)];
     const s0 = t.at(0, 0);
-    return { road, curbs, start: s0 };
+    // Vạch xuất phát ô cờ
+    const cv = document.createElement("canvas");
+    cv.width = 128;
+    cv.height = 16;
+    const cg = cv.getContext("2d")!;
+    for (let x = 0; x < 16; x++) for (let y = 0; y < 2; y++) {
+      cg.fillStyle = (x + y) % 2 ? "#0c0c12" : "#d8d8e0";
+      cg.fillRect(x * 8, y * 8, 8, 8);
+    }
+    const checker = new THREE.CanvasTexture(cv);
+    checker.magFilter = THREE.NearestFilter;
+    checker.colorSpace = THREE.SRGBColorSpace;
+    return { road, curbs, edges, start: s0, checker };
   }, [sim]);
   return (
     <group>
       <mesh geometry={road.geo}>
-        <meshStandardMaterial map={road.map} roughness={0.85} side={THREE.DoubleSide} />
+        <meshStandardMaterial map={road.map} emissiveMap={road.map} emissive="#ffffff" emissiveIntensity={0.55} roughness={0.32} metalness={0.35} side={THREE.DoubleSide} />
       </mesh>
       {curbs.map((c, i) => (
         <mesh key={i} geometry={c.geo}>
-          <meshStandardMaterial map={c.map} roughness={0.6} side={THREE.DoubleSide} />
+          <meshStandardMaterial map={c.map} emissiveMap={c.map} emissive="#ffffff" emissiveIntensity={1.4} roughness={0.5} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      {/* Dải neon chạy dọc hai mép đường */}
+      {edges.map((geo, i) => (
+        <mesh key={`e${i}`} geometry={geo}>
+          <meshBasicMaterial color={i ? [0.4, 2.6, 3.2] : [3.2, 0.5, 2.4]} toneMapped={false} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {/* Vạch xuất phát ca-rô */}
       <mesh position={[start.x, 0.06, start.z]} rotation={[-Math.PI / 2, 0, -start.yaw]}>
         <planeGeometry args={[(KART.halfWidth + 1.2) * 2, 1.4]} />
-        <meshBasicMaterial color="#f2f2f2" side={THREE.DoubleSide} />
+        <meshBasicMaterial map={checker} color={[1.2, 1.2, 1.3]} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
 }
 
-/** Đồi cỏ, cổng thép gỉ đỏ bắc qua đường, cọc tiêu đen vàng, hàng rào trắng */
-function Scenery({ sim }: { sim: KartSim }) {
-  const gantries = useMemo(() => {
-    const out: { x: number; z: number; yaw: number }[] = [];
-    for (const f of [0.02, 0.1, 0.4, 0.66]) {
-      const p = sim.track.at(sim.track.length * f, 0);
-      out.push(p);
+/** Trời đêm: vòm sao, quầng sáng thành phố tím hồng ở chân trời (không bị sương che) */
+function NightSky() {
+  const tex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 1024;
+    c.height = 512;
+    const g = c.getContext("2d")!;
+    const gr = g.createLinearGradient(0, 0, 0, 512);
+    gr.addColorStop(0, "#020108");
+    gr.addColorStop(0.55, "#0a0624");
+    gr.addColorStop(0.78, "#3a0f4a");
+    gr.addColorStop(0.9, "#a0286a");
+    gr.addColorStop(1, "#ff7a3a");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 1024, 512);
+    for (let i = 0; i < 900; i++) {
+      const y = Math.random() * 300;
+      g.fillStyle = `rgba(255,255,255,${0.2 + Math.random() * 0.8})`;
+      g.fillRect(Math.random() * 1024, y, Math.random() < 0.08 ? 2 : 1, Math.random() < 0.08 ? 2 : 1);
     }
-    return out;
-  }, [sim]);
-  const cones = useMemo(() => {
-    const out: { x: number; z: number }[] = [];
-    for (let s = 5; s < sim.track.length; s += 18)
-      for (const side of [-1, 1]) {
-        const p = sim.track.at(s, side * (KART.halfWidth + 2.8));
-        out.push(p);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+  return (
+    <mesh>
+      <sphereGeometry args={[700, 32, 16]} />
+      <meshBasicMaterial map={tex} side={THREE.BackSide} fog={false} depthWrite={false} />
+    </mesh>
+  );
+}
+
+// Cao ốc bao quanh trường đua (model thành phố của sảnh)
+const KART_TOWERS: ExtraModel[] = ["mx_bld_skyscraper", "mx_bld_megacorp", "mx_bld_tower_round", "mx_bld_apartment", "mx_bld_capsule_hotel", "mx_bld_pagoda", "mx_bld_hotel"];
+
+function Tower({ name, x, z, h, rot }: { name: ExtraModel; x: number; z: number; h: number; rot: number }) {
+  const gltf = use(extraModel(name));
+  const obj = useMemo(() => {
+    const s = gltf.scene.clone(true);
+    s.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(s);
+    const size = box.getSize(new THREE.Vector3());
+    const c = box.getCenter(new THREE.Vector3());
+    s.position.set(-c.x, -box.min.y, -c.z);
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      if (mat.map) {
+        mat.emissiveMap = mat.map;
+        mat.emissive = new THREE.Color("#ffffff");
+        mat.emissiveIntensity = 0.75;
       }
-    return out;
+      m.material = mat;
+    });
+    const g = new THREE.Group();
+    g.add(s);
+    g.scale.setScalar(h / size.y);
+    return g;
+  }, [gltf, h]);
+  return <primitive object={obj} position={[x, 0, z]} rotation-y={rot} />;
+}
+
+/** Cổng vòm neon bắc qua đường */
+function NeonArch({ x, z, yaw, width }: { x: number; z: number; yaw: number; width: number }) {
+  const gltf = use(extraModel("mx_prop_neon_arch"));
+  const obj = useMemo(() => {
+    const s = gltf.scene.clone(true);
+    s.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(s);
+    const size = box.getSize(new THREE.Vector3());
+    const c = box.getCenter(new THREE.Vector3());
+    s.position.set(-c.x, -box.min.y, -c.z);
+    s.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      if (mat.map) {
+        mat.emissiveMap = mat.map;
+        mat.emissive = new THREE.Color("#ffffff");
+        mat.emissiveIntensity = 1;
+      }
+      m.material = mat;
+    });
+    const g = new THREE.Group();
+    g.add(s);
+    const k = width / Math.max(size.x, size.z);
+    g.scale.set(k, k * 1.1, k);
+    return g;
+  }, [gltf, width]);
+  return <primitive object={obj} position={[x, 0, z]} rotation-y={yaw} />;
+}
+
+function Scenery({ sim }: { sim: KartSim }) {
+  const half = KART.halfWidth + 2.2;
+  const data = useMemo(() => {
+    let seed = 91;
+    const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const t = sim.track;
+    const arches: { x: number; z: number; yaw: number }[] = [];
+    for (const f of [0.02, 0.25, 0.5, 0.75]) arches.push(t.at(t.length * f, 0));
+    // Cọc tiêu phát sáng dọc hai bên
+    const posts: { x: number; z: number; c: number }[] = [];
+    for (let s = 5; s < t.length; s += 14)
+      for (const side of [-1, 1]) {
+        const p = t.at(s, side * (KART.halfWidth + 2.8));
+        posts.push({ x: p.x, z: p.z, c: side });
+      }
+    // Cao ốc: rải ngoài đường đua, không quá gần mặt đường
+    const towers: { name: ExtraModel; x: number; z: number; h: number; rot: number }[] = [];
+    const near = (x: number, z: number, d: number) => {
+      for (let s = 0; s < t.length; s += 6) {
+        const p = t.at(s, 0);
+        if (Math.hypot(p.x - x, p.z - z) < d) return true;
+      }
+      return false;
+    };
+    for (let i = 0; i < 70 && towers.length < 34; i++) {
+      const a = r() * Math.PI * 2;
+      const rad = 60 + r() * 260;
+      const x = 30 + Math.cos(a) * rad;
+      const z = 70 + Math.sin(a) * rad;
+      if (near(x, z, 26)) continue;
+      towers.push({ name: KART_TOWERS[Math.floor(r() * KART_TOWERS.length)], x, z, h: 24 + r() * 46, rot: r() * 6.28 });
+    }
+    return { arches, posts, towers };
   }, [sim]);
-  const coneRef = useRef<THREE.InstancedMesh>(null);
+  const postRef = useRef<THREE.InstancedMesh>(null);
+  const capRef = useRef<THREE.InstancedMesh>(null);
+  const floor = useMemo(() => {
+    const t = asphaltTexture();
+    t.repeat.set(60, 60);
+    return t;
+  }, []);
   useEffect(() => {
     const m = new THREE.Matrix4();
-    cones.forEach((c, i) => coneRef.current?.setMatrixAt(i, m.makeTranslation(c.x, 0.45, c.z)));
-    if (coneRef.current) coneRef.current.instanceMatrix.needsUpdate = true;
-  }, [cones]);
-  const half = KART.halfWidth + 2.2;
+    const c = new THREE.Color();
+    data.posts.forEach((p, i) => {
+      postRef.current?.setMatrixAt(i, m.makeTranslation(p.x, 0.6, p.z));
+      capRef.current?.setMatrixAt(i, m.makeTranslation(p.x, 1.28, p.z));
+      capRef.current?.setColorAt(i, p.c < 0 ? c.setRGB(3.2, 0.5, 2.4) : c.setRGB(0.4, 2.6, 3.2));
+    });
+    for (const r of [postRef.current, capRef.current]) {
+      if (!r) continue;
+      r.instanceMatrix.needsUpdate = true;
+      if (r.instanceColor) r.instanceColor.needsUpdate = true;
+    }
+  }, [data]);
   return (
     <group>
+      {/* Nền nhựa ướt quanh trường đua */}
       <mesh rotation-x={-Math.PI / 2} position={[30, -0.01, 70]}>
         <circleGeometry args={[420, 48]} />
-        <meshStandardMaterial color="#6fae46" roughness={1} />
+        <meshStandardMaterial map={floor} color="#5a5870" roughness={0.4} metalness={0.3} />
       </mesh>
-      {/* Đồi xa */}
-      {[
-        [-200, -120, 80],
-        [220, 40, 100],
-        [40, 320, 120],
-        [-160, 260, 90],
-      ].map(([x, z, r], i) => (
-        <mesh key={i} position={[x, -r * 0.55, z]}>
-          <sphereGeometry args={[r, 24, 12]} />
-          <meshStandardMaterial color="#5c9a3c" roughness={1} />
-        </mesh>
+      {data.towers.map((tw, i) => (
+        <Suspense key={i} fallback={null}>
+          <Tower {...tw} />
+        </Suspense>
       ))}
-      {/* Cổng thép bắc qua đường */}
-      {gantries.map((g, i) => (
-        <group key={i} position={[g.x, 0, g.z]} rotation-y={g.yaw}>
-          {[-half, half].map((x) => (
-            <mesh key={x} position={[x, 3.4, 0]}>
-              <boxGeometry args={[0.6, 6.8, 0.6]} />
-              <meshStandardMaterial color="#9a3c22" metalness={0.5} roughness={0.6} />
-            </mesh>
-          ))}
-          <mesh position={[0, 6.6, 0]}>
-            <boxGeometry args={[half * 2 + 0.6, 0.9, 0.6]} />
-            <meshStandardMaterial color="#9a3c22" metalness={0.5} roughness={0.6} />
-          </mesh>
-          {i === 0 && (
-            <mesh position={[0, 5.5, 0.32]}>
-              <planeGeometry args={[half * 1.4, 1.2]} />
-              <meshBasicMaterial color={[2.4, 0.5, 1.3]} toneMapped={false} />
-            </mesh>
-          )}
-        </group>
+      {data.arches.map((g, i) => (
+        <Suspense key={`a${i}`} fallback={null}>
+          <NeonArch x={g.x} z={g.z} yaw={g.yaw} width={half * 2 + 3} />
+        </Suspense>
       ))}
-      <instancedMesh ref={coneRef} args={[undefined, undefined, cones.length]}>
-        <cylinderGeometry args={[0.12, 0.38, 0.9, 10]} />
-        <meshStandardMaterial color="#f2c21a" roughness={0.6} />
+      <instancedMesh ref={postRef} args={[undefined, undefined, data.posts.length]}>
+        <cylinderGeometry args={[0.14, 0.2, 1.2, 8]} />
+        <meshStandardMaterial color="#1a1a24" metalness={0.7} roughness={0.35} />
       </instancedMesh>
-      {/* Mây */}
-      {[
-        [-80, 70, 200],
-        [90, 60, 260],
-        [200, 80, 120],
-        [-150, 75, 20],
-      ].map(([x, y, z], i) => (
-        <mesh key={i} position={[x, y, z]} scale={[30, 8, 14]}>
-          <sphereGeometry args={[1, 12, 8]} />
-          <meshBasicMaterial color="#ffffff" fog={false} />
-        </mesh>
-      ))}
+      <instancedMesh ref={capRef} args={[undefined, undefined, data.posts.length]}>
+        <sphereGeometry args={[0.2, 10, 8]} />
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
     </group>
   );
 }

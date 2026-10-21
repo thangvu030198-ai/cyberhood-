@@ -20,12 +20,14 @@ const K = (k: KitName, h: number): Small => ({ k, h });
 /** Đạo cụ nhỏ theo bối cảnh: dùng hết model đã có (Meshy, model sảnh, kit) để mỗi map một kiểu đồ vật */
 const SMALLS: Record<ThemeId, Small[]> = {
   quarantine: [X("mx_prop_trash_pile", 1.3), X("mx_supply_crate", 1), X("mx_vending_kiosk", 2.2), X("mx_car_taxi", 1.5), X("mx_wz_sandbags", 1.1), X("mx_battery_cell", 1.1), X("mx_police_hovercar", 1.5), X("computers", 1.1), X("fridge", 1.9), X("forklift", 2.2), X("crate", 0.9), K("ElectricBox01_Art", 1.4), K("WarningSign01_Art", 1.6), K("Kiosco", 2.4), K("PoapMachine", 2.1), K("Pot_Vapor_02", 1.2)],
-  harbor: [X("mx_prop_trash_pile", 1.2), X("mx_vending_kiosk", 2.2), X("mx_noodle_stall", 2.4), X("mx_veh_scooter", 1.2), X("mx_supply_crate", 1), X("mx_car_taxi", 1.5), K("Kiosco", 2.2), K("PoapMachine", 2), K("containers_B", 2.2), K("cargo_A_stacked", 2.2), K("Robot", 1.6), X("crate", 0.9), K("Pot_Vapor_01", 1.2), K("WarningSign02_Art", 1.5)],
+  // Phố: chỉ đồ thật cùng bộ với sảnh (bỏ khối kit màu mè)
+  harbor: [X("mx_prop_trash_pile", 1.2), X("mx_vending_kiosk", 2.2), X("mx_noodle_stall", 2.4), X("mx_veh_scooter", 1.2), X("mx_supply_crate", 1), X("mx_car_taxi", 1.5), X("mx_police_hovercar", 1.5), X("mx_wz_sandbags", 1), X("mx_battery_cell", 1)],
   hotel: [X("mx_hh_planter", 2.4), X("mx_hh_luggage_cart", 1.6), X("mx_hh_armchair", 1.3), X("mx_hh_piano", 1.6), K("Pot_Retro_03", 1.2), K("Screen_Retro_02", 1.4), K("Shrine_Art", 2.4), X("crate", 0.9), X("mx_ct_brazier", 1.8)],
   warzone: [X("mx_wz_ammo", 1.2), X("mx_wz_sandbags", 1.2), X("mx_supply_crate", 1), X("mx_battery_cell", 1.1), K("containers_A", 2.4), K("cargo_A_stacked", 2.4)],
   crystal: [X("mx_wz_ammo", 1.2), X("mx_supply_crate", 1), K("containers_A", 2.4), K("cargo_A_stacked", 2.4), K("spacetruck", 2), K("landingpad_small", 0.6), K("solarpanel", 1.4), K("windturbine_low", 4), K("structure_low", 3)],
   skyline: [X("mx_ct_brazier", 2), X("mx_supply_crate", 1), X("mx_battery_cell", 1.2), X("mx_wz_ammo", 1.1), X("computers", 1.2), X("iondrive", 1.8), X("robotarm", 2.4), X("teleporter", 1.6), X("holotree", 2.4), K("Screen_Retro_01", 1.6), K("Column_Vapor_01", 3), K("ElectricBox01_Art", 1.4), K("Tank", 1.8)],
-  parish: [X("mx_prop_trash_pile", 1.2), X("mx_vending_kiosk", 2.2), X("mx_veh_scooter", 1.2), X("mx_supply_crate", 1), X("mx_dr_rocks", 1), X("mx_battery_cell", 1.1), X("mx_car_taxi", 1.4), X("redbot", 2.2), X("robot", 1.4), X("computers", 1), X("mx_wz_ammo", 1), X("crate", 0.9), X("mx_map_crashed_mech", 2.4), X("holotree", 2), K("Robot", 1.6), K("Kiosco", 2.2), K("PoapMachine", 2), K("Tank", 1.6), K("containers_B", 2)],
+  // Nghĩa địa nhà thờ bỏ hoang: bia mộ, thánh giá, quan tài, chân nến, cây chết, đống đổ nát
+  parish: [X("mx_pr_gravestone", 1.1), X("mx_pr_stone_cross", 1.5), X("mx_pr_coffin", 0.7), X("mx_pr_candle_stand", 1.5), X("mx_pr_dead_tree", 3.2), X("mx_pr_broken_pew", 1), X("mx_prop_trash_pile", 1), X("mx_dr_rocks", 1), X("mx_pr_gravestone", 1)],
 };
 
 /** Vẽ một món trang trí bất kể nguồn */
@@ -206,6 +208,7 @@ export function SideDressing({ sim, entry, painted = false }: { sim: PlatformerS
 export function TopDressing({ sim }: { sim: PlatformerSim }) {
   const items = useMemo(() => {
     const r = rng(sim.width * 71 + sim.height * 3);
+    const parish = sim.def.theme === "parish";
     const smalls = SMALLS[sim.def.theme];
     const free = (c: number, y: number) => sim.tile(c, y) === ".";
     const wall = (c: number, y: number) => sim.tile(c, y) === "#";
@@ -222,8 +225,9 @@ export function TopDressing({ sim }: { sim: PlatformerSim }) {
         n++;
         const k = `${c},${y}`;
         const pos: [number, number, number] = [c + 0.5, -2, -(y + 0.5)];
-        if (n % 9 === 0) {
-          out.push(<StreetLamp key={`l${k}`} position={pos} color={NEON[n % NEON.length]} height={3.2} rotY={r() * 6.28} />);
+        if (n % (parish ? 13 : 11) === 0) {
+          // Giáo xứ: đèn lồng vàng ấm thay đèn đường neon
+          out.push(<StreetLamp key={`l${k}`} position={pos} color={parish ? "#ffb060" : NEON[n % 2 ? 1 : 0]} height={3.2} rotY={r() * 6.28} />);
           used.add(k);
         } else if (n % 4 === 0 && smalls.length) {
           out.push(<Thing key={`p${k}`} item={smalls[Math.floor(r() * smalls.length)]} position={pos} rotY={r() * 6.28} scale={0.85} />);
@@ -234,7 +238,7 @@ export function TopDressing({ sim }: { sim: PlatformerSim }) {
     let m = 0;
     for (let y = 2; y < sim.height - 2; y += 1)
       for (let c = 2; c < sim.width - 2; c++) {
-        if (!wall(c, y) || !free(c, y - 1)) continue;
+        if (parish || !wall(c, y) || !free(c, y - 1)) continue;
         if (++m % 11 !== 0) continue;
         out.push(
           <NeonSign key={`n${c},${y}`} position={[c + 0.5, -0.2 + r() * 0.8, -(y + 0.2)]} text={SIGNS[Math.floor(r() * SIGNS.length)]} color={NEON[Math.floor(r() * NEON.length)]} width={2.2} />,
@@ -252,15 +256,16 @@ export function TopDressing({ sim }: { sim: PlatformerSim }) {
       );
     }
     // Vũng nước phản chiếu neon trên sàn
-    for (let i = 0; i < 26; i++) {
+    // Vũng nước phản chiếu ánh neon trên sàn: mờ, ít, chỉ hai tông (không loè loẹt)
+    for (let i = 0; i < 12; i++) {
       const c = Math.floor(r() * sim.width);
       const y = Math.floor(r() * sim.height);
       if (!free(c, y)) continue;
-      const col = NEON[Math.floor(r() * NEON.length)];
+      const col = parish ? "#5a2a6a" : i % 2 ? "#00f0ff" : "#ff2fd0";
       out.push(
         <mesh key={`w${i}`} rotation-x={-Math.PI / 2} position={[c + 0.5, -1.98, -(y + 0.5)]} scale={[1 + r() * 1.5, 0.6 + r(), 1]}>
           <circleGeometry args={[0.8, 20]} />
-          <meshBasicMaterial color={col} transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+          <meshBasicMaterial color={col} transparent opacity={0.09} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
         </mesh>,
       );
     }

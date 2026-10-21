@@ -105,7 +105,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug },
+      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel },
     });
   }
   return null;

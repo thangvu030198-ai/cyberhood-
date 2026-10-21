@@ -25,7 +25,7 @@ export type LevelTheme = {
   /** Mặt sàn khi nhìn từ trên: tấm kim loại (mặc định) hoặc nhựa đường ướt kẻ lưới neon */
   floor?: "panel" | "neon";
   /** Bề mặt khối nền nhìn ngang: tấm kim loại (mặc định) hoặc sàn lưới sắt gỉ (cầu treo) */
-  tiles?: "panel" | "grate";
+  tiles?: "panel" | "grate" | "stone";
 };
 
 export const THEMES: Record<ThemeId, LevelTheme> = {
@@ -74,9 +74,10 @@ export const THEMES: Record<ThemeId, LevelTheme> = {
     fog: "#0e2a40",
     fogNear: 34,
     fogFar: 150,
-    hemi: { sky: "#d6f2ff", ground: "#0e2a3a", intensity: 2.1 },
-    key: { color: "#e0f8ff", intensity: 2.3 },
-    rim: { color: "#ff4fd8", intensity: 1.8 },
+    // Phố đêm: ánh trời dịu để toà nhà có khối sáng tối rõ, đèn cửa sổ / biển neon tự sáng nổi lên
+    hemi: { sky: "#9fc4ff", ground: "#0a1424", intensity: 1.15 },
+    key: { color: "#ffe2c8", intensity: 2.2 },
+    rim: { color: "#ff4fd8", intensity: 2.2 },
     tile: "#4a6a88",
     edge: [3, 0.5, 2.4],
     ledge: "#2ee6ff",
@@ -95,13 +96,14 @@ export const THEMES: Record<ThemeId, LevelTheme> = {
     hemi: { sky: "#ffe8d0", ground: "#2a1a1a", intensity: 1.9 },
     key: { color: "#ffd0a0", intensity: 2.4 },
     rim: { color: "#2fffd0", intensity: 1.6 },
-    tile: "#8a7464",
-    edge: [3, 1.6, 0.4],
+    tile: "#b8aca0",
+    // Mép đá chỉ ánh nến mờ, không phải dải neon
+    edge: [0.9, 0.55, 0.25],
     ledge: "#2fffd0",
     backFloor: "#1a1216",
     backSelfLit: 0.3,
     heroOutline: "#7dfff0",
-    tiles: "grate",
+    tiles: "stone",
   },
 
   // Warzone: bãi chiến trường dưới trời đỏ khói, đèn pha cam và cyan

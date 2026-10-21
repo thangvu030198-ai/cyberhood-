@@ -29,11 +29,13 @@ export const LEVEL_TUNING = {
     maxFall: 18,
     /** Tốc độ trượt khi bám tường */
     wallSlide: 3,
-    wallJumpVel: 12.5,
+    wallJumpVel: 11,
+    /** Giữ nút nhảy khi bám tường: tự đạp tiếp khi vận tốc lên giảm xuống dưới mức này */
+    autoClimbVy: 3,
     /** Lực đẩy ngang khi nhảy tường mà vẫn giữ hướng vào tường (leo tiếp) / bấm hướng ra ngoài */
-    wallKick: 4.2,
+    wallKick: 3.2,
     wallKickAway: 7.5,
-    wallJumpLock: 0.11,
+    wallJumpLock: 0.1,
     /** Cách tường trong khoảng này vẫn nhảy tường được */
     wallGrace: 0.35,
     coyote: 0.08,

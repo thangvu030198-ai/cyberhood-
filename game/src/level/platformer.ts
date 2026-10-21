@@ -92,6 +92,8 @@ export class PlatformerSim {
     knock: 0,
     /** Nhảy từ trạng thái lướt: giữ tốc độ lướt trên không */
     dashCarry: false,
+    /** Đang ở sát tường bên nào khi trên không (cho động tác leo/trượt tường) */
+    wallNear: 0 as -1 | 0 | 1,
   };
   enemies: Enemy[] = [];
   shots: Shot[] = [];
@@ -320,6 +322,17 @@ export class PlatformerSim {
       p.airDashUsed = false;
     }
 
+    // Giữ nút nhảy + giữ hướng vào tường: tự đạp tường leo lên liên tục, không phải bấm lại từng nhịp
+    if (
+      input.jump &&
+      dir !== 0 &&
+      !p.onGround &&
+      p.wallJumpLock <= 0 &&
+      p.vy <= P.autoClimbVy &&
+      this.touchingWall(p.x, p.y, p.w, p.h, dir as -1 | 1, P.wallGrace)
+    )
+      p.jumpBuffer = Math.max(p.jumpBuffer, dt);
+
     // Nhảy: từ đất (có thời gian ân hạn), hoặc nhảy tường
     if (p.jumpBuffer > 0) {
       if (p.coyote > 0) {
@@ -363,6 +376,12 @@ export class PlatformerSim {
     const m = this.move(p, dt);
     p.onGround = m.ground || this.standing(p.x, p.y, p.w);
     if (p.onGround && p.vy <= 0) p.dashCarry = false;
+    p.wallNear = 0;
+    if (!p.onGround) {
+      const toward = (dir !== 0 ? dir : p.facing) as -1 | 1;
+      if (this.touchingWall(p.x, p.y, p.w, p.h, toward, P.wallGrace)) p.wallNear = toward;
+      else if (this.touchingWall(p.x, p.y, p.w, p.h, -toward as -1 | 1, 0.12)) p.wallNear = -toward as -1 | 1;
+    }
     if (!wasGround && p.onGround) this.fx.push({ kind: "land", x: p.x, y: p.y, at: this.time });
 
     // Bắn: nhấn bắn đạn thường, giữ để nạp, thả ra bắn đạn nạp

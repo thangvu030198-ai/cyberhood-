@@ -125,6 +125,21 @@ describe("platformer: di chuyển", () => {
     expect(top).toBeGreaterThan(12.9);
   });
 
+  it("giữ hướng vào tường + giữ Space: tự leo đều lên tường, không văng xa khỏi tường", () => {
+    const sim = ready(testLevel((b) => b.ground(10, 11, 13)));
+    sim.player.x = 12.45;
+    let maxGap = 0;
+    let top = 0;
+    play(sim, 400, () => {
+      const p = sim.player;
+      top = Math.max(top, p.y);
+      if (p.y > 3 && p.y < 12) maxGap = Math.max(maxGap, p.x - p.w / 2 - 12);
+      return { left: true, jump: true };
+    });
+    expect(top).toBeGreaterThan(12.9);
+    expect(maxGap).toBeLessThan(0.45);
+  });
+
   it("đứng được trên bậc một chiều và nhảy xuyên từ dưới lên", () => {
     const sim = ready(testLevel((b) => b.ledge(4, 8, 4)));
     play(sim, 50, (f) => ({ jump: f < 30 }));

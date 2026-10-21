@@ -543,7 +543,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     hit: use(extraModel(`${base}_hit`)),
     death: use(extraModel(`${base}_death`)),
   };
-  const { rig, air } = useMemo(() => {
+  const { rig, air, climb } = useMemo(() => {
     const rig = buildRig(
       walk.scene,
       {
@@ -559,7 +559,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       0.6,
     );
     addOutline(rig.scene, theme.heroOutline, 0.022);
-    return { rig, air: airWindow(g.jump.animations[0]) };
+    return { rig, air: airWindow(g.jump.animations[0]), climb: new ClimbPose(rig.scene) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walk, theme, ...Object.values(g)]);
   const group = useRef<THREE.Group>(null);
@@ -569,16 +569,19 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
   const lean = useRef(0);
   const squash = useRef(1);
   const wasGround = useRef(true);
+  const lastDust = useRef(0);
   useFrame((_, dt) => {
     const p = sim.player;
     const o = group.current;
     if (!o) return;
     dt = Math.min(dt, 0.1);
     o.position.set(p.x, p.y, 0);
-    yaw.current = THREE.MathUtils.damp(yaw.current, faceYaw(p.wall !== 0 ? -p.wall : p.facing), 18, dt);
+    // Sát tường trên không: quay mặt vào tường để bám/leo; còn lại quay theo hướng chạy
+    const onWall = p.wallNear !== 0 && sim.status === "playing" && p.knock <= 0;
+    yaw.current = THREE.MathUtils.damp(yaw.current, faceYaw(onWall ? p.wallNear : p.facing), 16, dt);
     o.rotation.y = yaw.current;
     // Lướt: chúi người về trước; bám tường: ngả nhẹ ra khỏi tường. Đổi dần cho mượt
-    const leanTarget = p.dashTime > 0 ? -p.facing * 0.22 : p.wall !== 0 ? p.wall * 0.12 : 0;
+    const leanTarget = p.dashTime > 0 ? -p.facing * 0.22 : onWall ? -p.wallNear * 0.08 : 0;
     lean.current = THREE.MathUtils.damp(lean.current, leanTarget, 14, dt);
     o.rotation.z = lean.current;
     // Chạm đất: nén nhẹ rồi bật lại
@@ -605,6 +608,13 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     if (run) run.timeScale = p.dashTime > 0 ? 1.6 : 1.15;
     if (rig.actions.runshoot) rig.actions.runshoot.timeScale = Math.abs(p.vx) > 0.5 ? (p.dashTime > 0 ? 1.6 : 1.15) : 0.0001;
     rig.mixer.update(dt);
+    // Động tác leo / trượt tường đè lên tư thế của clip, trộn dần vào và ra
+    climb.apply(onWall ? p.wallNear : 0, p.vy, p.y, dt);
+    // Trượt tường: bụi bắn ra ở chỗ tay chân miết vào tường
+    if (onWall && p.vy < -1 && sim.time - lastDust.current > 0.12) {
+      lastDust.current = sim.time;
+      sim.fx.push({ kind: "land", x: p.x + p.wallNear * (p.w / 2), y: p.y + 0.4, at: sim.time });
+    }
     // Nhấp nháy khi bất tử sau khi trúng đòn
     o.visible = sim.status === "dead" || p.invuln <= 0 || Math.floor(sim.time * 20) % 2 === 0;
 
@@ -633,6 +643,65 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       <pointLight ref={light} intensity={9} distance={7} decay={1.6} color="#ffffff" />
     </>
   );
+}
+
+const _q = new THREE.Quaternion();
+const _pq = new THREE.Quaternion();
+const _d = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+
+/**
+ * Động tác bám và leo tường dựng bằng tay (bộ hoạt ảnh không có clip leo): xoay xương tay chân theo
+ * hướng trong không gian thế giới. Xương Meshy chạy dọc trục +Y nên chỉ cần quay +Y về hướng mong muốn.
+ * Đang lên: hai tay thay nhau vươn lên bám tường, chân đạp tường theo nhịp độ cao (leo tay đôi).
+ * Đang trượt xuống: một tay miết tường phía trên, chân co chống vào tường.
+ */
+class ClimbPose {
+  private bones: Record<string, THREE.Bone> = {};
+  private weight = 0;
+  private side: -1 | 1 = 1;
+  private rising = 0;
+
+  constructor(scene: THREE.Object3D) {
+    scene.traverse((o) => {
+      if ((o as THREE.Bone).isBone) this.bones[o.name] = o as THREE.Bone;
+    });
+  }
+
+  apply(wall: -1 | 0 | 1, vy: number, height: number, dt: number) {
+    if (wall !== 0) this.side = wall;
+    this.weight = THREE.MathUtils.damp(this.weight, wall !== 0 ? 1 : 0, wall !== 0 ? 16 : 10, dt);
+    this.rising = THREE.MathUtils.damp(this.rising, vy > 0.5 ? 1 : 0, 10, dt);
+    if (this.weight < 0.01) return;
+    const s = this.side;
+    // Nhịp leo theo độ cao đã leo: mỗi ~1.4m đổi tay
+    const c = Math.sin(height * 2.3);
+    const r = this.rising;
+    const mix = (a: [number, number, number], b: [number, number, number]) =>
+      [a[0] + (b[0] - a[0]) * r, a[1] + (b[1] - a[1]) * r, a[2] + (b[2] - a[2]) * r] as [number, number, number];
+    // [trượt, leo] cho từng xương; tay/chân "gần" là bên trái hay phải tuỳ hướng tường không quan trọng vì nhìn ngang
+    const pose: [string, [number, number, number]][] = [
+      ["Spine01", mix([s * 0.15, 1, 0], [s * 0.22, 1, 0])],
+      ["LeftArm", mix([s * 0.55, 0.8, 0.1], [s * 0.45, 0.55 + 0.4 * c, 0.15])],
+      ["LeftForeArm", mix([s * 0.45, 0.9, 0], [s * 0.3, 1, 0])],
+      ["RightArm", mix([-s * 0.25, -0.95, 0.2], [s * 0.45, 0.55 - 0.4 * c, -0.15])],
+      ["RightForeArm", mix([s * 0.2, -0.9, 0.3], [s * 0.3, 1, 0])],
+      ["LeftUpLeg", mix([s * 0.55, -0.45, 0.1], [s * 0.5, -0.55 - 0.35 * c, 0.1])],
+      ["LeftLeg", mix([s * 0.35, -0.95, 0], [s * 0.2, -1, 0])],
+      ["RightUpLeg", mix([s * 0.1, -1, -0.1], [s * 0.5, -0.55 + 0.35 * c, -0.1])],
+      ["RightLeg", mix([s * 0.05, -1, 0], [s * 0.2, -1, 0])],
+    ];
+    for (const [name, dir] of pose) {
+      const b = this.bones[name];
+      if (!b?.parent) continue;
+      b.parent.updateWorldMatrix(true, false);
+      b.parent.getWorldQuaternion(_pq);
+      _q.setFromUnitVectors(UP, _d.set(...dir).normalize());
+      _q.premultiply(_pq.invert());
+      b.quaternion.slerp(_q, this.weight);
+      b.updateMatrixWorld(true);
+    }
+  }
 }
 
 /** Khoảng thời gian nhân vật lơ lửng trong clip nhảy: đo từ độ cao xương Hips */

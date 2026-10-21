@@ -1295,6 +1295,8 @@ export function flash(scene: THREE.Object3D, amount: number, color: THREE.Color)
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
     const mat = m.material as THREE.MeshStandardMaterial;
+    // Viền sáng (vật liệu cơ bản, không có emissive) thì bỏ qua
+    if (!mat.emissive) return;
     if (!mat.userData.baseEmissive)
       mat.userData.baseEmissive = {
         c: mat.emissive.clone(),

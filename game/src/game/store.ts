@@ -1,6 +1,6 @@
 import type { HunterSkin } from "./skins";
 import { create } from "zustand";
-import { BLOCK_CENTERS, CITY_PITCH, DISTRICTS, districtIdAt } from "./config";
+import { BLOCK_CENTERS, CITY_PITCH, DISTRICTS, ENEMY_DAMAGE_MUL, districtIdAt } from "./config";
 import type { ItemId, NpcId } from "./story";
 
 export type Emote = "wave" | "dance" | "thumbsUp";
@@ -229,9 +229,10 @@ export const useGame = create<GameState>((set, get) => ({
   enterCar: (carId) => set({ mode: "drive", carId, nearCarId: null, emote: null, aiming: false, shopOpen: false }),
   exitCar: () => set({ mode: "foot", carId: null, speed: 0 }),
 
-  damagePlayer: (amount, opts) => {
+  damagePlayer: (raw, opts) => {
     const s = get();
     if (s.flatlinedAt !== null) return;
+    const amount = raw * ENEMY_DAMAGE_MUL;
     // Đang trong Mech: Mech chịu đòn thay người
     if (damageHook?.(amount, !!opts?.emp)) {
       set({ lastDamageAt: now() });

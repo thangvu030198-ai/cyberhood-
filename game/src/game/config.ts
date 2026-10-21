@@ -64,6 +64,10 @@ export function mulberry32(seed: number) {
 }
 
 /** Vùng An toàn (Hub) quanh điểm xuất phát: địch không vào, không bắn (GDD mục 4A.2) */
+/** Hệ số sát thương địch gây cho người chơi (1 = gốc). Đang để thấp cho dễ trải nghiệm hệ thống;
+ * áp dụng chung cho drone, lính Legion, trùm, zombie và quái (đổi một số ở đây là đủ) */
+export const ENEMY_DAMAGE_MUL = 0.25;
+
 export const SAFE_ZONE = { x: 0, z: 6, r: 26 };
 /** Vùng cách ly phía tây ngoài thành phố: tàn tích sau đợt bùng phát, zombie cyber lang thang */
 export const QUARANTINE = { x: -CITY_HALF - 58, z: 48, r: 48 };

@@ -582,7 +582,15 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       sim.mode === "topdown" ? -DEPTH / 2 + TOP_WALL : DEPTH / 2,
     );
     place(refs.ledges.current, data.ledges, 0.88);
-    place(refs.spikes.current, data.spikes, 0.3);
+    if (sim.mode === "topdown") {
+      // Đi 8 hướng: gai dựng đứng trên sàn, đặt giữa ô
+      const sp = refs.spikes.current;
+      if (sp) {
+        const rot = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+        data.spikes.forEach(([c, r], i) => sp.setMatrixAt(i, rot.clone().setPosition(c + 0.5, r + 0.5, -DEPTH / 2 + 0.3)));
+        sp.instanceMatrix.needsUpdate = true;
+      }
+    } else place(refs.spikes.current, data.spikes, 0.3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
   return (

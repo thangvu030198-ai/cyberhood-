@@ -11,7 +11,7 @@ import { CITY, CITY_HALF, NEON_COLORS, mulberry32 } from "./config";
 const SIDEWALK = CITY.SIDEWALK_HEIGHT;
 
 /** Bản sao của scene, thu phóng cho chiều cao (hoặc cạnh dài nhất) bằng `size`, đáy đặt ở y = 0 */
-function useFitted(name: ExtraModel, size: number, by: "height" | "longest" = "height") {
+function useFitted(name: ExtraModel, size: number, by: "height" | "longest" = "height", selfLit = 0) {
   const gltf = use(extraModel(name));
   return useMemo(() => {
     const root = new THREE.Group();
@@ -30,10 +30,16 @@ function useFitted(name: ExtraModel, size: number, by: "height" | "longest" = "h
       const mat = m.material as THREE.MeshStandardMaterial;
       // Vật liệu phát sáng sáng hơn để bloom bắt được
       if (mat.emissiveMap || (mat.emissive && mat.emissive.getHex() !== 0)) mat.emissiveIntensity = Math.max(mat.emissiveIntensity, 2);
+      else if (selfLit > 0 && mat.isMeshStandardMaterial) {
+        // Model không có đèn riêng: tự sáng nhẹ theo texture để không chìm trong đêm
+        mat.emissiveMap = mat.map;
+        mat.emissive.set(mat.map ? "#ffffff" : mat.color);
+        mat.emissiveIntensity = selfLit;
+      }
     });
     root.add(scene);
     return { root, animations: gltf.animations, scene };
-  }, [gltf, size, by]);
+  }, [gltf, size, by, selfLit]);
 }
 
 /** Chạy clip đầu tiên (hoặc clip được chỉ định) của model lặp lại */
@@ -129,7 +135,7 @@ const FLEET: { kind: FleetKind; size: number; share: number }[] = [
 
 /** Gộp mọi lưới của model thành danh sách (geometry, material, ma trận) để vẽ bằng InstancedMesh */
 function useFleetParts(kind: FleetKind, size: number) {
-  const { root } = useFitted(kind, size, "longest");
+  const { root } = useFitted(kind, size, "longest", 0.55);
   return useMemo(() => {
     root.updateMatrixWorld(true);
     const parts: { geometry: THREE.BufferGeometry; material: THREE.Material; matrix: THREE.Matrix4 }[] = [];
@@ -211,7 +217,7 @@ function SkyFleet({ count = 26 }: { count?: number }) {
 // Công trình điểm nhấn: khu phố Nhật thu nhỏ có chuyển động ở rìa thành phố, skyline đỏ phía xa
 
 function TokyoLandmark() {
-  const { root, animations, scene } = useFitted("tokyo", 46, "longest");
+  const { root, animations, scene } = useFitted("tokyo", 46, "longest", 0.5);
   useLoop(scene, animations, undefined, 0.6);
   return (
     <group position={[-CITY_HALF - 34, 0, -24]} rotation={[0, Math.PI / 2, 0]}>

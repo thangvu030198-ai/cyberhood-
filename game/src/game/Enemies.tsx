@@ -292,6 +292,12 @@ function BossModel({ index }: { index: number }) {
       m.frustumCulled = false;
       const mat = (m.material as THREE.MeshStandardMaterial).clone();
       mat.emissiveIntensity = Math.max(mat.emissiveIntensity, 2.5);
+      // Giáp đỏ sẫm dễ chìm trong đêm: thêm chút tự sáng theo texture
+      if (!mat.emissiveMap && mat.map) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#ffffff");
+        mat.emissiveIntensity = 0.35;
+      }
       m.material = mat;
       glow.push({ mat, base: mat.emissive.clone() });
     });
@@ -332,6 +338,7 @@ function BossModel({ index }: { index: number }) {
   return (
     <group ref={ref} visible={false}>
       <primitive object={scene} />
+      <pointLight position={[0, 2, 3]} color="#ff3a2a" intensity={60} distance={14} decay={2} />
     </group>
   );
 }

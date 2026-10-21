@@ -244,6 +244,7 @@ function Car({ spec }: { spec: CarSpec }) {
   // ecctrl: useFrame của bánh xe chạy trước thân xe ở frame đầu, khi trọng lực còn bằng 0,
   // sinh NaN làm hỏng Rapier. Chỉ gắn bánh sau khi thân xe đã đọc được trọng lực.
   const [wheelsOn, setWheelsOn] = useState(false);
+  const flippedFor = useRef(0);
 
   useFrame(() => {
     const car = ref.current;
@@ -254,6 +255,14 @@ function Car({ spec }: { spec: CarSpec }) {
     }
     if (!active) {
       car.setMovement({ forward: false, backward: false, steerLeft: false, steerRight: false, brake: true });
+      // Xe bỏ lại trong tư thế lật thì tự lật lại sau một lúc, tránh nằm chắn đường
+      if (car.bodyYAxis.y < 0.4) {
+        flippedFor.current += 1 / 60;
+        if (flippedFor.current > 2.5) {
+          flipCarUpright(spec.id);
+          flippedFor.current = 0;
+        }
+      } else flippedFor.current = 0;
       return;
     }
     const keys = getKeys() as Record<string, boolean>;

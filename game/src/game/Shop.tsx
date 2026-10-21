@@ -13,7 +13,8 @@ function Kiosk() {
   return (
     <group>
       {/* quầy */}
-      <mesh position={[0, 0.55, 0]}>
+      {/* Quầy và mái chặn camera: camera tự tiến lại gần thay vì lùi ra sau lưng quầy */}
+      <mesh position={[0, 0.55, 0]} userData={{ cameraCollider: true }}>
         <boxGeometry args={[1, 1.1, 3]} />
         <meshStandardMaterial color="#151021" metalness={0.7} roughness={0.35} />
       </mesh>
@@ -22,9 +23,14 @@ function Kiosk() {
         <meshBasicMaterial color={glow} toneMapped={false} />
       </mesh>
       {/* mái che và biển hiệu */}
-      <mesh position={[0.4, 3, 0]}>
+      <mesh position={[0.4, 3, 0]} userData={{ cameraCollider: true }}>
         <boxGeometry args={[2.4, 0.12, 3.6]} />
-        <meshStandardMaterial color="#1d1630" metalness={0.6} roughness={0.4} />
+        {/* Mái nhám, tối: không phản chiếu ánh neon thành mảng hồng chói */}
+        <meshStandardMaterial color="#0e0b16" metalness={0.1} roughness={0.9} envMapIntensity={0.2} />
+      </mesh>
+      <mesh position={[-0.81, 2.94, 0]}>
+        <boxGeometry args={[0.03, 0.04, 3.6]} />
+        <meshBasicMaterial color={glow} toneMapped={false} />
       </mesh>
       <mesh position={[-0.82, 3.5, 0]} rotation={[0, -Math.PI / 2, 0]}>
         <planeGeometry args={[3.6, 0.9]} />

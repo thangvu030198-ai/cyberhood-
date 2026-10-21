@@ -35,6 +35,8 @@ import { HUB_PEACEFUL } from "./game/config";
 import { LedBoards } from "./game/LedBoards";
 import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
+import { DuelCanvas, DuelHud } from "./level/DuelScene";
+import { useDuel } from "./level/duelSession";
 import { enterLevel, playLevel, useLevel } from "./level/session";
 
 const KEYMAP = [
@@ -108,6 +110,7 @@ export default function App() {
   const quality = useGame((s) => s.quality);
   // Trong màn đi ngang: thành phố đứng hình (không vẽ, không chạy) nhưng vẫn giữ nguyên trạng thái
   const inLevel = useGame((s) => s.location === "level");
+  const inDuel = useDuel((s) => s.sim !== null);
   return (
     <Crash>
       <KeyboardControls map={KEYMAP}>
@@ -165,8 +168,17 @@ export default function App() {
         </Canvas>
         {inLevel ? (
           <Suspense fallback={null}>
-            <LevelCanvas />
-            <LevelHud />
+            {inDuel ? (
+              <>
+                <DuelCanvas />
+                <DuelHud />
+              </>
+            ) : (
+              <>
+                <LevelCanvas />
+                <LevelHud />
+              </>
+            )}
           </Suspense>
         ) : (
           <Hud />

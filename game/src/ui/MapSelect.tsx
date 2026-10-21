@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { LEVELS, isUnlocked } from "../level/registry";
 import { playLevel, useLevel } from "../level/session";
 import { viewById } from "../level/views";
+import { useDuel } from "../level/duelSession";
 import { useHunter } from "../game/hunter";
 
 const MODE_LABEL = { platform: "Đi ngang", climb: "Leo tháp", shmup: "Bay bắn", topdown: "Đi 8 hướng" } as const;
@@ -56,6 +57,23 @@ export function MapSelect() {
             </li>
           );
         })}
+        <li className={cleared.includes(LEVELS[0].def.id) ? "" : "locked"}>
+          <button
+            disabled={!cleared.includes(LEVELS[0].def.id)}
+            onClick={() => {
+              setSelecting(false);
+              useDuel.getState().start();
+            }}
+          >
+            <span className="map-select__num">★</span>
+            <span className="map-select__body">
+              <b>ĐẤU TRƯỜNG</b>
+              <span>Đối kháng 1 chọi 1 với Vệ binh Citadel trên sàn đấu. Thắng nhận CRED và Chìa rương.</span>
+              <small>Đối kháng · nhìn ngang sàn đấu 3D (học từ Bloody Roar 2 · Tekken PS1) · không tốn năng lượng</small>
+            </span>
+            <span className="map-select__state">{cleared.includes(LEVELS[0].def.id) ? "VÀO" : `Qua ${LEVELS[0].def.name}`}</span>
+          </button>
+        </li>
       </ol>
       <footer className="bag__foot">
         <button className="lv__btn lv__btn--ghost" onClick={() => setSelecting(false)}>

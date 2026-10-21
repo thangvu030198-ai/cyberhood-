@@ -36,7 +36,7 @@ import { THEMES, type LevelTheme } from "./themes";
 import { levelById, type LevelEntry, type RigLook } from "./registry";
 
 /** Model tải lỗi (mạng, file thiếu) chỉ làm món đó biến mất, không làm sập cả màn */
-class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
+export class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
@@ -1217,14 +1217,14 @@ function Prop({
 // ---------------------------------------------------------------------------
 // Nhân vật có xương: dựng một lần, đổi clip bằng crossfade
 
-type Rig = {
+export type Rig = {
   scene: THREE.Object3D;
   mixer: THREE.AnimationMixer;
   actions: Record<string, THREE.AnimationAction>;
   current: string;
 };
 
-function buildRig(
+export function buildRig(
   base: THREE.Object3D,
   clips: Record<string, THREE.AnimationClip | undefined>,
   height: number,
@@ -1272,7 +1272,7 @@ function buildRig(
   };
 }
 
-function setAnim(rig: Rig, name: string, fade = 0.15, restart = false) {
+export function setAnim(rig: Rig, name: string, fade = 0.15, restart = false) {
   const next = rig.actions[name];
   if (!next || (rig.current === name && !restart)) return;
   const prev = rig.actions[rig.current];
@@ -1282,7 +1282,7 @@ function setAnim(rig: Rig, name: string, fade = 0.15, restart = false) {
 }
 
 /** Tô màu đỏ / trắng khi trúng đạn, nhấp nháy khi bất tử */
-function flash(scene: THREE.Object3D, amount: number, color: THREE.Color) {
+export function flash(scene: THREE.Object3D, amount: number, color: THREE.Color) {
   scene.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
@@ -1309,8 +1309,8 @@ function flash(scene: THREE.Object3D, amount: number, color: THREE.Color) {
     }
   });
 }
-const WHITE = new THREE.Color(1, 1, 1);
-const RED = new THREE.Color(1, 0.15, 0.1);
+export const WHITE = new THREE.Color(1, 1, 1);
+export const RED = new THREE.Color(1, 0.15, 0.1);
 
 /** Hướng mặt: model Meshy nhìn +Z; quay về phía chạy nhưng chếch về camera một chút để thấy mặt */
 const faceYaw = (facing: number) => facing * (Math.PI / 2 - 0.35);
@@ -1590,7 +1590,7 @@ function airWindow(clip: THREE.AnimationClip | undefined) {
 }
 
 /** Viền sáng quanh nhân vật: vỏ lưới mặt sau phình ra theo pháp tuyến, dùng chung bộ xương */
-function addOutline(
+export function addOutline(
   scene: THREE.Object3D,
   color: string,
   worldThickness: number,

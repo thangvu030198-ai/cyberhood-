@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GearBag } from "./GearBag";
 import { PALETTE } from "../game/config";
 import { chooseDialogue, currentStep } from "../game/quests";
 import { useGame } from "../game/store";
@@ -204,7 +205,9 @@ export function InventoryPanel() {
           <dd>{done}/5</dd>
         </dl>
       </header>
-      <h3 className="bag__section">Túi đồ</h3>
+      <h3 className="bag__section">Trang bị · Túi đồ</h3>
+      <GearBag />
+      <h3 className="bag__section">Vật phẩm</h3>
       {items.length === 0 ? (
         <p className="bag__empty">Trống. Mua Stim Pack ở quầy của Vex.</p>
       ) : (

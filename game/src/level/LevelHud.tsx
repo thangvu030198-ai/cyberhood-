@@ -2,7 +2,7 @@
 // menu tạm dừng (Esc) và nút cảm ứng trên điện thoại.
 
 import { useEffect, useState } from "react";
-import { LEVEL_TUNING as T } from "./levelTuning";
+import { GEAR } from "./gear";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { LEVEL_REWARD, useLevel } from "./session";
 import type { Input } from "./platformer";
@@ -75,10 +75,10 @@ export function LevelHud() {
           </span>
         </div>
       )}
-      <div className="lv__hp" aria-label={`Máu ${p.hp}/${T.player.maxHp}`}>
+      <div className="lv__hp" aria-label={`Máu ${p.hp}/${sim.maxHp}`}>
         <span className="lv__hp-tag">X</span>
         <div className="lv__bar">
-          {Array.from({ length: T.player.maxHp }, (_, i) => (
+          {Array.from({ length: sim.maxHp }, (_, i) => (
             <i key={i} className={i < p.hp ? "on" : ""} />
           ))}
         </div>
@@ -101,6 +101,11 @@ export function LevelHud() {
         </span>
         <span className="lv__loot">
           Chìa rương ×{sim.chestKeys} · Linh kiện {sim.collected.filter((d) => d.kind === "part").length}
+          {sim.collected.some((d) => d.kind === "gear") && ` · Trang bị ${sim.collected.filter((d) => d.kind === "gear").length}`}
+        </span>
+        <span className="lv__weapon">
+          {sim.weapon === "buster" ? "Súng tay X-Buster" : GEAR[sim.weapon].name}
+          {sim.armor !== "none" && ` · ${GEAR[sim.armor].name}`}
         </span>
       </div>
       <ul className="lv__feed">

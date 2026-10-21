@@ -69,3 +69,22 @@ describe("đối kháng 1v1", () => {
     expect(sim.player.hp).toBeLessThan(DUEL.maxHp);
   });
 });
+
+describe("thang đấu trường", () => {
+  it("đối thủ bậc cao nhiều máu hơn và đánh đau hơn", async () => {
+    const { DuelSim, RIVALS, DUEL } = await import("./duel");
+    const weak = new DuelSim(1, RIVALS[0]);
+    const champ = new DuelSim(1, RIVALS[RIVALS.length - 1]);
+    expect(champ.foe.hp).toBeGreaterThan(weak.foe.hp);
+    for (const sim of [weak, champ]) {
+      sim.status = "fight";
+      sim.foe.x = sim.player.x + 1;
+      sim.foe.facing = -1;
+      sim.foe.move = "punch";
+      sim.foe.moveAt = sim.time - DUEL.moves.punch.startup;
+    }
+    weak.step({ left: false, right: false, jump: false, block: false, punch: false, kick: false });
+    champ.step({ left: false, right: false, jump: false, block: false, punch: false, kick: false });
+    expect(DUEL.maxHp - champ.player.hp).toBeGreaterThan(DUEL.maxHp - weak.player.hp);
+  });
+});

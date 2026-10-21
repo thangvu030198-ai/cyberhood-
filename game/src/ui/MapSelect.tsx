@@ -5,6 +5,7 @@ import { LEVELS, isUnlocked } from "../level/registry";
 import { playLevel, useLevel } from "../level/session";
 import { viewById } from "../level/views";
 import { useDuel } from "../level/duelSession";
+import { RIVALS } from "../level/duel";
 import { useKart } from "../level/KartScene";
 import { useHunter } from "../game/hunter";
 
@@ -15,6 +16,7 @@ export function MapSelect() {
   const cleared = useLevel((s) => s.cleared);
   const setSelecting = useLevel((s) => s.setSelecting);
   const inContract = useHunter((s) => s.contract !== null);
+  const beaten = useDuel((s) => s.beaten);
   useEffect(() => {
     if (!selecting) return;
     const onKey = (e: KeyboardEvent) => {
@@ -44,6 +46,7 @@ export function MapSelect() {
             <li key={l.def.id} className={open ? "" : "locked"}>
               <button disabled={!open} onClick={() => playLevel(l.def.id)}>
                 <span className="map-select__num">{l.side ? "★" : i + 1}</span>
+                <img className="map-select__art" src={`icons/maps/${l.def.id}.webp`} alt="" />
                 <span className="map-select__body">
                   <b>
                     {l.def.name} {done && <em>ĐÃ QUA</em>}
@@ -67,6 +70,7 @@ export function MapSelect() {
             }}
           >
             <span className="map-select__num">★</span>
+            <img className="map-select__art" src="icons/maps/kart.webp" alt="" />
             <span className="map-select__body">
               <b>ĐƯỜNG ĐUA NEON LOOP</b>
               <span>Đua 3 vòng với 5 tay đua Legion. Tấm tăng tốc, hộp turbo / tên lửa. Về nhất nhận Chìa rương.</span>
@@ -84,9 +88,15 @@ export function MapSelect() {
             }}
           >
             <span className="map-select__num">★</span>
+            <img className="map-select__art" src="icons/maps/duel.webp" alt="" />
             <span className="map-select__body">
-              <b>ĐẤU TRƯỜNG</b>
-              <span>Đối kháng 1 chọi 1 với Vệ binh Citadel trên sàn đấu. Thắng nhận CRED và Chìa rương.</span>
+              <b>
+                ĐẤU TRƯỜNG NGAI SẮT · bậc {Math.min(beaten + 1, RIVALS.length)}/{RIVALS.length}
+              </b>
+              <span>
+                Thang 8 đối thủ: goblin, hiệp sĩ, chiến binh sói, Thần Đá… tới nhà vô địch {RIVALS[RIVALS.length - 1].name}. Hạ nhà vô địch nhận trang bị Sử thi trở lên.
+                Trận tới: <b>{RIVALS[Math.min(beaten, RIVALS.length - 1)].name}</b>.
+              </span>
               <small>Đối kháng · nhìn ngang sàn đấu 3D (học từ Bloody Roar 2 · Tekken PS1) · không tốn năng lượng</small>
             </span>
             <span className="map-select__state">{cleared.includes(LEVELS[0].def.id) ? "VÀO" : `Qua ${LEVELS[0].def.name}`}</span>

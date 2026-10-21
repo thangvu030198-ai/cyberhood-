@@ -59,6 +59,20 @@ export const LEVEL_TUNING = {
     full: { speed: 24, r: 0.65, dmg: 6 },
   },
 
+  /** Vũ khí trang bị (gear.ts): tốc độ, cỡ, tầm của từng kiểu bắn */
+  gear: {
+    auto: { speed: 26, r: 0.16, life: 0.9 },
+    spread: { speed: 20, r: 0.17, life: 0.32, arc: 0.7 },
+    rail: { speed: 42, r: 0.14, life: 0.8 },
+    /** Cung: tốc độ tên [chưa kéo, kéo đầy], sát thương cộng thêm khi kéo đầy, kéo tối thiểu */
+    bow: { speed: [16, 32] as [number, number], bonus: 8, minPower: 0.15 },
+    /** Kiếm: nhát chém cách thân bao xa, bán kính, thời gian tồn tại; sóng kiếm bay bao lâu */
+    blade: { reach: 1, r: 1.1, sweepR: 1.3, life: 0.14, waveLife: 0.9 },
+    /** Lưỡi băng: địch chậm còn bao nhiêu phần, trong bao lâu */
+    frostSlow: 0.45,
+    frostTime: 2,
+  },
+
   /** Leo tháp (Hollow Hotel): sương ma dâng từ dưới */
   climb: { speed: 0.75, delay: 3, startBelow: 7, catchUpGap: 11, catchUpMul: 2.2 },
 

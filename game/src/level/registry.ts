@@ -5,12 +5,20 @@ import type { ExtraModel } from "../game/assets";
 import type { MapId } from "../sim/config";
 import type { KeyId } from "../sim/season";
 import { LEVEL_1 } from "./level1";
-import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_HUNT, LEVEL_WARZONE } from "./maps";
+import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_HUNT, LEVEL_PARISH, LEVEL_WARZONE } from "./maps";
 import type { LevelDef } from "./platformer";
 import type { ViewId } from "./views";
 
-/** Model địch có xương: tên gốc + clip (tên clip → hậu tố file) + chiều cao */
+/** Model địch có xương: tên gốc + clip (tên clip → hậu tố file, hoặc đủ tên "mx_..." để mượn clip của model khác) + chiều cao */
 export type RigLook = { base: string; clips: Record<string, string>; height: number };
+/**
+ * Model địch không xương (sinh vật kỳ dị không rig được): chuyển động dựng bằng tay.
+ * float: trôi lơ lửng, lắc lư; crawl: bò sát đất, nhún theo bước; fly: bay lượn, chao cánh
+ */
+export type StaticLook = { model: ExtraModel; height: number; motion: "float" | "crawl" | "fly" };
+export type Look = RigLook | StaticLook;
+/** Một kiểu hoặc một nhóm kiểu (mỗi địch lấy một kiểu theo số thứ tự, cho đám đông đa dạng) */
+export type LookSet = Look | Look[];
 
 export type Prop = { name: ExtraModel; height: number; at: [number, number, number]; rot?: number; selfLit?: number };
 
@@ -26,8 +34,8 @@ export type LevelEntry = {
   view: ViewId;
   /** Kiểu chơi một dòng, hiện ở bảng chọn map và lúc vào màn */
   howTo: string;
-  /** Model cho lính / zombie / trùm (drone dùng chung) */
-  looks: { trooper: RigLook; zombie: RigLook; boss: RigLook };
+  /** Model cho lính / zombie / trùm; drone mặc định là drone Kamdo */
+  looks: { trooper: LookSet; zombie: LookSet; boss: Look; drone?: LookSet };
   bossName: string;
   /** Map phụ (chế độ chơi khác): mở khi đã qua map đầu tiên, không chặn map chính */
   side?: boolean;
@@ -40,6 +48,25 @@ export type LevelEntry = {
 const TROOPER: RigLook = { base: "mx_legion_android", clips: { walk: "walk", idle: "idle", shoot: "walkshoot", death: "death" }, height: 1.9 };
 const zombieLook = (base: string, height = 1.85): RigLook => ({ base, clips: { walk: "walk", run: "run", attack: "attack", death: "death", hit: "stagger" }, height });
 const monster = (base: string, height: number): RigLook => ({ base, clips: { walk: "walk", run: "run", attack: "attack", death: "death", scream: "scream", hit: "stagger" }, height });
+/** Zombie rig mới (model người chơi tải lên): đi/chạy của chính nó, đòn đánh / chết / khựng mượn của zombie gốc */
+const drZombie = (name: string, height = 1.85, ownRun = true): RigLook => ({
+  base: `mx_dr_${name}`,
+  clips: { walk: "walk", run: ownRun ? "run" : "mx_zmb_runner_run", attack: "mx_zmb_walker_attack", death: "mx_zmb_walker_death", hit: "mx_zmb_walker_stagger" },
+  height,
+});
+/** Trùm rig mới: mượn bộ đòn của Quái Đột Biến */
+const drBoss = (name: string, height: number, ownRun = true): RigLook => ({
+  base: `mx_dr_${name}`,
+  clips: { walk: "walk", run: ownRun ? "run" : "mx_mon_mutant_run", attack: "mx_mon_mutant_attack", death: "mx_mon_mutant_death", scream: "mx_mon_mutant_scream", hit: "mx_mon_mutant_stagger" },
+  height,
+});
+/** Lính cận chiến rig mới (hiệp sĩ): mượn đòn chém của lính Citadel */
+const drGuard = (name: string, height = 1.95): RigLook => ({
+  base: `mx_dr_${name}`,
+  clips: { walk: "walk", idle: "walk", shoot: "mx_ct_guard_attack", death: "mx_ct_guard_death" },
+  height,
+});
+const still = (name: string, height: number, motion: StaticLook["motion"]): StaticLook => ({ model: `mx_dr_${name}` as ExtraModel, height, motion });
 
 export const LEVELS: LevelEntry[] = [
   {
@@ -51,7 +78,12 @@ export const LEVELS: LevelEntry[] = [
     blurb: "Vùng cách ly ven Neon City. Zombie cyber và lính Legion canh giữ.",
     view: "classic",
     howTo: "Chạy · nhảy · bắn ngang kiểu Mega Man X. Leo tường, lướt qua hố.",
-    looks: { trooper: TROOPER, zombie: zombieLook("mx_zmb_walker"), boss: monster("mx_mon_robot_reaper", 3.6) },
+    looks: {
+      trooper: TROOPER,
+      // Vùng cách ly: đủ kiểu người nhiễm (zombie gốc + 5 zombie Meshy mới)
+      zombie: [zombieLook("mx_zmb_walker"), drZombie("zmb_jeans"), drZombie("zmb_shirt"), drZombie("zmb_gut", 1.8), drZombie("zmb_walker2", 1.8, false), drZombie("zmb_vest")],
+      boss: monster("mx_mon_robot_reaper", 3.6),
+    },
     bossName: "Robot Reaper",
     backBuildings: ["mx_bld_factory", "mx_bld_apartment", "mx_bld_clinic", "mx_bld_tower_round", "mx_bld_police_station", "mx_bld_skyscraper", "mx_bld_hotel", "mx_bld_capsule_hotel"],
     props: [
@@ -76,31 +108,31 @@ export const LEVELS: LevelEntry[] = [
     key: "jade",
     keyLabel: "Chìa Ngọc Bích",
     mapMultiplier: 1.2,
-    blurb: "Tháp khách sạn ma. Sương ma dâng từ dưới lên: leo thật nhanh lên sân thượng.",
+    blurb: "Khách sạn cổ đổ sụp vào hang đá gothic. Cầu sắt, ván gỗ treo qua vực sâu; đèn chùm, đàn piano, sách vở vương vãi.",
     view: "ps2",
-    howTo: "Leo ngược lên tháp kiểu Ice Climber. Nhảy xuyên bậc từ dưới lên, chậm là bị sương nuốt.",
-    looks: { trooper: TROOPER, zombie: zombieLook("mx_hh_ghost", 1.75), boss: monster("mx_mon_mutant", 3.4) },
-    bossName: "Quái Đột Biến",
-    backBuildings: ["mx_bld_hotel", "mx_bld_nightclub", "mx_bld_capsule_hotel"],
+    howTo: "Vượt cầu treo qua vực (rơi là mất mạng). Nhảy, leo vách đá, lướt qua khe rộng; bậc ván gãy giấu rương.",
+    looks: {
+      trooper: TROOPER,
+      // Khách trọ ma: hồn ma bellhop, cô dâu tóc dài, đứa trẻ rỗng ruột
+      zombie: [zombieLook("mx_hh_ghost", 1.75), drZombie("bride", 1.8), drZombie("child", 1.45, false)],
+      // Quỷ nhiều tay trôi lơ lửng thay drone
+      drone: still("wraith", 2.2, "float"),
+      boss: drBoss("madre", 3.6, false),
+    },
+    bossName: "La Madre · Bà Mẹ Than Khóc",
+    backBuildings: ["mx_map_ruins"],
     props: [
-      { name: "mx_hh_reception", height: 2, at: [8, 2, -2.2] },
-      { name: "mx_hh_planter", height: 3, at: [3.5, 2, -1.8] },
-      { name: "mx_hh_planter", height: 3, at: [26.5, 2, -1.8] },
-      { name: "mx_hh_luggage_cart", height: 1.8, at: [21, 2, -2] },
-      { name: "mx_hh_chandelier", height: 3, at: [15, 13, -3], selfLit: 0.6 },
-      { name: "mx_hh_armchair", height: 1.4, at: [12, 17, -2], rot: 0.3 },
-      { name: "mx_hh_piano", height: 1.6, at: [17, 17, -2.6], rot: 0.4 },
-      { name: "mx_hh_elevator", height: 4, at: [15, 28, -2.6] },
-      { name: "mx_hh_elevator", height: 4, at: [15, 36, -2.6] },
-      { name: "mx_hh_armchair", height: 1.4, at: [6, 44, -2], rot: -0.3 },
-      { name: "mx_hh_planter", height: 3, at: [24, 44, -1.8] },
-      { name: "mx_hh_chandelier", height: 3, at: [15, 56, -3], selfLit: 0.6 },
-      { name: "mx_hh_luggage_cart", height: 1.8, at: [10, 63, -2], rot: 3.1 },
-      { name: "mx_hh_chandelier", height: 3, at: [15, 75, -3], selfLit: 0.6 },
-      { name: "mx_hh_piano", height: 1.7, at: [8, 82, -2.6], rot: -0.3 },
-      { name: "mx_hh_chandelier", height: 3.4, at: [15, 94, -3], selfLit: 0.7 },
-      // Mặt tiền khách sạn khổng lồ phía sau tháp
-      { name: "mx_map_hollow_hotel", height: 120, at: [15, -6, -46], selfLit: 0.25 },
+      { name: "mx_hh_reception", height: 2, at: [5, 8, -1.6] },
+      { name: "mx_hh_piano", height: 1.7, at: [36, 10, -1.4], rot: 0.4 },
+      { name: "mx_hh_elevator", height: 4.2, at: [67, 8, -2.4], selfLit: 0.5 },
+      { name: "mx_hh_armchair", height: 1.4, at: [99, 13, -1.4], rot: -0.3 },
+      { name: "mx_hh_planter", height: 3, at: [133, 11, -1.6] },
+      { name: "mx_hh_piano", height: 1.8, at: [170, 8, -2.2], rot: -0.5 },
+      { name: "mx_hh_reception", height: 2.2, at: [192, 8, -2.4] },
+      // Dinh thự và nhà thờ cổ chìm sâu trong lòng hang
+      { name: "mx_dr_mansion", height: 18, at: [60, -14, -40], selfLit: 0.35 },
+      { name: "mx_dr_church", height: 26, at: [140, -16, -46], selfLit: 0.35 },
+      { name: "mx_map_hollow_hotel", height: 60, at: [100, -20, -70], selfLit: 0.3 },
     ],
   },
   {
@@ -115,9 +147,11 @@ export const LEVELS: LevelEntry[] = [
     looks: {
       trooper: { base: "mx_wz_heavy", clips: { walk: "walk", idle: "walk", shoot: "walkshoot", death: "death" }, height: 1.95 },
       zombie: zombieLook("mx_zmb_soldier"),
-      boss: monster("mx_mon_cyborg_hound_rider", 3.4),
+      // Rồng đen bay thành đàn trong hẻm núi, Rồng Vàng canh cuối hẻm
+      drone: still("dragon", 2.6, "fly"),
+      boss: still("golddragon", 5, "fly"),
     },
-    bossName: "Kỵ Sĩ Chó Máy",
+    bossName: "Rồng Vàng Canh Hẻm",
     backBuildings: ["mx_map_bunker", "mx_bld_factory", "mx_map_radio_tower", "mx_map_ruins"],
     props: [
       { name: "mx_wz_crystal", height: 6, at: [22, 0, -7], selfLit: 0.5 },
@@ -144,13 +178,15 @@ export const LEVELS: LevelEntry[] = [
     view: "cinema",
     howTo: "Đột kích pháo đài kiểu Shinobi: camera điện ảnh, trận trùm có khung hình rộng.",
     looks: {
-      trooper: { base: "mx_ct_guard", clips: { walk: "walk", idle: "walk", shoot: "attack", death: "death" }, height: 1.95 },
-      zombie: zombieLook("mx_zmb_cyborg"),
+      // Vệ binh pháo đài: lính Citadel, hiệp sĩ giáp bạc, hiệp sĩ hắc diện
+      trooper: [{ base: "mx_ct_guard", clips: { walk: "walk", idle: "walk", shoot: "attack", death: "death" }, height: 1.95 }, drGuard("knight"), drGuard("obsidian", 2)],
+      zombie: [zombieLook("mx_zmb_cyborg"), drZombie("zmb_bones")],
       boss: { base: "mx_vane_human", clips: { walk: "walk", run: "run", attack: "walkshoot", death: "death", scream: "talk", hit: "hit" }, height: 3.6 },
     },
     bossName: "Director Vane",
     backBuildings: ["mx_map_citadel", "mx_map_shield_gen", "mx_bld_megacorp", "mx_bld_skyscraper"],
     props: [
+      { name: "mx_dr_throne", height: 5, at: [190, 2, -3.6], selfLit: 0.3 },
       { name: "mx_ct_keygate", height: 7, at: [6, 2, -3.2], selfLit: 0.5 },
       { name: "mx_ct_brazier", height: 2.2, at: [14, 4, -1.6], selfLit: 0.6 },
       { name: "mx_ct_banner", height: 6, at: [26, 8, -2.5] },
@@ -180,8 +216,14 @@ LEVELS.push({
   view: "iso",
   howTo: "Săn tiền thưởng nhìn chéo sa bàn (kiểu Final Fantasy Tactics). W/A/S/D đi 8 hướng, J bắn theo hướng nhìn, K lướt.",
   side: true,
-  looks: { trooper: TROOPER, zombie: zombieLook("mx_zmb_runner"), boss: monster("mx_mon_psycho", 2.6) },
-  bossName: "Kẻ Bị Truy Nã",
+  looks: {
+    trooper: [TROOPER, drGuard("goblin", 1.5)],
+    // Bầy thú săn đêm: người sói, sói con, chó thịt
+    zombie: [drZombie("werewolf", 2.1), drZombie("wolfling", 1.6), zombieLook("mx_zmb_runner")],
+    drone: still("fleshfang", 1.4, "crawl"),
+    boss: drBoss("warlord", 2.8),
+  },
+  bossName: "Thủ Lĩnh Goblin Hàm Sắt",
   backBuildings: [],
   // Map đi 8 hướng: toạ độ đạo cụ là [x, y ô trên mặt đất, bỏ qua]
   props: [
@@ -193,6 +235,38 @@ LEVELS.push({
     { name: "mx_car_police", height: 1.6, at: [46, 10, 0], rot: 0.1 },
     { name: "mx_prop_neon_arch", height: 6, at: [46.5, 20, 0], rot: 1.57, selfLit: 0.6 },
     { name: "mx_holo_tower", height: 5, at: [3, 20, 0], selfLit: 0.7 },
+  ],
+});
+
+LEVELS.push({
+  def: LEVEL_PARISH,
+  mapId: "hollow_hotel",
+  key: "jade",
+  keyLabel: "Chìa Ngọc Bích",
+  mapMultiplier: 1.4,
+  blurb: "Khu nhà thờ bỏ hoang giữa lòng Neon City: biển hiệu hỏng chập chờn, người chết bị cấy chip lang thang giữa nghĩa địa. Kẻ Canh Giữ chờ ở bãi tế.",
+  view: "farm",
+  howTo: "Phiêu lưu nhìn từ trên kiểu Stardew Valley. W/A/S/D đi 8 hướng, J bắn / chém theo hướng nhìn, K lướt. Tab mở Túi đồ ở thành phố.",
+  side: true,
+  looks: {
+    // Sinh vật bò phun axit đứng xa mà bắn
+    trooper: [still("crawler", 1.5, "crawl"), still("fleshfang", 1.3, "crawl")],
+    // Người chết đủ kiểu: áo choàng, rách rưới, trơ xương sườn, nụ cười khâu, bóng đen, đầu còi, quái hai đầu
+    zombie: [drZombie("zmb_hood"), drZombie("zmb_rag"), drZombie("zmb_ribs"), drZombie("grin", 1.75, false), drZombie("shade", 2.1, false), drZombie("siren", 2.4), drZombie("twinhead", 2.1, false)],
+    drone: [still("sinew", 2.3, "float"), still("wraith", 2.2, "float")],
+    boss: still("watcher", 4.4, "float"),
+  },
+  bossName: "Kẻ Canh Giữ",
+  backBuildings: [],
+  props: [
+    { name: "mx_dr_church", height: 9.5, at: [13, 33, 0] },
+    { name: "mx_bld_nightclub", height: 8, at: [31.5, 36.5, 0], selfLit: 0.5 },
+    { name: "mx_dr_reaper_statue", height: 3.6, at: [24, 21, 0], selfLit: 0.4 },
+    { name: "mx_dr_rocks", height: 1.6, at: [6, 15, 0], rot: 0.6 },
+    { name: "mx_dr_rocks", height: 1.4, at: [41, 9, 0], rot: 2.1 },
+    { name: "mx_dr_rocks", height: 1.5, at: [18, 6, 0], rot: 4 },
+    { name: "mx_dr_reaper_statue", height: 3, at: [50, 38, 0], rot: -0.5, selfLit: 0.5 },
+    { name: "mx_dr_reaper_statue", height: 3, at: [50, 6, 0], rot: 0.5, selfLit: 0.5 },
   ],
 });
 

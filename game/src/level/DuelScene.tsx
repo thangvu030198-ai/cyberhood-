@@ -7,8 +7,10 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { extraModel, playSfx, type ExtraModel } from "../game/assets";
 import { once } from "../game/meshyAnim";
+import { useFitted } from "../game/Showcase";
 import { useGame } from "../game/store";
-import { DUEL, type DuelInput, type DuelSim, type Fighter } from "./duel";
+import { DUEL, RIVALS, type DuelInput, type DuelSim, type Fighter } from "./duel";
+import { GEAR, type GearId } from "./gear";
 import { DUEL_REWARD, settleDuel, useDuel } from "./duelSession";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { RetroGrade } from "./retroEffects";
@@ -41,12 +43,17 @@ export function DuelCanvas() {
       <Arena />
       <Quiet>
         <Suspense fallback={null}>
-          <DuelFighter sim={sim} who="player" />
+          <Throne />
         </Suspense>
       </Quiet>
       <Quiet>
         <Suspense fallback={null}>
-          <DuelFighter sim={sim} who="foe" />
+          <DuelFighter key={`p${sim.rival.id}`} sim={sim} who="player" />
+        </Suspense>
+      </Quiet>
+      <Quiet>
+        <Suspense fallback={null}>
+          <DuelFighter key={sim.rival.id} sim={sim} who="foe" />
         </Suspense>
       </Quiet>
       <HitSparks sim={sim} />
@@ -151,17 +158,23 @@ function Arena() {
   );
 }
 
-/** Model võ sĩ: nhân vật chọn của người chơi; đối thủ là vệ binh Citadel. Đấm/đá mượn clip của nhân vật Meshy khác */
-const FOE = { base: "mx_ct_guard", height: 1.95 };
+/** Ngai sắt của nhà vô địch đặt cuối sàn, sau hàng cọc: mục tiêu của cả thang đấu */
+function Throne() {
+  const { root } = useFitted("mx_dr_throne", 4.2, "height", 0.35);
+  return <primitive object={root} position={[0, 0, -7.5]} />;
+}
+
+/** Model võ sĩ: nhân vật chọn của người chơi; đối thủ theo bậc thang. Đấm/đá mượn clip của nhân vật Meshy khác */
 const BORROW = { punch: "mx_ct_guard_attack", kick: "mx_zmb_brute_attack", hit: "mx_vane_human_hit" } as const;
 
 function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
   const skin = useGame((s) => s.profile?.hunter ?? "soldier");
-  const base = who === "player" ? `mx_cls_${skin === "soldier" ? "racer" : skin}` : FOE.base;
+  const base = who === "player" ? `mx_cls_${skin === "soldier" ? "racer" : skin}` : sim.rival.base;
   const m = (n: string) => use(extraModel(n as ExtraModel));
   const walk = m(`${base}_walk`);
   const run = m(`${base}_run`);
-  const death = m(`${base}_death`);
+  // Đối thủ mới (model tải lên) chỉ có đi/chạy: động tác ngã mượn của vệ binh
+  const death = m(base.startsWith("mx_dr_") ? "mx_ct_guard_death" : `${base}_death`);
   const idle = who === "player" ? m(`${base}_idle`) : walk;
   const punch = m(BORROW.punch);
   const kick = m(BORROW.kick);
@@ -170,14 +183,14 @@ function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
     const r = buildRig(
       walk.scene,
       { idle: (who === "player" ? idle : walk).animations[0], walk: walk.animations[0], run: run.animations[0], death: death.animations[0], punch: punch.animations[0], kick: kick.animations[0], hit: hit.animations[0] },
-      who === "player" ? 1.8 : FOE.height,
+      who === "player" ? 1.8 : sim.rival.height,
       who === "player" ? 0.55 : 0.4,
     );
     for (const n of ["punch", "kick"]) if (r.actions[n]) once(r.actions[n]);
     if (who === "player") addOutline(r.scene, "#fff3a0", 0.02);
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walk, run, death, idle, punch, kick, hit, who]);
+  }, [walk, run, death, idle, punch, kick, hit, who, sim]);
   const group = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
     const f: Fighter = who === "player" ? sim.player : sim.foe;
@@ -244,6 +257,7 @@ function HitSparks({ sim }: { sim: DuelSim }) {
 export function DuelHud() {
   const sim = useDuel((s) => s.sim);
   const leave = useDuel((s) => s.leave);
+  const prize = useDuel((s) => s.prize);
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => {
@@ -268,7 +282,7 @@ export function DuelHud() {
   const done = sim.status === "won" || sim.status === "lost" || sim.status === "draw";
   const bar = (f: Fighter, right = false) => (
     <div className={`duel__bar ${right ? "duel__bar--right" : ""}`}>
-      <i style={{ width: `${(f.hp / DUEL.maxHp) * 100}%` }} />
+      <i style={{ width: `${(f.hp / (f === sim.foe ? sim.foeMaxHp : DUEL.maxHp)) * 100}%` }} />
     </div>
   );
   return (
@@ -280,24 +294,37 @@ export function DuelHud() {
         </div>
         <div className="duel__time">{Math.ceil(sim.timeLeft)}</div>
         <div className="duel__side duel__side--right">
-          <span className="duel__name">VỆ BINH CITADEL</span>
+          <span className="duel__name">
+            {sim.rival.name} · BẬC {RIVALS.indexOf(sim.rival) + 1}/{RIVALS.length}
+          </span>
           {bar(sim.foe, true)}
         </div>
       </div>
-      {sim.status === "intro" && <div className="lv__banner lv__banner--ready">ROUND 1</div>}
+      {sim.status === "intro" && (
+        <div className="lv__banner lv__banner--ready">
+          {sim.rival.name}
+          <small className="duel__title">{sim.rival.title}</small>
+        </div>
+      )}
       {sim.status === "fight" && sim.time - DUEL.introTime < 0.8 && <div className="lv__banner">FIGHT!</div>}
       {done && (
         <div className="lv__panel">
           <p className="lv__panel-tag">{sim.status === "won" ? "K.O. · BẠN THẮNG" : sim.status === "lost" ? "K.O. · BẠN THUA" : "HOÀ"}</p>
           {sim.status === "won" && (
             <p>
-              +{DUEL_REWARD.cred} CRED · +{DUEL_REWARD.chestKeys} Chìa rương
+              +{sim.rival.reward} CRED · +{DUEL_REWARD.chestKeys} Chìa rương
+              {prize && ` · Nhận ${GEAR[prize as GearId].name} (vào Túi đồ)`}
             </p>
+          )}
+          {sim.status === "won" && RIVALS.indexOf(sim.rival) < RIVALS.length - 1 && (
+            <button className="lv__btn" onClick={() => useDuel.getState().start(RIVALS.indexOf(sim.rival) + 1)}>
+              Đấu bậc tiếp: {RIVALS[RIVALS.indexOf(sim.rival) + 1].name}
+            </button>
           )}
           <button className="lv__btn" onClick={leave}>
             Về thành phố <kbd>Enter</kbd>
           </button>
-          <button className="lv__btn lv__btn--ghost" onClick={() => useDuel.getState().start()}>
+          <button className="lv__btn lv__btn--ghost" onClick={() => useDuel.getState().start(RIVALS.indexOf(sim.rival))}>
             Đấu lại
           </button>
         </div>

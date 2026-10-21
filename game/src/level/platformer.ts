@@ -6,6 +6,7 @@ import type { ThemeId } from "./themes";
 import { chestContents, rollEnemyDrops, type ChestTier, type LootContext, type LootDrop } from "./loot";
 import { freshPity, type PityState } from "../sim/loot";
 import { createRng } from "../sim/rng";
+import { ARMORS, WEAPONS, type ArmorId, type WeaponId } from "./gear";
 
 export type Input = { left: boolean; right: boolean; up: boolean; down: boolean; jump: boolean; shoot: boolean; dash: boolean };
 export const NO_INPUT: Input = { left: false, right: false, up: false, down: false, jump: false, shoot: false, dash: false };
@@ -48,9 +49,32 @@ export type Enemy = {
   onGround: boolean;
   /** Trùm: kiểu đòn đang ra */
   move: "walk" | "jump" | "volley" | "idle";
+  /** Trúng lưỡi băng: chậm lại tới thời điểm này */
+  slowUntil: number;
 };
 
-export type Shot = { x: number; y: number; vx: number; vy: number; r: number; dmg: number; pierce: boolean; life: number; enemy: boolean; level: 0 | 1 | 2 };
+/** Hình đạn để vẽ: viên thường, đạn chùm, tia ngắm, mũi tên, nhát chém, sóng kiếm */
+export type ShotKind = "bullet" | "pellet" | "rail" | "arrow" | "slash" | "wave";
+
+export type Shot = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  dmg: number;
+  pierce: boolean;
+  life: number;
+  enemy: boolean;
+  level: 0 | 1 | 2;
+  /** Vũ khí trang bị: hình đạn, hướng (cho nhát chém đứng yên), đóng băng, địch đã trúng (đạn xuyên chỉ trúng mỗi địch một lần) */
+  kind?: ShotKind;
+  dx?: number;
+  dy?: number;
+  freeze?: boolean;
+  hitIds?: number[];
+  maxLife?: number;
+};
 
 export type Pickup = { x: number; y: number; vx: number; vy: number; drop: LootDrop; taken: boolean; bornAt: number };
 
@@ -65,6 +89,9 @@ export type SimOptions = {
   chestKeys?: number;
   /** Hệ số rơi đồ của map (GDD: Neon City ×1.0 … Citadel ×2.0) */
   mapMultiplier?: number;
+  /** Vũ khí và giáp đang trang bị (gear.ts) */
+  weapon?: WeaponId;
+  armor?: ArmorId;
 };
 
 export type SimEvent = "kill" | "checkpoint" | "cleared" | "loot" | "chest" | "chestLocked";
@@ -74,7 +101,7 @@ export type FxEvent = { kind: "hit" | "boom" | "shot" | "charge" | "hurt" | "pic
 export type LevelDef = {
   id: string;
   name: string;
-  /** Hàng trên cùng trước. '#' đặc, '=' bậc nhảy xuyên lên được, '^' gai, '.' trống */
+  /** Hàng trên cùng trước. '#' đặc, '=' bậc nhảy xuyên lên được, '^' gai, 'o' chân đạo cụ (đặc, không vẽ), '.' trống */
   rows: string[];
   start: [number, number];
   checkpoints: [number, number][];
@@ -129,7 +156,13 @@ export class PlatformerSim {
     /** Hướng ngắm khi đi 8 hướng (chế độ topdown) */
     aimX: 1,
     aimY: 0,
+    /** Vũ khí trang bị: còn bao lâu mới bắn / chém tiếp được */
+    cooldown: 0,
   };
+  readonly weapon: WeaponId;
+  readonly armor: ArmorId;
+  /** Máu tối đa (cơ bản + giáp) */
+  readonly maxHp: number;
   enemies: Enemy[] = [];
   shots: Shot[] = [];
   pickups: Pickup[] = [];
@@ -161,6 +194,9 @@ export class PlatformerSim {
   constructor(def: LevelDef, opts: SimOptions = {}) {
     this.loot = { rng: createRng(opts.seed ?? (Date.now() & 0xffffff)), pity: opts.pity ?? freshPity(), mapMultiplier: opts.mapMultiplier ?? 1 };
     this.chestKeys = opts.chestKeys ?? 0;
+    this.weapon = opts.weapon ?? "buster";
+    this.armor = opts.armor ?? "none";
+    this.maxHp = T.player.maxHp + ARMORS[this.armor].hp;
     this.mode = def.mode ?? "platform";
     // Nhìn từ trên: thân người chơi là ô vuông nhỏ trên mặt đất
     if (this.mode === "topdown") this.player.h = T.topdown.body;
@@ -183,7 +219,7 @@ export class PlatformerSim {
     p.y = y;
     p.vx = 0;
     p.vy = 0;
-    p.hp = T.player.maxHp;
+    p.hp = this.maxHp;
     p.invuln = 1;
     p.charge = 0;
     p.dashTime = 0;
@@ -205,7 +241,8 @@ export class PlatformerSim {
 
   private solid(c: number, r: number) {
     const t = this.tile(c, r);
-    if (t === "#") return true;
+    // "o": chân đạo cụ lớn, đặc nhưng không vẽ khối
+    if (t === "#" || t === "o") return true;
     // Cửa phòng trùm đóng lại khi trận đấu bắt đầu
     if (this.bossActive && (c === this.def.bossArena[0] - 1 || c === this.def.bossArena[1] + 1) && r >= 0) return true;
     return false;
@@ -333,6 +370,8 @@ export class PlatformerSim {
 
   private gravityOnly(dt: number) {
     const p = this.player;
+    // Bay và đi 8 hướng không có trọng lực: đứng yên chờ READY
+    if (this.mode === "shmup" || this.mode === "topdown") return;
     p.vy = Math.max(-T.player.maxFall, p.vy - T.player.gravity * dt);
     const r = this.move(p, dt);
     p.onGround = r.ground;
@@ -446,17 +485,7 @@ export class PlatformerSim {
     }
     if (!wasGround && p.onGround) this.fx.push({ kind: "land", x: p.x, y: p.y, at: this.time });
 
-    // Bắn: nhấn bắn đạn thường, giữ để nạp, thả ra bắn đạn nạp
-    p.shootTimer -= dt;
-    if (pressed("shoot")) this.fire(0);
-    if (input.shoot) {
-      p.charge += dt;
-      if (p.charge > T.shot.chargeMid && p.charge - dt <= T.shot.chargeMid) this.fx.push({ kind: "charge", x: p.x, y: p.y, at: this.time });
-    } else if (this.prev.shoot) {
-      if (p.charge >= T.shot.chargeFull) this.fire(2);
-      else if (p.charge >= T.shot.chargeMid) this.fire(1);
-      p.charge = 0;
-    }
+    this.handleShoot(input, pressed, dt);
 
     p.invuln -= dt;
 
@@ -519,14 +548,7 @@ export class PlatformerSim {
     p.invuln -= dt;
     if (this.hits(p.x, p.y + 0.3, p.w, p.h - 0.6)) this.hurt(S.crashDamage, -1);
     // Bắn giống chế độ đi bộ: nhấn bắn thường, giữ để nạp
-    p.shootTimer -= dt;
-    if (pressed("shoot")) this.fire(0);
-    if (input.shoot) p.charge += dt;
-    else if (this.prev.shoot) {
-      if (p.charge >= T.shot.chargeFull) this.fire(2);
-      else if (p.charge >= T.shot.chargeMid) this.fire(1);
-      p.charge = 0;
-    }
+    this.handleShoot(input, pressed, dt);
     this.def.checkpoints.forEach(([cx, cy], i) => {
       if (i > this.checkpointIndex && p.x > cx) {
         this.checkpointIndex = i;
@@ -579,14 +601,7 @@ export class PlatformerSim {
     this.move(p, dt);
     p.onGround = true;
     p.invuln -= dt;
-    p.shootTimer -= dt;
-    if (pressed("shoot")) this.fire(0);
-    if (input.shoot) p.charge += dt;
-    else if (this.prev.shoot) {
-      if (p.charge >= T.shot.chargeFull) this.fire(2);
-      else if (p.charge >= T.shot.chargeMid) this.fire(1);
-      p.charge = 0;
-    }
+    this.handleShoot(input, pressed, dt);
     if (this.touchesSpike(p.x, p.y, p.w)) this.hurt(T.player.spikeDamage, -p.facing as 1 | -1);
     this.def.checkpoints.forEach(([cx, cy], i) => {
       if (i > this.checkpointIndex && Math.hypot(p.x - cx, p.y - cy) < 1.6) {
@@ -608,12 +623,14 @@ export class PlatformerSim {
   }
 
   /** Địch khi nhìn từ trên: zombie đuổi, lính và drone bắn nhắm, trùm đuổi + loạt đạn quạt + vòng đạn toả */
-  private updateEnemiesTop(dt: number) {
+  private updateEnemiesTop(frameDt: number) {
     const p = this.player;
     const E = T.enemy;
     const W = T.topdown;
     for (const e of this.enemies) {
       if (!e.alive) continue;
+      // Trúng lưỡi băng: mọi cử động chậm lại
+      const dt = e.slowUntil > this.time ? frameDt * T.gear.frostSlow : frameDt;
       const dx = p.x - e.x;
       const dy = p.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
@@ -675,6 +692,97 @@ export class PlatformerSim {
     return false;
   }
 
+  /**
+   * Nút bắn theo vũ khí: súng tay / shotgun / súng ngắm / kiếm: nhấn là bắn-chém, giữ để nạp, thả ra bắn đòn nạp.
+   * Súng trường: giữ là xả liên thanh. Cung: giữ để kéo dây, thả ra mới bắn.
+   */
+  private handleShoot(input: Input, pressed: (k: keyof Input) => boolean, dt: number) {
+    const p = this.player;
+    const W = WEAPONS[this.weapon];
+    p.shootTimer -= dt;
+    p.cooldown -= dt;
+    if (W.style === "auto") {
+      p.charge = 0;
+      if (input.shoot && p.cooldown <= 0) this.fireWeapon(0, 0);
+      return;
+    }
+    if (pressed("shoot") && W.style !== "bow" && p.cooldown <= 0) this.fireWeapon(0, 0);
+    if (input.shoot) {
+      p.charge += dt;
+      if (p.charge > T.shot.chargeMid && p.charge - dt <= T.shot.chargeMid) this.fx.push({ kind: "charge", x: p.x, y: p.y, at: this.time });
+    } else if (this.prev.shoot) {
+      const level = p.charge >= T.shot.chargeFull ? 2 : p.charge >= T.shot.chargeMid ? 1 : 0;
+      if (W.style === "bow") this.fireWeapon(level, Math.min(1, p.charge / T.shot.chargeFull));
+      else if (level > 0) this.fireWeapon(level, 1);
+      p.charge = 0;
+    }
+  }
+
+  /** Điểm ra đạn và hướng bắn: đi ngang bắn theo hướng mặt (bám tường thì bắn ra ngoài), đi 8 hướng bắn theo hướng nhìn */
+  private muzzle() {
+    const p = this.player;
+    if (this.mode === "topdown") return { x: p.x + p.aimX * 0.6, y: p.y + p.h / 2 + p.aimY * 0.6, dx: p.aimX, dy: p.aimY };
+    const dir = p.wall !== 0 ? (-p.wall as 1 | -1) : p.facing;
+    return { x: p.x + dir * 0.7, y: p.y + 1.15, dx: dir as number, dy: 0 };
+  }
+
+  /** Bắn theo vũ khí đang trang bị. `power` (0–1) là độ kéo dây cung */
+  private fireWeapon(level: 0 | 1 | 2, power: number) {
+    const p = this.player;
+    const W = WEAPONS[this.weapon];
+    if (W.style === "buster") return this.fire(level);
+    const m = this.muzzle();
+    const S = T.gear;
+    const push = (o: Omit<Shot, "x" | "y" | "enemy" | "dx" | "dy" | "hitIds" | "maxLife"> & { x?: number; y?: number; dx?: number; dy?: number }) =>
+      this.shots.push({ x: m.x, y: m.y, dx: m.dx, dy: m.dy, enemy: false, hitIds: [], maxLife: o.life, ...o });
+    const at = (dx: number, dy: number, speed: number) => ({ vx: dx * speed, vy: dy * speed });
+    const rot = (a: number) => ({ dx: m.dx * Math.cos(a) - m.dy * Math.sin(a), dy: m.dx * Math.sin(a) + m.dy * Math.cos(a) });
+    if (W.style === "auto") {
+      // Rung nòng nhẹ cho loạt đạn trông tự nhiên
+      const d = rot(((this.time * 37) % 1 - 0.5) * 0.06);
+      push({ ...at(d.dx, d.dy, S.auto.speed), r: S.auto.r, dmg: W.dmg, pierce: false, life: S.auto.life, level: 0, kind: "bullet", ...d });
+    } else if (W.style === "spread") {
+      const n = level === 2 ? 5 : 3;
+      for (let i = 0; i < n; i++) {
+        const d = rot((i / (n - 1) - 0.5) * S.spread.arc);
+        push({ ...at(d.dx, d.dy, S.spread.speed), r: S.spread.r, dmg: W.dmg * (level === 2 ? 1.6 : 1), pierce: level === 2, life: S.spread.life, level, kind: "pellet", ...d });
+      }
+    } else if (W.style === "rail") {
+      const mul = level === 2 ? 3 : level === 1 ? 1.6 : 1;
+      push({ ...at(m.dx, m.dy, S.rail.speed), r: S.rail.r, dmg: W.dmg * mul, pierce: true, life: S.rail.life, level, kind: "rail" });
+    } else if (W.style === "bow") {
+      const k = Math.max(S.bow.minPower, power);
+      push({ ...at(m.dx, m.dy, S.bow.speed[0] + (S.bow.speed[1] - S.bow.speed[0]) * k), r: 0.2, dmg: W.dmg + S.bow.bonus * k, pierce: k >= 1, life: 1.4, level: k >= 1 ? 2 : k > 0.4 ? 1 : 0, kind: "arrow" });
+    } else if (W.style === "blade") {
+      if (level === 0) {
+        // Nhát chém vòng cung trước mặt (lưỡi hái: cả sau lưng), đi theo người chơi trong chốc lát
+        const r = W.sweep ? S.blade.sweepR : S.blade.r;
+        for (const side of W.sweep ? [1, -1] : [1])
+          push({
+            x: p.x + m.dx * side * S.blade.reach,
+            y: (this.mode === "topdown" ? p.y + p.h / 2 : p.y + 1) + m.dy * side * S.blade.reach,
+            vx: p.vx,
+            vy: this.mode === "topdown" ? p.vy : 0,
+            r,
+            dmg: W.dmg,
+            pierce: true,
+            life: S.blade.life,
+            level: 0,
+            kind: "slash",
+            freeze: W.freeze,
+            dx: m.dx * side,
+            dy: m.dy * side,
+          });
+      } else if (W.wave) {
+        // Nạp: phóng sóng kiếm; nạp đầy thì sóng to và đi xuyên tường
+        push({ ...at(m.dx, m.dy, W.wave.speed), r: W.wave.r * (level === 2 ? 1.25 : 1), dmg: W.wave.dmg * (level === 2 ? 1 : 0.6), pierce: true, life: S.blade.waveLife, level, kind: "wave", freeze: W.freeze });
+      }
+    }
+    p.cooldown = W.cooldown;
+    p.shootTimer = 0.3;
+    this.fx.push({ kind: "shot", x: m.x, y: m.y, at: this.time });
+  }
+
   private fire(level: 0 | 1 | 2) {
     const p = this.player;
     const S = T.shot;
@@ -710,6 +818,9 @@ export class PlatformerSim {
   hurt(amount: number, from: 1 | -1) {
     const p = this.player;
     if (p.invuln > 0 || this.status !== "playing") return;
+    // Giáp giảm sát thương theo tỉ lệ, mỗi đòn vẫn mất ít nhất 1 máu
+    const reduce = ARMORS[this.armor].reduce;
+    if (reduce > 0) amount = Math.max(1, Math.round(amount * (1 - reduce)));
     p.hp = Math.max(0, p.hp - amount);
     p.invuln = T.player.invuln;
     p.knock = T.player.knockTime;
@@ -730,11 +841,12 @@ export class PlatformerSim {
     this.fx.push({ kind: "boom", x: this.player.x, y: this.player.y + 1, at: this.time });
   }
 
-  private updateEnemies(dt: number) {
+  private updateEnemies(frameDt: number) {
     const p = this.player;
     const E = T.enemy;
     for (const e of this.enemies) {
       if (!e.alive) continue;
+      const dt = e.slowUntil > this.time ? frameDt * T.gear.frostSlow : frameDt;
       if (e.kind !== "boss") e.awake = Math.abs(e.x - p.x) < E.wakeRange;
       if (!e.awake) continue;
       e.timer -= dt;
@@ -852,12 +964,17 @@ export class PlatformerSim {
 
   private updateShots(dt: number) {
     const p = this.player;
+    // Nhát chém chặt rơi đạn địch bay vào nó
+    for (const s of this.shots) {
+      if (s.kind !== "slash" || s.life <= 0) continue;
+      for (const b of this.shots) if (b.enemy && b.life > 0 && Math.hypot(b.x - s.x, b.y - s.y) < s.r + b.r) b.life = 0;
+    }
     for (const s of this.shots) {
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       s.life -= dt;
       // Đạn thường vỡ khi chạm tường; sóng chấn động đi sát đất
-      if (this.solid(Math.floor(s.x), Math.floor(s.y)) && s.level !== 2) s.life = 0;
+      if (this.solid(Math.floor(s.x), Math.floor(s.y)) && s.level !== 2 && s.kind !== "slash") s.life = 0;
       if (s.life <= 0) continue;
       if (s.enemy) {
         if (Math.abs(s.x - p.x) < p.w / 2 + s.r && s.y > p.y - s.r && s.y < p.y + p.h + s.r) {
@@ -868,9 +985,12 @@ export class PlatformerSim {
       }
       for (const e of this.enemies) {
         if (!e.alive || !e.awake) continue;
+        if (s.hitIds?.includes(e.id)) continue;
         if (Math.abs(s.x - e.x) < e.w / 2 + s.r && s.y > e.y - s.r && s.y < e.y + e.h + s.r) {
           e.hp -= s.dmg;
           e.hurtAt = this.time;
+          s.hitIds?.push(e.id);
+          if (s.freeze) e.slowUntil = this.time + T.gear.frostTime;
           this.fx.push({ kind: "hit", x: s.x, y: s.y, at: this.time });
           if (e.hp <= 0) {
             e.alive = false;
@@ -954,7 +1074,7 @@ export class PlatformerSim {
     k.taken = true;
     this.fx.push({ kind: "pickup", x: k.x, y: k.y, at: this.time });
     if (k.drop.kind === "health") {
-      p.hp = Math.min(T.player.maxHp, p.hp + T.player.healthPickup);
+      p.hp = Math.min(this.maxHp, p.hp + T.player.healthPickup);
       return;
     }
     if (k.drop.kind === "chestKey") this.chestKeys++;
@@ -1009,5 +1129,6 @@ export function makeEnemy(id: number, kind: EnemyKind, x: number, y: number): En
     deadAt: 0,
     onGround: false,
     move: "idle",
+    slowUntil: -9,
   };
 }

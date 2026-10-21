@@ -33,7 +33,12 @@ import { levelInput } from "./levelInput";
 import { useLevel } from "./session";
 import type { Enemy, PlatformerSim } from "./platformer";
 import { THEMES, type LevelTheme } from "./themes";
-import { levelById, type LevelEntry, type RigLook } from "./registry";
+import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } from "./registry";
+import { GearDrops, HeldWeapon, WeaponShots } from "./gearView";
+import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
+import { CityBlocks } from "./cityBlocks";
+import { SideScenery } from "./sideScenery";
+import { CaveScenery } from "./caveScenery";
 
 /** Model tải lỗi (mạng, file thiếu) chỉ làm món đó biến mất, không làm sập cả màn */
 export class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -60,8 +65,11 @@ const groundYaw = (dx: number, dy: number) => Math.atan2(dx, -dy);
 const nearestAngle = (from: number, to: number) =>
   from + Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
-/** Chiều cao tường khi nhìn chéo sa bàn */
-const TOP_WALL = 2.6;
+/** Chiều cao tường khi nhìn chéo sa bàn; nhìn từ trên kiểu nông trại thì tường thấp để không che nhân vật */
+const TOP_WALL_ISO = 2.6;
+const TOP_WALL_FARM = 1.3;
+const topWall = (sim: PlatformerSim) =>
+  viewById(levelById(sim.def.id).view).farm ? TOP_WALL_FARM : TOP_WALL_ISO;
 
 /** Bề sâu khối nền (trục z), nhân vật đứng ở z = 0 */
 const DEPTH = 4;
@@ -124,7 +132,9 @@ export function LevelCanvas() {
         {!top && <Checkpoints sim={sim} />}
         <BossDoors sim={sim} />
         <Shots sim={sim} />
+        <WeaponShots sim={sim} z={zFloor(sim)} />
         <Pickups sim={sim} />
+        <GearDrops sim={sim} z={zFloor(sim)} />
         <Chests sim={sim} />
         {sim.mode === "climb" && <GhostFog sim={sim} />}
         <Fx sim={sim} />
@@ -136,6 +146,12 @@ export function LevelCanvas() {
               entry={levelById(sim.def.id)}
             />
           </Suspense>
+        )}
+        {!top && <SideScenery sim={sim} />}
+        {sim.def.theme === "hotel" && <CaveScenery sim={sim} />}
+        {!top && <SkyTraffic sim={sim} />}
+        {!top && (
+          <SideDressing sim={sim} entry={levelById(sim.def.id)} />
         )}
         <Suspense fallback={<PlaceholderHero sim={sim} />}>
           <Hero sim={sim} theme={th} />
@@ -181,7 +197,8 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
           down: dy < 0,
           jump: false,
         };
-      } else if (isTop(sim))
+      } else if (v.farm) input = { ...i, up: i.up || i.jump, jump: false };
+      else if (isTop(sim))
         input = {
           ...i,
           right: i.up || i.jump,
@@ -279,6 +296,25 @@ function LevelCamera({
     const k = 1 - Math.exp(-v.damp * dt);
     look.current.x += (tx - look.current.x) * k;
     look.current.y += (ty - look.current.y) * k;
+    if (v.farm) {
+      // Nông trại: camera ngay phía nam người chơi, chúc dốc xuống, không xoay; bản đồ nằm thẳng trên màn hình
+      const k2 = 1 - Math.exp(-v.damp * dt);
+      const halfH = Math.tan(THREE.MathUtils.degToRad(b.fov / 2)) * dist;
+      const fx = THREE.MathUtils.clamp(p.x, halfW * 0.8, Math.max(halfW * 0.8, sim.width - halfW * 0.8));
+      const fy = THREE.MathUtils.clamp(p.y, halfH * 0.6, Math.max(halfH * 0.6, sim.height - halfH * 0.6));
+      look.current.x += (fx - look.current.x) * k2;
+      look.current.y += (fy - look.current.y) * k2;
+      const tz = -look.current.y;
+      const pitch = THREE.MathUtils.degToRad(58);
+      camera.up.set(0, 1, 0);
+      camera.position.set(look.current.x, Math.sin(pitch) * dist - 2, tz + Math.cos(pitch) * dist);
+      camera.lookAt(look.current.x, -2, tz);
+      if (scene.fog instanceof THREE.Fog) {
+        scene.fog.near = dist + 8;
+        scene.fog.far = dist + 70;
+      }
+      return;
+    }
     if (v.iso) {
       // Sa bàn: nhìn từ góc (+x, +z) xuống, chúc ~35°; thế giới đã xoay nên y mô phỏng nằm theo -z
       const k2 = 1 - Math.exp(-v.damp * dt);
@@ -382,11 +418,11 @@ function FloorGround({
   entry: LevelEntry;
 }) {
   const tex = useMemo(() => {
-    const t = panelTexture();
+    const t = theme.floor === "neon" ? neonFloorTexture() : panelTexture();
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(sim.width / 2, sim.height / 2);
     return t;
-  }, [sim]);
+  }, [sim, theme]);
   return (
     <group>
       <mesh
@@ -394,11 +430,22 @@ function FloorGround({
         position={[sim.width / 2, -2.02, -sim.height / 2]}
       >
         <planeGeometry args={[sim.width, sim.height]} />
-        <meshStandardMaterial
-          map={tex}
-          color={theme.backFloor}
-          roughness={0.8}
-        />
+        {theme.floor === "neon" ? (
+          <meshStandardMaterial
+            map={tex}
+            emissiveMap={tex}
+            emissive="#ffffff"
+            emissiveIntensity={0.55}
+            roughness={0.35}
+            metalness={0.4}
+          />
+        ) : (
+          <meshStandardMaterial
+            map={tex}
+            color={theme.backFloor}
+            roughness={0.8}
+          />
+        )}
       </mesh>
       <mesh
         rotation-x={-Math.PI / 2}
@@ -407,6 +454,8 @@ function FloorGround({
         <planeGeometry args={[sim.width + 200, sim.height + 200]} />
         <meshStandardMaterial color={theme.fog} roughness={1} />
       </mesh>
+      <TopDressing sim={sim} />
+      <CityBlocks sim={sim} />
       {entry.props.map((pr, i) => (
         <Quiet key={i}>
           <Suspense fallback={null}>
@@ -496,6 +545,77 @@ function Sky({ theme }: { theme: LevelTheme }) {
   );
 }
 
+/** Nhựa đường ướt kiểu cyberpunk: nền tím than, lưới vạch neon cyan, vũng nước loang hồng, vạch kẻ đường vàng */
+function neonFloorTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#2a2440";
+  g.fillRect(0, 0, 256, 256);
+  let seed = 11;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // Hạt nhựa đường
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = i % 3 ? "#352e50" : "#221c34";
+    g.fillRect(Math.floor(rnd() * 256), Math.floor(rnd() * 256), 2, 2);
+  }
+  // Vũng nước phản chiếu neon
+  for (let i = 0; i < 3; i++) {
+    const x = rnd() * 256;
+    const y = rnd() * 256;
+    const gr = g.createRadialGradient(x, y, 2, x, y, 34 + rnd() * 20);
+    gr.addColorStop(0, i % 2 ? "rgba(255,60,200,0.55)" : "rgba(0,230,255,0.5)");
+    gr.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = gr;
+    g.beginPath();
+    g.ellipse(x, y, 40, 22, rnd() * 3, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Lưới vạch neon theo ô
+  g.strokeStyle = "rgba(0,240,255,0.55)";
+  g.lineWidth = 2;
+  g.strokeRect(1, 1, 254, 254);
+  g.strokeStyle = "rgba(255,80,220,0.25)";
+  g.beginPath();
+  g.moveTo(128, 0);
+  g.lineTo(128, 256);
+  g.moveTo(0, 128);
+  g.lineTo(256, 128);
+  g.stroke();
+  // Vạch kẻ vàng đứt đoạn
+  g.fillStyle = "rgba(255,210,60,0.7)";
+  for (let y = 12; y < 256; y += 48) g.fillRect(60, y, 6, 24);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+/** Sàn lưới sắt gỉ của cầu treo: khung thép, ô lưới, đinh tán, vệt gỉ cam */
+function grateTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#3a2c24";
+  g.fillRect(0, 0, 128, 128);
+  g.fillStyle = "#1a120e";
+  for (let y = 10; y < 118; y += 9) for (let x = 10; x < 118; x += 9) g.fillRect(x, y, 6, 6);
+  g.strokeStyle = "#6a5444";
+  g.lineWidth = 6;
+  g.strokeRect(3, 3, 122, 122);
+  g.fillStyle = "#8a7060";
+  for (const [x, y] of [[6, 6], [122, 6], [6, 122], [122, 122], [64, 6], [64, 122]]) g.fillRect(x - 2, y - 2, 4, 4);
+  let seed = 5;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = `rgba(${150 + rnd() * 60},${70 + rnd() * 30},20,${0.15 + rnd() * 0.2})`;
+    g.fillRect(rnd() * 128, rnd() * 128, 4 + rnd() * 14, 2 + rnd() * 6);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 function panelTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
@@ -533,6 +653,8 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     for (let c = 0; c < sim.width; c++)
       for (let r = 0; r < sim.height; r++) {
         const t = sim.tile(c, r);
+        // Đi 8 hướng: khối nền do CityBlocks dựng thành toà nhà
+        if (t === "#" && sim.mode === "topdown") continue;
         if (t === "#") {
           solid.push([c, r]);
           if (sim.tile(c, r + 1) !== "#") edges.push([c, r]);
@@ -541,7 +663,7 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       }
     return { solid, edges, ledges, spikes };
   }, [sim]);
-  const tex = useMemo(panelTexture, []);
+  const tex = useMemo(() => (theme.tiles === "grate" ? grateTexture() : panelTexture()), [theme]);
   const refs = {
     solid: useRef<THREE.InstancedMesh>(null),
     edges: useRef<THREE.InstancedMesh>(null),
@@ -554,8 +676,8 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     const wallScale =
       sim.mode === "topdown"
         ? new THREE.Matrix4()
-            .makeTranslation(0, 0, -DEPTH / 2 + TOP_WALL / 2)
-            .scale(new THREE.Vector3(1, 1, TOP_WALL / DEPTH))
+            .makeTranslation(0, 0, -DEPTH / 2 + topWall(sim) / 2)
+            .scale(new THREE.Vector3(1, 1, topWall(sim) / DEPTH))
         : new THREE.Matrix4();
     const place = (
       mesh: THREE.InstancedMesh | null,
@@ -579,7 +701,7 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     refs.edges.current?.position.set(
       0,
       0,
-      sim.mode === "topdown" ? -DEPTH / 2 + TOP_WALL : DEPTH / 2,
+      sim.mode === "topdown" ? -DEPTH / 2 + topWall(sim) : DEPTH / 2,
     );
     place(refs.ledges.current, data.ledges, 0.88);
     if (sim.mode === "topdown") {
@@ -732,9 +854,11 @@ function Shots({ sim }: { sim: PlatformerSim }) {
     const m = mesh.current;
     if (!m) return;
     const mat = new THREE.Matrix4();
-    const n = Math.min(sim.shots.length, SHOT_POOL);
-    for (let i = 0; i < n; i++) {
-      const s = sim.shots[i];
+    // Đạn có hình riêng (tia, tên, nhát chém) vẽ ở WeaponShots
+    let i = 0;
+    for (const s of sim.shots) {
+      if (i >= SHOT_POOL) break;
+      if (s.kind && s.kind !== "bullet" && s.kind !== "pellet") continue;
       // Đạn kéo dài theo hướng bay
       const stretch = s.enemy ? 1 : 1.8;
       mat
@@ -749,8 +873,9 @@ function Shots({ sim }: { sim: PlatformerSim }) {
         i,
         (s.enemy ? SHOT_COLORS.enemy : SHOT_COLORS.player)[s.level],
       );
+      i++;
     }
-    m.count = n;
+    m.count = i;
     m.instanceMatrix.needsUpdate = true;
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   });
@@ -804,7 +929,8 @@ function Pickups({ sim }: { sim: PlatformerSim }) {
     const t = clock.elapsedTime;
     let i = 0;
     for (const k of sim.pickups) {
-      if (k.taken || i >= PICKUP_POOL) continue;
+      // Trang bị có model riêng (GearDrops)
+      if (k.taken || i >= PICKUP_POOL || k.drop.kind === "gear") continue;
       const slot = g.children[i++] as THREE.Group;
       const body = slot.children[0] as THREE.Mesh;
       const beam = slot.children[1] as THREE.Mesh;
@@ -920,8 +1046,11 @@ function GhostFog({ sim }: { sim: PlatformerSim }) {
 }
 
 /** Xe bay hoverbike dưới chân người chơi ở chế độ bay */
+const SHIP_YAW = Math.PI;
+
 function Hoverbike({ sim }: { sim: PlatformerSim }) {
-  const { root } = useFitted("mx_veh_hoverbike", 2.8, "longest", 0.35);
+  // Tàu vũ trụ Meshy thay xe bay: mũi tàu nằm phía -X của model nên quay ngược lại cho bay về +X
+  const { root } = useFitted("mx_dr_ship", 3.6, "longest", 0.4);
   const ref = useRef<THREE.Group>(null);
   const flame = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
@@ -940,9 +1069,11 @@ function Hoverbike({ sim }: { sim: PlatformerSim }) {
   });
   return (
     <group ref={ref}>
-      {/* Model xe bay dài theo trục X sẵn: giữ nguyên hướng, nhìn ngang thấy cả thân xe */}
-      <primitive object={root} />
-      <mesh ref={flame} position={[-1.5, 0.45, 0]} rotation-z={Math.PI / 2}>
+      {/* Model tàu dài theo trục X: nhìn ngang thấy cả thân tàu */}
+      <group rotation-y={SHIP_YAW} position-y={-0.15}>
+        <primitive object={root} />
+      </group>
+      <mesh ref={flame} position={[-1.9, 0.3, 0]} rotation-z={Math.PI / 2}>
         <coneGeometry args={[0.18, 0.9, 10]} />
         <meshBasicMaterial
           color={[0.6, 2.4, 3]}
@@ -1481,6 +1612,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       <group ref={group}>
         <primitive object={rig.scene} />
       </group>
+      <HeldWeapon rig={rig.scene} weapon={sim.weapon} />
       <mesh ref={shadow} rotation-x={-Math.PI / 2}>
         <circleGeometry args={[0.55, 24]} />
         <meshBasicMaterial
@@ -1662,13 +1794,99 @@ function PlaceholderHero({ sim }: { sim: PlatformerSim }) {
 }
 
 function EnemyModel({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
-  if (enemy.kind === "drone") return <DroneModel sim={sim} enemy={enemy} />;
+  const set = levelById(sim.def.id).looks[enemy.kind];
+  if (!set) return <DroneModel sim={sim} enemy={enemy} />;
+  // Nhóm kiểu: mỗi địch một kiểu theo số thứ tự cho đám đông đa dạng
+  const look: Look = Array.isArray(set) ? set[enemy.id % set.length] : set;
+  if ("model" in look)
+    return <StaticEnemy sim={sim} enemy={enemy} spec={look} />;
+  return <RiggedEnemy sim={sim} enemy={enemy} spec={look} />;
+}
+
+/**
+ * Sinh vật không xương: trôi lơ lửng (lắc lư, vạt áo đung đưa), bò (nhún theo bước, chúi về trước),
+ * bay (nhấp nhô theo nhịp vỗ cánh, chao nghiêng theo hướng bay). Trúng đòn nháy sáng, chết thì rơi và thu nhỏ.
+ */
+function StaticEnemy({
+  sim,
+  enemy,
+  spec,
+}: {
+  sim: PlatformerSim;
+  enemy: Enemy;
+  spec: StaticLook;
+}) {
+  const { root } = useFitted(spec.model, spec.height, "height", enemy.kind === "boss" ? 0.45 : 0.35);
+  // Vật liệu riêng cho từng con để nháy sáng khi trúng đòn không lây sang con khác
+  const obj = useMemo(() => {
+    const c = root.clone(true);
+    c.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) m.material = (m.material as THREE.Material).clone();
+    });
+    return c;
+  }, [root]);
+  const group = useRef<THREE.Group>(null);
+  const inner = useRef<THREE.Group>(null);
+  const yaw = useRef(faceYaw(enemy.facing));
+  const lastX = useRef(enemy.x);
+  useFrame(({ clock }, dt) => {
+    const o = group.current;
+    const b = inner.current;
+    if (!o || !b) return;
+    const e = enemy;
+    const age = sim.time - e.deadAt;
+    o.visible = e.alive || age < 1;
+    if (!o.visible) return;
+    if (Math.abs(e.x - sim.player.x) > 30) return;
+    dt = Math.min(dt, 0.1);
+    const t = clock.elapsedTime + e.id * 1.7;
+    const top = sim.mode === "topdown";
+    // Nhìn từ trên: thân sinh vật nổi khỏi mặt sàn theo trục z (đã xoay thế giới)
+    const lift = spec.motion === "float" ? 0.4 + Math.sin(t * 1.8) * 0.25 : spec.motion === "fly" ? 0.9 + Math.sin(t * 5) * 0.35 : 0;
+    o.position.set(e.x, e.y + (top ? 0 : lift), zFloor(sim) + (top ? lift + (spec.motion === "crawl" ? 0 : 0.3) : enemy.kind === "boss" ? -0.3 : 0));
+    o.rotation.x = upright(sim);
+    yaw.current = THREE.MathUtils.damp(
+      yaw.current,
+      top
+        ? nearestAngle(yaw.current, groundYaw(sim.player.x - e.x, sim.player.y - e.y))
+        : faceYaw(e.facing),
+      8,
+      dt,
+    );
+    o.rotation.y = yaw.current;
+    const moving = Math.abs(e.x - lastX.current) / Math.max(dt, 1e-3);
+    lastX.current = e.x;
+    if (!e.alive) {
+      // Chết: đổ nghiêng, rơi xuống, teo lại
+      b.rotation.z = Math.min(1.3, age * 3);
+      b.position.y = -age * age * 3;
+      b.scale.setScalar(Math.max(0.05, 1 - age));
+    } else if (spec.motion === "float") {
+      b.rotation.z = Math.sin(t * 1.3) * 0.12;
+      b.rotation.x = Math.sin(t * 0.9) * 0.08;
+      b.scale.set(1, 1 + Math.sin(t * 2.4) * 0.03, 1);
+    } else if (spec.motion === "fly") {
+      // Chao cánh: nghiêng theo hướng bay, nhún theo nhịp vỗ
+      b.rotation.z = Math.sin(t * 2) * 0.18;
+      b.rotation.x = -0.15 + Math.sin(t * 5) * 0.1;
+      b.scale.set(1 + Math.sin(t * 10) * 0.04, 1 - Math.sin(t * 10) * 0.04, 1);
+    } else {
+      // Bò: nhún theo bước nhanh khi di chuyển, chúi đầu về trước
+      const k = moving > 0.3 || top ? 1 : 0.25;
+      b.position.y = Math.abs(Math.sin(t * 9)) * 0.12 * k;
+      b.rotation.x = 0.12 + Math.sin(t * 9) * 0.06 * k;
+      b.scale.set(1, 1 - Math.abs(Math.sin(t * 9)) * 0.05 * k, 1);
+    }
+    const hurt = sim.time - e.hurtAt;
+    flash(obj, e.alive && hurt < 0.1 ? 1 - hurt / 0.1 : 0, enemy.kind === "boss" ? WHITE : RED);
+  });
   return (
-    <RiggedEnemy
-      sim={sim}
-      enemy={enemy}
-      spec={levelById(sim.def.id).looks[enemy.kind]}
-    />
+    <group ref={group}>
+      <group ref={inner}>
+        <primitive object={obj} />
+      </group>
+    </group>
   );
 }
 
@@ -1681,6 +1899,7 @@ function RiggedEnemy({
   enemy: Enemy;
   spec: RigLook;
 }) {
+  // Clip đầu tiên phải là clip đi kèm lưới (file "_walk"): dựng nhân vật từ nó
   const entries = Object.entries(spec.clips);
   // Clip ghi đủ tên model ("mx_...") là mượn từ nhân vật Meshy khác (chung tên xương)
   const gltfs = entries.map(([, file]) =>

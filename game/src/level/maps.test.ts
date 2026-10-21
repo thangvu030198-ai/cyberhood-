@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LEVEL_1 } from "./level1";
-import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_HUNT, LEVEL_WARZONE } from "./maps";
+import { LEVEL_CITADEL, LEVEL_HOTEL, LEVEL_HUNT, LEVEL_PARISH, LEVEL_TOWER, LEVEL_WARZONE } from "./maps";
 import { LEVEL_TUNING as T } from "./levelTuning";
 import { NO_INPUT, PlatformerSim, type LevelDef } from "./platformer";
 
@@ -106,20 +106,21 @@ function climbReachable(def: LevelDef) {
 }
 
 describe("các map", () => {
-  for (const def of [LEVEL_1, LEVEL_HOTEL, LEVEL_WARZONE, LEVEL_CITADEL, LEVEL_HUNT]) {
+  for (const def of [LEVEL_1, LEVEL_HOTEL, LEVEL_TOWER, LEVEL_WARZONE, LEVEL_CITADEL, LEVEL_HUNT, LEVEL_PARISH]) {
     describe(`${def.name} (${def.mode ?? "platform"})`, () => {
       it("bản đồ hợp lệ: hàng đều nhau, điểm xuất phát/checkpoint/rương không nằm trong khối đặc, đúng 1 trùm", () => {
         const sim = new PlatformerSim(def);
         expect(new Set(def.rows.map((r) => r.length)).size).toBe(1);
         const flying = def.mode === "shmup" || def.mode === "topdown";
         const ok = (x: number, y: number) => {
-          const here = sim.tile(Math.floor(x), y) !== "#" && sim.tile(Math.floor(x), y + 1) !== "#";
+          const free = (t: string) => t !== "#" && t !== "o";
+          const here = free(sim.tile(Math.floor(x), y)) && free(sim.tile(Math.floor(x), y + 1));
           const below = sim.tile(Math.floor(x), y - 1);
           return here && (flying || below === "#" || below === "=");
         };
         for (const [x, y] of [def.start, ...def.checkpoints]) expect(ok(x, y), `${def.id} điểm (${x}, ${y})`).toBe(true);
         for (const c of def.chests ?? []) expect(ok(c.x, c.y), `${def.id} rương (${c.x}, ${c.y})`).toBe(true);
-        for (const en of def.enemies) expect(sim.tile(Math.floor(en.x), Math.floor(en.y)), `${def.id} địch ${en.kind} (${en.x}, ${en.y})`).not.toBe("#");
+        for (const en of def.enemies) expect(sim.tile(Math.floor(en.x), Math.floor(en.y)), `${def.id} địch ${en.kind} (${en.x}, ${en.y})`).toMatch(/[.^=]/);
         expect(def.enemies.filter((x) => x.kind === "boss").length).toBe(1);
       });
 
@@ -138,7 +139,7 @@ describe("các map", () => {
       if (def.mode === "topdown")
         it("có lối đi từ điểm xuất phát tới khu mục tiêu, mọi rương và checkpoint", () => {
           const sim = new PlatformerSim(def);
-          const ok = (c: number, r: number) => sim.tile(c, r) !== "#" && sim.tile(c, r) !== "^";
+          const ok = (c: number, r: number) => !"#^o".includes(sim.tile(c, r));
           const seen = new Set<string>();
           const q: [number, number][] = [[Math.floor(def.start[0]), Math.floor(def.start[1])]];
           while (q.length) {
@@ -166,7 +167,7 @@ describe("các map", () => {
 
 describe("chế độ leo tháp", () => {
   it("sương dâng lên theo thời gian; đứng yên thì bị sương nuốt rồi hồi sinh ở checkpoint", () => {
-    const sim = new PlatformerSim(LEVEL_HOTEL, { seed: 1 });
+    const sim = new PlatformerSim(LEVEL_TOWER, { seed: 1 });
     const y0 = sim.fogY;
     let maxFog = y0;
     let f = 0;

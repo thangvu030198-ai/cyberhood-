@@ -7,8 +7,9 @@ import { LEVEL_HEIGHT, LevelBuilder } from "./level1";
 
 const e = (kind: EnemyKind, x: number, y: number) => ({ kind, x: x + 0.5, y });
 
-/** Hollow Hotel: tháp khách sạn 30 ô ngang, cao 100 ô. Leo ngược lên trước khi sương ma nuốt; trùm trên sân thượng */
-function hollowHotel(): LevelDef {
+/** Tháp leo (chế độ climb): tháp 30 ô ngang, cao 100 ô. Leo ngược lên trước khi sương ma nuốt; trùm trên sân thượng.
+ * Hiện không gắn vào cổng (Hollow Hotel đã chuyển sang cầu treo trong hang), giữ lại để thử chế độ leo. */
+function hotelTower(): LevelDef {
   const W = 30;
   const H = 100;
   const b = new LevelBuilder(W, H);
@@ -51,8 +52,8 @@ function hollowHotel(): LevelDef {
   b.block(2, W - 3, H, 3);
 
   return {
-    id: "hollow_hotel",
-    name: "HOLLOW HOTEL",
+    id: "hotel_tower",
+    name: "THÁP KHÁCH SẠN",
     mode: "climb",
     rows: b.rows(),
     start: [4.5, 2],
@@ -240,6 +241,88 @@ function citadel(): LevelDef {
   };
 }
 
+export const LEVEL_TOWER = hotelTower();
+
+/**
+ * Hollow Hotel: khách sạn cổ đổ sụp vào một hang đá gothic. Đi ngang trên những cây cầu sắt, ván gỗ treo lơ lửng
+ * qua vực sâu (rơi là mất mạng), mỏm đá chạm khắc, bậc ván gãy một chiều; trùm La Madre chờ ở đại sảnh cuối hang.
+ */
+function hollowHotel(): LevelDef {
+  const W = 200;
+  const H = 26;
+  const b = new LevelBuilder(W, H);
+  // Vách hang hai đầu
+  b.ground(0, 0, H).ground(W - 1, W - 1, H);
+  // Mỏm đá xuất phát
+  b.ground(1, 9, 8);
+  // Cầu 1 (sàn sắt mỏng treo qua vực)
+  b.block(13, 30, 8, 1);
+  b.ledge(19, 24, 11);
+  // Mỏm đá bậc lên
+  b.ground(34, 38, 10);
+  // Cầu 2 + bậc ván gãy phía trên giấu rương
+  b.block(42, 60, 10, 1);
+  b.ledge(46, 52, 13);
+  b.ledge(54, 57, 16);
+  // Mỏm đá thấp
+  b.ground(64, 70, 8);
+  // Cầu 3 có kính vỡ (gai)
+  b.block(74, 94, 9, 1);
+  b.spikes(82, 83, 9);
+  b.ledge(80, 85, 12);
+  // Trụ đá cao: leo tường lên
+  b.ground(97, 100, 13);
+  // Cầu 4 cao, ván gãy phía trên
+  b.block(104, 126, 13, 1);
+  b.ledge(112, 118, 16);
+  b.spikes(121, 122, 13);
+  // Mỏm đá rồi khe rộng (lướt + nhảy)
+  b.ground(130, 136, 11);
+  b.block(140, 156, 11, 1);
+  b.ledge(146, 151, 14);
+  // Đại sảnh cuối hang: nền đá liền, trần thấp
+  b.ground(159, W - 2, 8);
+  b.block(159, W - 2, H, 4);
+  return {
+    id: "hollow_hotel",
+    name: "HOLLOW HOTEL",
+    rows: b.rows(),
+    start: [4.5, 8],
+    checkpoints: [
+      [36.5, 10],
+      [98.5, 13],
+      [133.5, 11],
+    ],
+    enemies: [
+      e("zombie", 22, 8),
+      e("drone", 32, 13),
+      e("zombie", 50, 10),
+      e("trooper", 58, 10),
+      e("drone", 62, 14),
+      e("zombie", 67, 8),
+      e("zombie", 88, 9),
+      e("drone", 102, 17),
+      e("zombie", 110, 13),
+      e("trooper", 124, 13),
+      e("drone", 138, 15),
+      e("zombie", 150, 11),
+      e("boss", 186, 8),
+    ],
+    pickups: [
+      [36, 10.5],
+      [99, 13.5],
+      [134, 11.5],
+    ],
+    chests: [
+      { x: 55.5, y: 16, tier: "silver" },
+      { x: 115.5, y: 16, tier: "gold" },
+      { x: 68.5, y: 8, tier: "bronze" },
+    ],
+    bossArena: [162, W - 3],
+    theme: "hotel",
+  };
+}
+
 export const LEVEL_HOTEL = hollowHotel();
 export const LEVEL_WARZONE = warzone();
 export const LEVEL_CITADEL = citadel();
@@ -302,3 +385,71 @@ function huntZone(): LevelDef {
 }
 
 export const LEVEL_HUNT = huntZone();
+
+/**
+ * Giáo Xứ Hoang (nhìn từ trên kiểu Stardew Valley): làng nhà thờ bỏ hoang lúc chạng vạng. Đi 8 hướng qua
+ * nghĩa địa, hàng rào đá, bụi gai; nhà thờ cổ phía tây bắc, dinh thự ma phía bắc, tượng thần chết giữa làng.
+ * Kẻ Canh Giữ chờ ở bãi tế phía đông.
+ */
+function hollowParish(): LevelDef {
+  const W = 58;
+  const H = 44;
+  const b = new LevelBuilder(W, H);
+  // Tường đá bao quanh làng
+  b.ground(0, 0, H).ground(W - 1, W - 1, H).block(1, W - 2, 1, 1).block(1, W - 2, H, 1);
+  // Chân nhà thờ (tây bắc) và dinh thự (bắc): chặn đường, model đặt lên trên
+  b.footprint(9, 16, 29, 37);
+  b.footprint(26, 36, 32, 40);
+  // Tượng thần chết giữa làng, các đống đá
+  b.footprint(23, 24, 20, 21);
+  b.footprint(5, 6, 14, 15).footprint(40, 41, 8, 9).footprint(17, 18, 5, 6);
+  // Nghĩa địa: bia mộ xếp hàng
+  for (let x = 28; x <= 40; x += 3) for (let y = 14; y <= 26; y += 4) b.set(x, y, "#");
+  // Hàng rào đá chia làng, chừa lối đi
+  b.block(2, 8, 24, 1).block(12, 20, 24, 1);
+  b.block(20, 20, 23, 8);
+  b.block(44, 44, 18, 14).block(44, 44, 42, 18);
+  // Bụi gai
+  b.spikes(9, 11, 10).spikes(14, 15, 18).spikes(30, 32, 10).spikes(22, 23, 32);
+  return {
+    id: "hollow_parish",
+    name: "GIÁO XỨ NEON",
+    mode: "topdown",
+    rows: b.rows(),
+    start: [3.5, 3],
+    checkpoints: [
+      [22.5, 12],
+      [42.5, 30],
+    ],
+    enemies: [
+      e("zombie", 8, 6),
+      e("zombie", 14, 13),
+      e("trooper", 4, 20),
+      e("zombie", 10, 27),
+      e("drone", 19, 30),
+      e("zombie", 25, 15),
+      e("zombie", 30, 20),
+      e("trooper", 34, 12),
+      e("drone", 36, 24),
+      e("zombie", 38, 28),
+      e("zombie", 24, 38),
+      e("trooper", 40, 4),
+      e("drone", 42, 36),
+      e("zombie", 41, 16),
+      e("boss", 52, 22),
+    ],
+    pickups: [
+      [22, 11],
+      [42, 31],
+    ],
+    chests: [
+      { x: 3.5, y: 40, tier: "silver" },
+      { x: 37.5, y: 3, tier: "bronze" },
+      { x: 25.5, y: 28, tier: "gold" },
+    ],
+    bossArena: [46, W - 3],
+    theme: "parish",
+  };
+}
+
+export const LEVEL_PARISH = hollowParish();

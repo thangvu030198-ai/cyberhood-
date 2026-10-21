@@ -6,13 +6,16 @@ import { rarityIndex, type Rarity } from "../sim/config";
 import { rollDrop, type MechPart, type PityState } from "../sim/loot";
 import type { Rng } from "../sim/rng";
 import type { EnemyKind } from "./platformer";
+import { GEAR_DROP, rollGear, type GearId } from "./gear";
 
 export type LootDrop =
   | { kind: "part"; part: MechPart }
   | { kind: "cred"; amount: number }
   | { kind: "chestKey" }
   | { kind: "keyShard" }
-  | { kind: "health" };
+  | { kind: "health" }
+  /** Vũ khí / giáp (gear.ts) */
+  | { kind: "gear"; gear: GearId };
 
 export type ChestTier = "bronze" | "silver" | "gold";
 
@@ -52,6 +55,8 @@ export function rollEnemyDrops(kind: EnemyKind, ctx: LootContext): LootDrop[] {
   if (ctx.rng() < t.cred) out.push({ kind: "cred", amount: credAmount(ctx.rng) * (boss ? 10 : 1) });
   if (ctx.rng() < t.chestKey) out.push({ kind: "chestKey" });
   if (ctx.rng() < t.keyShard) out.push({ kind: "keyShard" });
+  if (ctx.rng() < (boss ? GEAR_DROP.boss : GEAR_DROP.enemy))
+    out.push({ kind: "gear", gear: rollGear(ctx.rng, ctx.mapMultiplier, boss ? "rare" : "common") });
   return out;
 }
 
@@ -61,6 +66,7 @@ export function chestContents(tier: ChestTier, ctx: LootContext): LootDrop[] {
   for (let i = 0; i < c.parts; i++)
     out.push({ kind: "part", part: rollDrop(ctx.rng, ctx.pity, { mapMultiplier: ctx.mapMultiplier, minRarity: c.min }) });
   out.push({ kind: "cred", amount: c.cred });
+  if (ctx.rng() < GEAR_DROP.chest[tier]) out.push({ kind: "gear", gear: rollGear(ctx.rng, ctx.mapMultiplier, tier === "gold" ? "epic" : "common") });
   return out;
 }
 

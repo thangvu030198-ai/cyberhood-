@@ -18,6 +18,8 @@ import { createRng } from "../sim/rng";
 import { RARITY_LABEL } from "../sim/loot";
 import { rarityIndex } from "../sim/config";
 import { trackMission } from "../game/missionStore";
+import { useGear } from "../game/gearStore";
+import { GEAR } from "./gear";
 
 /** Khoá lưu danh sách map đã qua (khai báo trước store vì store đọc ngay lúc khởi tạo) */
 const CLEARED_KEY = "cyberhood.levels.cleared.v1";
@@ -64,6 +66,8 @@ export const useLevel = create<LevelState>((set, get) => ({
       pity: useHunter.getState().pity,
       chestKeys: g.inventory.chestKey ?? 0,
       mapMultiplier: entry.mapMultiplier,
+      weapon: useGear.getState().weapon,
+      armor: useGear.getState().armor,
     });
     let lastCheckpoint = -1;
     const note = (text: string, color: string) =>
@@ -75,6 +79,7 @@ export const useLevel = create<LevelState>((set, get) => ({
         const d = detail.drop;
         if (d.kind === "part" && rarityIndex(d.part.rarity) >= rarityIndex("epic")) trackMission("epic");
         if (d.kind === "part" && rarityIndex(d.part.rarity) >= rarityIndex("legendary")) trackMission("legendary");
+        if (d.kind === "gear" && rarityIndex(GEAR[d.gear].rarity) >= rarityIndex("epic")) trackMission("epic");
       }
       if (kind === "kill") trackMission("kill");
       if (kind === "chest") {
@@ -196,6 +201,7 @@ function grantLoot(drops: LootDrop[], chestKeysLeft: number) {
   const cred = drops.reduce((n, d) => n + (d.kind === "cred" ? d.amount : 0), 0);
   const shards = drops.filter((d) => d.kind === "keyShard").length;
   if (cred) g.addCred(cred);
+  useGear.getState().add(drops.flatMap((d) => (d.kind === "gear" ? [d.gear] : [])));
   useGame.setState((s) => ({ inventory: { ...s.inventory, chestKey: chestKeysLeft } }));
   const season = { ...h.season, shards: { ...h.season.shards }, keys: [...h.season.keys] };
   const entry = levelById(useLevel.getState().levelId);
@@ -208,11 +214,12 @@ function describe(d: LootDrop): [string, string] {
   if (d.kind === "part") return [`${d.part.name} · ${RARITY_LABEL[d.part.rarity]}`, RARITY_HEX[d.part.rarity]];
   if (d.kind === "cred") return [`+${d.amount} CRED`, "#ffd23d"];
   if (d.kind === "chestKey") return ["+1 Chìa rương", "#7dffb0"];
+  if (d.kind === "gear") return [`${GEAR[d.gear].name} · ${RARITY_LABEL[GEAR[d.gear].rarity]} (vào Túi đồ)`, RARITY_HEX[GEAR[d.gear].rarity]];
   if (d.kind === "keyShard") return [`+1 Mảnh ${levelById(useLevel.getState().levelId).keyLabel}`, "#e0a060"];
   return ["Hồi máu", "#7dff9a"];
 }
 
-const RARITY_HEX = { common: "#c9d0d8", rare: "#5ab4ff", epic: "#c27dff", legendary: "#ffc23d", mythic: "#ff4a64" } as const;
+export const RARITY_HEX = { common: "#c9d0d8", rare: "#5ab4ff", epic: "#c27dff", legendary: "#ffc23d", mythic: "#ff4a64" } as const;
 
 
 function loadCleared(): string[] {

@@ -32,6 +32,34 @@ export const DUEL = {
 
 type MoveId = keyof typeof DUEL.moves;
 
+/** Đối thủ trên thang đấu trường: máu, lực đòn, tốc độ phản ứng, tỉ lệ đỡ, độ hung hăng, CRED thưởng */
+export type Rival = {
+  id: string;
+  name: string;
+  title: string;
+  /** Model rig (đi + chạy riêng; chết mượn của vệ binh nếu không có) */
+  base: string;
+  height: number;
+  hp: number;
+  power: number;
+  think: number;
+  blockChance: number;
+  aggression: number;
+  reward: number;
+};
+
+/** Thang 8 bậc: từ goblin chợ đêm tới nhà vô địch ngồi trên ngai sắt */
+export const RIVALS: Rival[] = [
+  { id: "goblin", name: "GOBLIN", title: "Kẻ móc túi chợ đêm", base: "mx_dr_goblin", height: 1.5, hp: 0.8, power: 0.8, think: 0.36, blockChance: 0.15, aggression: 0.5, reward: 30 },
+  { id: "guard", name: "VỆ BINH CITADEL", title: "Lính gác pháo đài", base: "mx_ct_guard", height: 1.95, hp: 1, power: 1, think: 0.28, blockChance: 0.35, aggression: 0.65, reward: 45 },
+  { id: "knight", name: "HIỆP SĨ THÉP", title: "Giáp bạc nặng, đỡ đòn giỏi", base: "mx_dr_knight", height: 1.95, hp: 1.1, power: 1.05, think: 0.26, blockChance: 0.5, aggression: 0.55, reward: 55 },
+  { id: "wolfwar", name: "CHIẾN BINH SÓI", title: "Thú hoá: nhanh và hung hăng", base: "mx_dr_wolfwar", height: 2, hp: 1.15, power: 1.15, think: 0.2, blockChance: 0.25, aggression: 0.85, reward: 65 },
+  { id: "warlord", name: "GOBLIN HÀM SẮT", title: "Thủ lĩnh bộ lạc, chuỳ gai", base: "mx_dr_warlord", height: 2.1, hp: 1.3, power: 1.25, think: 0.24, blockChance: 0.35, aggression: 0.7, reward: 75 },
+  { id: "obsidian", name: "HIỆP SĨ HẮC DIỆN", title: "Kiếm sĩ áo choàng đen", base: "mx_dr_obsidian", height: 2, hp: 1.35, power: 1.25, think: 0.19, blockChance: 0.55, aggression: 0.7, reward: 90 },
+  { id: "golem", name: "THẦN ĐÁ", title: "Chậm mà nặng như núi", base: "mx_dr_golem", height: 2.6, hp: 1.8, power: 1.45, think: 0.32, blockChance: 0.2, aggression: 0.6, reward: 110 },
+  { id: "aegis", name: "HIỆP SĨ LAM ĐUN", title: "Nhà vô địch ngai sắt", base: "mx_dr_aegis", height: 2.05, hp: 1.6, power: 1.35, think: 0.16, blockChance: 0.55, aggression: 0.8, reward: 160 },
+];
+
 export type Fighter = {
   x: number;
   y: number;
@@ -83,7 +111,14 @@ export class DuelSim {
   private aiIntent: DuelInput = NO_DUEL;
   private rng: () => number;
 
-  constructor(seed = 1) {
+  /** Đối thủ đang đấu (mặc định: vệ binh) */
+  readonly rival: Rival;
+  readonly foeMaxHp: number;
+
+  constructor(seed = 1, rival: Rival = RIVALS[1]) {
+    this.rival = rival;
+    this.foeMaxHp = Math.round(DUEL.maxHp * rival.hp);
+    this.foe.hp = this.foeMaxHp;
     let s = seed >>> 0 || 1;
     this.rng = () => {
       s = (s * 1664525 + 1013904223) >>> 0;
@@ -168,7 +203,8 @@ export class DuelSim {
         const blocked = b.blocking && b.facing === -a.facing;
         a.combo = Math.min(3, a.combo + 1);
         a.lastHitAt = this.time;
-        const mul = a.combo >= 3 ? DUEL.comboBonus : 1;
+        // Đối thủ mạnh đánh đau hơn theo lực đòn của bậc
+        const mul = (a.combo >= 3 ? DUEL.comboBonus : 1) * (a === this.foe ? this.rival.power : 1);
         const dmg = m.damage * mul * (blocked ? DUEL.blockChip : 1);
         b.hp = Math.max(0, b.hp - dmg);
         b.vx = a.facing * m.push * (blocked ? 0.5 : 1);
@@ -213,15 +249,15 @@ export class DuelSim {
   private think(): { now: DuelInput; prev: DuelInput } {
     const prev = this.aiIntent;
     if (this.time >= this.aiNext) {
-      this.aiNext = this.time + DUEL.ai.think * (0.6 + this.rng() * 0.8);
+      this.aiNext = this.time + this.rival.think * (0.6 + this.rng() * 0.8);
       const f = this.foe;
       const p = this.player;
       const dist = Math.abs(p.x - f.x);
       const toward = p.x > f.x ? { right: true } : { left: true };
       let intent: DuelInput = { ...NO_DUEL };
-      if (p.move && dist < 2 && this.rng() < DUEL.ai.blockChance) intent.block = true;
+      if (p.move && dist < 2 && this.rng() < this.rival.blockChance) intent.block = true;
       else if (dist > DUEL.moves.kick.reach * 0.9) intent = { ...NO_DUEL, ...toward };
-      else if (this.rng() < DUEL.ai.aggression) intent = { ...NO_DUEL, [this.rng() < 0.6 ? "punch" : "kick"]: true };
+      else if (this.rng() < this.rival.aggression) intent = { ...NO_DUEL, [this.rng() < 0.6 ? "punch" : "kick"]: true };
       else if (this.rng() < 0.3) intent = { ...NO_DUEL, jump: true };
       this.aiIntent = intent;
       // Nhấn phím một nhịp: lần nghĩ sau mới nhấn lại

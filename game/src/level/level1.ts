@@ -38,6 +38,12 @@ export class LevelBuilder {
     return this;
   }
 
+  /** Chỗ đứng của đạo cụ lớn (nhà thờ, dinh thự) khi nhìn từ trên: chặn đường nhưng không vẽ khối */
+  footprint(x0: number, x1: number, y0: number, y1: number) {
+    for (let c = x0; c <= x1; c++) for (let r = y0; r <= y1; r++) this.set(c, r, "o");
+    return this;
+  }
+
   /** Gai nằm trên mặt đất cao `top` */
   spikes(x0: number, x1: number, top: number) {
     for (let c = x0; c <= x1; c++) this.set(c, top, "^");

@@ -38,6 +38,9 @@ const PATROL_SPEED = 4;
 const CHASE_SPEED = 10;
 const STANDOFF = 10;
 const FIRE_RANGE = 28;
+/** Drone không được lại gần camera hơn khoảng này, và bị ẩn nếu vẫn lọt vào quá sát */
+const CAMERA_CLEAR = 6;
+const CAMERA_HIDE = 3.5;
 
 /** Danh sách drone dùng chung cho vũ khí và minimap */
 export const drones: Drone[] = (() => {
@@ -138,6 +141,7 @@ const _target = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _aim = new THREE.Vector3();
 const _miss = new THREE.Vector3();
+const _away = new THREE.Vector3();
 
 function DroneModel({ index }: { index: number }) {
   const gltf = use(models.drone);
@@ -163,11 +167,12 @@ function DroneModel({ index }: { index: number }) {
   const eye = useMemo(() => new THREE.Color("#ff1f3d").multiplyScalar(6), []);
   const ref = useRef<THREE.Group>(null);
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const d = drones[index];
     const g = ref.current;
     if (!g) return;
-    g.visible = d.state !== "dead";
+    // Ẩn drone khi nó lọt sát ống kính, tránh một khối khổng lồ che kín màn hình
+    g.visible = d.state !== "dead" && d.pos.distanceTo(camera.position) > CAMERA_HIDE;
     if (!g.visible) return;
     g.position.copy(d.pos);
     g.position.y += Math.sin(clock * 2.2 + index) * 0.12;
@@ -198,7 +203,7 @@ function shortest(from: number, to: number) {
 }
 
 export function Enemies() {
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
     clock += dt;
     const step = Math.min(dt, 1 / 20);
     const game = useGame.getState();
@@ -241,10 +246,13 @@ export function Enemies() {
         }
         // Bay vòng quanh mục tiêu ở khoảng cách STANDOFF
         d.orbit += step * 0.5;
+        // Phía sau lưng người chơi là chỗ camera đứng: khi vòng qua đó thì bay vọt lên cao
+        const camSide = Math.atan2(camera.position.z - _target.z, camera.position.x - _target.x);
+        const behind = Math.max(0, Math.cos(d.orbit - camSide));
         _desired.set(
           _target.x + Math.cos(d.orbit) * STANDOFF,
           // Sà thấp khi tấn công để người chơi ngắm được
-          ATTACK_HEIGHT + Math.sin(d.orbit * 1.7) * 0.8,
+          ATTACK_HEIGHT + Math.sin(d.orbit * 1.7) * 0.8 + behind * behind * 9,
           _target.z + Math.sin(d.orbit) * STANDOFF,
         );
         _desired.sub(d.pos);
@@ -255,6 +263,14 @@ export function Enemies() {
           d.nextShot = clock + Math.max(0.6, 1.5 - game.wanted * 0.15) + Math.random() * 0.6;
           shoot(d, dist, targetSpeed, !!car, game.wanted);
         }
+      }
+
+      // Đẩy drone ra xa camera nếu nó bay lại quá gần
+      _away.subVectors(d.pos, camera.position);
+      const camDist = _away.length();
+      if (camDist < CAMERA_CLEAR) {
+        _away.y = Math.abs(_away.y) + 1;
+        _desired.addScaledVector(_away.normalize(), (CAMERA_CLEAR - camDist) * 4);
       }
 
       d.vel.lerp(_desired, 1 - Math.exp(-2.5 * step));

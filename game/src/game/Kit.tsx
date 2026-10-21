@@ -319,7 +319,7 @@ function StreetFurniture() {
     const boxes: THREE.Matrix4[] = [];
     const posts: THREE.Matrix4[] = [];
     const colliders: { x: number; z: number; hx: number; hz: number }[] = [];
-    for (const s of curbSpots(12, 3, 2.2)) {
+    for (const s of curbSpots(12, 3, 4.6)) {
       if (nearReserved(s.x, s.z, 3) || blockedByBuilding(s.x, s.z, 1.2)) continue;
       const r = rand();
       // Đặt sát tường, mặt trước quay ra đường
@@ -330,7 +330,8 @@ function StreetFurniture() {
         boxes.push(place(s.x, CITY.SIDEWALK_HEIGHT, s.z, yawZ(s.n), 0.9));
         colliders.push({ x: s.x, z: s.z, hx: 0.9, hz: 0.6 });
       } else if (r < 0.46) {
-        posts.push(place(s.x + s.n[0] * 1.2, CITY.SIDEWALK_HEIGHT, s.z + s.n[1] * 1.2, yawZ(s.n), 0.9));
+        // Cột chắn đặt sát mép đường, ngoài lối đi bộ
+        posts.push(place(s.x + s.n[0] * 3.7, CITY.SIDEWALK_HEIGHT, s.z + s.n[1] * 3.7, yawZ(s.n), 0.9));
       }
     }
     return { lamps, vend, boxes, posts, colliders };
@@ -602,7 +603,7 @@ function SidewalkDecor() {
       ["Screen_Retro_02", 0.45],
     ];
     const out: Record<string, THREE.Matrix4[]> = Object.fromEntries(items.map(([k]) => [k, []]));
-    for (const sp of curbSpots(77, 3, 3.4)) {
+    for (const sp of curbSpots(77, 3, 4.9)) {
       if (rand() > 0.45 || nearReserved(sp.x, sp.z, 3) || blockedByBuilding(sp.x, sp.z, 0.8)) continue;
       const [name, scale] = items[Math.floor(rand() * items.length)];
       out[name].push(place(sp.x, CITY.SIDEWALK_HEIGHT, sp.z, yawZ(sp.n), scale));

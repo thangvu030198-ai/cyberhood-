@@ -1,7 +1,7 @@
 import { Suspense, use, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useAnimations, useKeyboardControls } from "@react-three/drei";
+import { useKeyboardControls } from "@react-three/drei";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { Ecctrl, type EcctrlHandle } from "ecctrl";
 import { EcctrlAnimationStateController, useEcctrlAnimationStore } from "ecctrl/animation";
@@ -13,21 +13,14 @@ import { uiBlocking, useGame, type Emote } from "./store";
 import { Gun } from "./Weapons";
 import { useHunter } from "./hunter";
 import { inPlace } from "./meshyAnim";
+import { clipRootSpeed, Locomotion } from "./locomotion";
+import { TUNING } from "../traffic/tuning";
 import type { HunterSkin } from "./skins";
 import { GAME } from "../sim/config";
 
 const CAR_REACH = 3.6;
 
-// Animation của Soldier (Mixamo). Nhảy dùng tạm động tác chạy.
-const CLIP_FOR_STATE: Record<string, string> = {
-  IDLE: "Idle",
-  WALK: "Walk",
-  RUN: "Run",
-  JUMP_START: "Run",
-  JUMP_IDLE: "Run",
-  JUMP_FALL: "Run",
-  JUMP_LAND: "Idle",
-};
+
 
 // Biểu cảm mượn từ Xbot: cùng khung xương Mixamo nên dùng chung được clip
 const CLIP_FOR_EMOTE: Record<Emote, string> = {
@@ -107,47 +100,45 @@ function CharacterModel() {
     return upper && lower && hand ? { upper, lower, hand } : null;
   }, [scene]);
 
-  const clips = useMemo(
-    () => [...gltf.animations, ...xbot.animations.filter((a) => a.name === "agree" || a.name === "headShake")],
-    [gltf, xbot],
-  );
-  const { actions } = useAnimations(clips, group);
+  // Đứng / đi / chạy trộn liên tục theo tốc độ thật (locomotion.ts); biểu cảm phủ lên trên
+  const loco = useMemo(() => {
+    const mixer = new THREE.AnimationMixer(scene);
+    const find = (list: THREE.AnimationClip[], n: string) => list.find((a) => a.name === n);
+    const act = (c?: THREE.AnimationClip) => (c ? mixer.clipAction(c) : null);
+    const P = TUNING.locomotion.player;
+    const l = new Locomotion(mixer, act(find(gltf.animations, "Idle")), act(find(gltf.animations, "Walk")), act(find(gltf.animations, "Run")), {
+      walk: P.walkClipSpeed,
+      run: P.runClipSpeed,
+      gaitWalk: P.gaitWalk,
+      gaitRun: P.gaitRun,
+    });
+    const emotes: Record<Emote, THREE.AnimationAction | null> = {
+      wave: act(find(xbot.animations, CLIP_FOR_EMOTE.wave)),
+      dance: act(find(xbot.animations, CLIP_FOR_EMOTE.dance)),
+      thumbsUp: act(find(xbot.animations, CLIP_FOR_EMOTE.thumbsUp)),
+    };
+    return { l, emotes };
+  }, [scene, gltf, xbot]);
   const animationState = useEcctrlAnimationStore((s) => s.animationState);
   const emote = useGame((s) => s.emote);
   const setEmote = useGame((s) => s.setEmote);
   const flatlined = useGame((s) => s.flatlinedAt !== null);
-  const current = useRef<string | null>(null);
   const setReady = useGame((s) => s.setReady);
   useEffect(setReady, [setReady]);
-
-  const clip = flatlined
-    ? "Idle"
-    : emote && animationState === "IDLE"
-      ? CLIP_FOR_EMOTE[emote]
-      : (CLIP_FOR_STATE[animationState] ?? "Idle");
 
   // Bắt đầu di chuyển thì huỷ biểu cảm.
   useEffect(() => {
     if (emote && animationState !== "IDLE") setEmote(null);
   }, [animationState, emote, setEmote]);
-
   useEffect(() => {
-    if (current.current === clip) return;
-    const next = actions[clip];
-    if (!next) return;
-    const prev = current.current ? actions[current.current] : null;
-    const once = Object.values(CLIP_FOR_EMOTE).includes(clip);
-    next.reset();
-    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
-    next.clampWhenFinished = true;
-    next.fadeIn(0.2).play();
-    prev?.fadeOut(0.2);
-    current.current = clip;
-  }, [actions, clip]);
+    if (emote && !flatlined) loco.l.play(loco.emotes[emote]);
+    else loco.l.release();
+  }, [emote, flatlined, loco]);
 
   const camera = useThree((s) => s.camera);
   const fall = useRef(0);
   useFrame((_, dt) => {
+    loco.l.update(flatlined ? 0 : groundSpeed(), Math.min(dt, 0.1));
     // Dạng Mech: phóng to giữ chân chạm đất, giáp phát sáng hổ phách
     const blend = handles.mechBlend;
     if (group.current) {
@@ -199,16 +190,7 @@ function PlayerBody() {
   );
 }
 
-const MESHY_CLIP_FOR_STATE: Record<string, string> = {
-  IDLE: "idle",
-  WALK: "walk",
-  RUN: "run",
-  JUMP_START: "jump",
-  JUMP_IDLE: "jump",
-  JUMP_FALL: "jump",
-  JUMP_LAND: "idle",
-};
-const MESHY_CLIP_FOR_EMOTE: Record<Emote, string> = { wave: "wave", dance: "dance", thumbsUp: "talk" };
+const MESHY_EMOTE: Record<Emote, "wave" | "dance" | "talk"> = { wave: "wave", dance: "dance", thumbsUp: "talk" };
 
 /** Nhân vật Meshy (đã rig): clip riêng của lớp + biểu cảm mượn từ nhân vật Meshy khác (chung tên xương) */
 function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
@@ -225,7 +207,7 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
   };
   const group = useRef<THREE.Group>(null);
   const pose = useRef<THREE.Group>(null);
-  const { scene, mixer, actions, arm } = useMemo(() => {
+  const { scene, loco, actions, arm } = useMemo(() => {
     const s = cloneSkinned(walkGltf.scene);
     fitCharacter(s, PLAYER.modelHeight, FEET_Y);
     s.traverse((o) => {
@@ -250,6 +232,14 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
     };
     add("walk", walkGltf.animations[0]);
     for (const [name, g] of Object.entries(sources)) add(name, g.animations[0]);
+    // Tốc độ tự nhiên của clip đi/chạy đo từ root motion; ngưỡng dáng đi/chạy theo tốc độ người chơi
+    const P = TUNING.locomotion.player;
+    const loco = new Locomotion(mixer, actions.idle ?? null, actions.walk ?? null, actions.run ?? null, {
+      walk: walkGltf.animations[0] ? clipRootSpeed(walkGltf.animations[0], s) : 0,
+      run: sources.run.animations[0] ? clipRootSpeed(sources.run.animations[0], s) : 0,
+      gaitWalk: P.gaitWalk,
+      gaitRun: P.gaitRun,
+    });
     const bones: Record<string, THREE.Bone> = {};
     s.traverse((o) => {
       if ((o as THREE.Bone).isBone) bones[o.name] = o as THREE.Bone;
@@ -258,7 +248,7 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
       bones.RightArm && bones.RightForeArm && bones.RightHand
         ? { upper: bones.RightArm, lower: bones.RightForeArm, hand: bones.RightHand }
         : null;
-    return { scene: s, mixer, actions, arm };
+    return { scene: s, loco, actions, arm };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walkGltf, ...Object.values(sources)]);
 
@@ -268,35 +258,24 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
   const flatlined = useGame((s) => s.flatlinedAt !== null);
   const setReady = useGame((s) => s.setReady);
   useEffect(setReady, [setReady]);
-  const current = useRef<string | null>(null);
-
-  const clip = flatlined
-    ? "death"
-    : emote && animationState === "IDLE"
-      ? MESHY_CLIP_FOR_EMOTE[emote]
-      : (MESHY_CLIP_FOR_STATE[animationState] ?? "idle");
 
   useEffect(() => {
     if (emote && animationState !== "IDLE") setEmote(null);
   }, [animationState, emote, setEmote]);
-
+  // Biểu cảm và ngã chết phủ lên trên dáng đi; hồi sinh thì thả ra
   useEffect(() => {
-    if (current.current === clip) return;
-    const next = actions[clip] ?? actions.idle;
-    if (!next) return;
-    const prev = current.current ? actions[current.current] : null;
-    const once = clip === "death" || clip === "wave";
-    next.reset();
-    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
-    next.clampWhenFinished = true;
-    next.fadeIn(0.2).play();
-    if (prev && prev !== next) prev.fadeOut(0.2);
-    current.current = clip;
-  }, [actions, clip]);
+    if (flatlined) loco.play(actions.death ?? null, true);
+    else if (emote) loco.play(actions[MESHY_EMOTE[emote]] ?? null);
+    else loco.release();
+  }, [emote, flatlined, loco, actions]);
+  // Bật nhảy: phát clip nhảy một lần
+  useEffect(() => {
+    if (animationState === "JUMP_START" && !flatlined) loco.play(actions.jump ?? null);
+  }, [animationState, flatlined, loco, actions]);
 
   const camera = useThree((s) => s.camera);
   useFrame((_, dt) => {
-    mixer.update(Math.min(dt, 0.1));
+    loco.update(flatlined ? 0 : groundSpeed(), Math.min(dt, 0.1));
     const blend = handles.mechBlend;
     if (group.current) {
       const k = Math.max(0.001, 1 - blend);
@@ -327,6 +306,13 @@ function MeshyHunterModel({ skin }: { skin: Exclude<HunterSkin, "soldier"> }) {
       {arm && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
     </group>
   );
+}
+
+/** Tốc độ ngang thật của nhân vật (m/s), dùng để trộn animation */
+function groundSpeed() {
+  const v = handles.player?.currLinVel;
+  if (!v || useGame.getState().mode !== "foot") return 0;
+  return Math.hypot(v.x, v.z);
 }
 
 const GUN_OFFSET = new THREE.Vector3(0, 0, 0);

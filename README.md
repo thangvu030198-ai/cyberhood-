@@ -81,6 +81,7 @@ Chi tiết trong `game/src/assets/LICENSES.md`. Tóm tắt:
 - [x] Giai đoạn 3: Netrunner ID, túi đồ, NPC có hội thoại, 5 nhiệm vụ cốt truyện, Server Vault; nâng cấp hình ảnh
 - [x] GameFi MVP 1–3 phía client (theo `docs/GDD_GameFi_HoanChinh.md`): hợp đồng 7 phút, biến hình Titan Frame, rơi đồ 5 độ hiếm, gara Mech, tiến độ mùa
 - [x] Đợt asset Meshy 3–5: xe cyberpunk thay xe hộp, ~50% nhà dựng bằng model Meshy, công trình bản đồ ngoài rìa (Citadel, cổng dịch chuyển, tàu đổ bộ...), 6 lớp nhân vật người chơi, Vùng cách ly zombie phía tây, NPC/dân thường có clip đứng/vẫy/nói chuyện
+- [x] Giao thông và người đi bộ (`src/traffic`, thuần TypeScript, có test): bản đồ đường chung với đường cong rẽ, vỉa hè bo góc, vạch sang đường; đèn giao thông mỗi ngã tư dùng chung cho xe và người; xe tự lái theo IDM (giữ khoảng cách, phanh mượt, rẽ, dừng đèn đỏ, nhường rẽ trái), bánh quay, đèn phanh; người đi bộ đi theo lộ trình, chờ đèn sang đường, né nhau và né người chơi, bỏ chạy khi có tiếng súng; xe lái được đỗ trong ô và tự vào ô khi bị bỏ giữa đường; animation đứng/đi/chạy trộn theo tốc độ thật; mũi tên + la bàn chỉ đường nhiệm vụ; debug F3 (`?debug=traffic`). Mọi con số ở `src/traffic/tuning.ts`
 - [ ] MVP 0: server authoritative (Colyseus), chuyển `sim/` lên server
 - [ ] Giai đoạn 4: multiplayer
 - [ ] Giai đoạn 5: token và NFT

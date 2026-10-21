@@ -8,6 +8,10 @@ import { loadProgress } from "../game/assets";
 import { ContractHud, DropBanner, HunterPanels, MechMeter } from "./HunterUi";
 import { useHunter } from "../game/hunter";
 import { inSafeZone, inQuarantine } from "../game/config";
+import { currentObjective, playerPos } from "../game/objectives";
+import { handles } from "../game/refs";
+import { trafficStats } from "../game/TrafficDebug";
+import { traffic } from "../game/trafficWorld";
 import { CharacterCreator, DialoguePanel, InventoryPanel, QuestTracker, Toast, interactLabel } from "./Panels";
 
 const EMOTE_KEYS: Record<string, Emote> = { Digit1: "wave", Digit2: "dance", Digit3: "thumbsUp" };
@@ -124,6 +128,47 @@ function SafeZoneTag() {
   if (inQuarantine(x, z)) return <div className="safe-tag safe-tag--danger">VÙNG CÁCH LY · Zombie cyber</div>;
   if (!inSafeZone(x, z)) return null;
   return <div className="safe-tag">VÙNG AN TOÀN · Legion không vào được</div>;
+}
+
+/** La bàn nhiệm vụ: mũi tên xoay theo hướng mục tiêu so với camera, kèm tên và khoảng cách */
+function ObjectiveCompass() {
+  useNow(8);
+  const location = useGame((s) => s.location);
+  const obj = currentObjective();
+  const me = playerPos();
+  if (!obj || !me || location !== "city") return null;
+  const d = Math.hypot(obj.x - me.x, obj.z - me.z);
+  const yaw = Math.atan2(obj.x - me.x, obj.z - me.z);
+  // Hướng camera nhìn tới (yaw) = azimuth + π; xoay mũi tên theo độ lệch so với hướng đó
+  const rel = -(yaw - handles.camYaw - Math.PI);
+  return (
+    <div className="compass" style={{ borderColor: obj.color }} aria-label={`Mục tiêu: ${obj.label}, cách ${Math.round(d)} mét`}>
+      <span className="compass__arrow" style={{ transform: `rotate(${rel}rad)`, color: obj.color }}>
+        ▲
+      </span>
+      <span className="compass__label">{obj.label}</span>
+      <span className="compass__dist">{d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1)} km`}</span>
+    </div>
+  );
+}
+
+/** Bảng số liệu giao thông khi bật debug (F3) */
+function TrafficDebugPanel() {
+  useNow(4);
+  if (!traffic.debug) return null;
+  const s = trafficStats();
+  const fmt = (o: Record<string, number>) =>
+    Object.entries(o)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(" · ");
+  return (
+    <div className="traffic-debug">
+      <b>TRAFFIC DEBUG (F3)</b>
+      <div>t = {s.t.toFixed(1)}s · tốc độ TB {s.avgKmh} km/h</div>
+      <div>Xe: {fmt(s.reasons)}</div>
+      <div>Người: {fmt(s.states)}</div>
+    </div>
+  );
 }
 
 function Crosshair() {
@@ -251,8 +296,8 @@ function Help({ mode }: { mode: "foot" | "drive" }) {
           <dd>Dùng Stim Pack · Túi đồ, cài đặt đồ hoạ</dd>
           <dt>1 2 3</dt>
           <dd>Gật đầu · Gật đầu · Lắc đầu</dd>
-          <dt>H</dt>
-          <dd>Ẩn/hiện bảng này</dd>
+          <dt>H · F3</dt>
+          <dd>Ẩn/hiện bảng này · Chế độ debug giao thông</dd>
         </dl>
       ) : (
         <dl>
@@ -337,6 +382,8 @@ export function Hud() {
         </div>
         <Wanted />
         <SafeZoneTag />
+        <ObjectiveCompass />
+        <TrafficDebugPanel />
         <div className="hud__right">
           <div className="loc">
             <span className="loc__label">DISTRICT</span>

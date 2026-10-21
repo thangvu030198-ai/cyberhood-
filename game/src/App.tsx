@@ -9,6 +9,9 @@ import { Player } from "./game/Player";
 import { CameraRig, Interaction } from "./game/CameraRig";
 import { Vehicles } from "./game/Vehicles";
 import { Enemies, damageDrone, drones } from "./game/Enemies";
+import { ObjectiveArrow } from "./game/ObjectiveArrow";
+import { TrafficDebug } from "./game/TrafficDebug";
+import { traffic } from "./game/trafficWorld";
 import { Effects } from "./game/Effects";
 import { PlayerCombat, combatDebug } from "./game/Weapons";
 import { Shop } from "./game/Shop";
@@ -88,6 +91,7 @@ function DebugHook() {
       __quests: { questProgress },
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
+      __traffic: traffic,
     });
   }
   return null;
@@ -135,6 +139,8 @@ export default function App() {
             <Showcase quality={quality} />
             <LifeDynamic quality={quality} />
             <MeshyDynamic />
+            <ObjectiveArrow />
+            <TrafficDebug />
             <Rain />
             <DebugHook />
             {!NO_FX && (

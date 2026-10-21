@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { createPortal, useFrame, useThree } from "@react-three/fiber";
 import { useButtonStore } from "ecctrl/input";
 import { models, playSfx } from "./assets";
+import { alarm } from "./trafficWorld";
 import { PALETTE } from "./config";
 import { damageDrone, hitDrones, nearestVisibleDrone } from "./Enemies";
 import { fx } from "./Effects";
@@ -224,6 +225,8 @@ export function PlayerCombat() {
     if (mech) fx.blast(_end);
     fx.muzzle(_muzzle, PALETTE.cyan);
     playSfx(weapon.sfx, 0.55);
+    // Tiếng súng làm người đi bộ quanh đó bỏ chạy
+    alarm(_origin.x, _origin.z);
   });
 
   return null;

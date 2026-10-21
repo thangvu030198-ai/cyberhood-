@@ -2,7 +2,9 @@ import { Suspense, use, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { extraModel, models, playSfx } from "./assets";
-import { inPlace, once } from "./meshyAnim";
+import { inPlace } from "./meshyAnim";
+import { clipRootSpeed, Locomotion } from "./locomotion";
+import { alarm } from "./trafficWorld";
 import { fitCharacter } from "./Player";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { CITY, CITY_HALF, CITY_PITCH, PALETTE, PLAYER, QUARANTINE, SAFE_ZONE, inQuarantine, inSafeZone, mulberry32 } from "./config";
@@ -442,11 +444,12 @@ function TrooperModel({ index }: { index: number }) {
   const combat = (OWN_COMBAT_CLIPS.has(look) ? look : "officer") as "sniper" | "officer" | "android";
   const walkGltf = use(extraModel(`mx_legion_${look}_walk`));
   const runGltf = use(extraModel(`mx_legion_${look}_run`));
+  const idleGltf = use(extraModel(`mx_legion_${combat}_idle`));
   const shootGltf = use(extraModel(`mx_legion_${combat}_walkshoot`));
   const deathGltf = use(extraModel(`mx_legion_${combat}_death`));
   const ref = useRef<THREE.Group>(null);
-  const deadSeen = useRef(false);
-  const { scene, mixer, walk, run, shoot, death, mats } = useMemo(() => {
+  const seen = useRef({ dead: false, fired: -1 });
+  const { scene, loco, shoot, death, mats } = useMemo(() => {
     const s = cloneSkinned(walkGltf.scene);
     fitCharacter(s, heavy ? 2.25 : 1.85, -TROOPER_CENTER);
     const mats: { mat: THREE.MeshStandardMaterial; base: THREE.Color }[] = [];
@@ -465,41 +468,35 @@ function TrooperModel({ index }: { index: number }) {
       mats.push({ mat, base: mat.emissive.clone() });
     });
     const mixer = new THREE.AnimationMixer(s);
-    const act = (g: { animations: THREE.AnimationClip[] }) => (g.animations[0] ? mixer.clipAction(inPlace(g.animations[0])) : null);
-    const walk = act(walkGltf);
-    const run = act(runGltf);
-    const shoot = act(shootGltf);
-    const death = act(deathGltf);
-    if (death) once(death);
-    for (const a of [walk, run, shoot]) {
-      a?.play();
-      if (a && a !== walk) a.weight = 0;
-    }
-    return { scene: s, mixer, walk, run, shoot, death, mats };
-  }, [walkGltf, runGltf, shootGltf, deathGltf, heavy]);
+    const raw = (g: { animations: THREE.AnimationClip[] }) => g.animations[0];
+    const act = (g: { animations: THREE.AnimationClip[] }) => (raw(g) ? mixer.clipAction(inPlace(raw(g))) : null);
+    const loco = new Locomotion(mixer, act(idleGltf), act(walkGltf), act(runGltf), {
+      walk: raw(walkGltf) ? clipRootSpeed(raw(walkGltf), s) : 0,
+      run: raw(runGltf) ? clipRootSpeed(raw(runGltf), s) : 0,
+    });
+    return { scene: s, loco, shoot: act(shootGltf), death: act(deathGltf), mats };
+  }, [walkGltf, runGltf, idleGltf, shootGltf, deathGltf, heavy]);
   useFrame(({ camera }, dt) => {
     const d = drones[index];
     const g = ref.current;
     if (!g) return;
+    const step = Math.min(dt, 0.1);
     const dead = d.state === "dead";
     const dying = dead && clock - d.deadAt < DEATH_SHOW && d.pos.y > -10;
     g.visible = (!dead || dying) && d.pos.distanceTo(camera.position) < 90;
-    if (!dead) deadSeen.current = false;
+    if (!dead && seen.current.dead) {
+      seen.current.dead = false;
+      loco.release();
+    }
     if (!g.visible) return;
     if (dying) {
       // Ngã xuống tại chỗ rồi biến mất
-      if (!deadSeen.current && death) {
-        deadSeen.current = true;
-        for (const a of [walk, run, shoot]) if (a) a.weight = 0;
-        death.reset().play();
-        death.weight = 1;
+      if (!seen.current.dead) {
+        seen.current.dead = true;
+        loco.play(death, true);
       }
-      mixer.update(Math.min(dt, 0.1));
+      loco.update(0, step);
       return;
-    }
-    if (death?.isRunning() || (death && death.weight > 0)) {
-      death.stop();
-      death.weight = 0;
     }
     g.position.copy(d.pos);
     const speed = Math.hypot(d.vel.x, d.vel.z);
@@ -508,25 +505,17 @@ function TrooperModel({ index }: { index: number }) {
       const yaw = Math.atan2(look.x, look.z);
       g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, g.rotation.y + shortest(g.rotation.y, yaw), 0.15);
     }
-    // Vừa bắn xong: chuyển sang động tác giương súng bắn; còn lại pha trộn đi/chạy theo tốc độ
-    const firing = d.state === "chase" && clock - d.firedAt < 0.9 ? 1 : 0;
-    const k = THREE.MathUtils.clamp((speed - 2) / 3, 0, 1);
-    if (shoot) shoot.weight = THREE.MathUtils.lerp(shoot.weight, firing, 0.2);
-    const rest = 1 - (shoot?.weight ?? 0);
-    if (walk) {
-      walk.weight = (1 - k) * rest;
-      walk.timeScale = THREE.MathUtils.clamp(speed / 1.6, 0.15, 1.6);
-    }
-    if (run) {
-      run.weight = k * rest;
-      run.timeScale = THREE.MathUtils.clamp(speed / 5, 0.5, 1.4);
+    // Mỗi phát bắn: giương súng bắn một nhịp rồi trở lại dáng đi/chạy
+    if (d.firedAt !== seen.current.fired) {
+      seen.current.fired = d.firedAt;
+      if (d.state === "chase" && clock - d.firedAt < 0.2) loco.play(shoot);
     }
     const hurt = clock - d.hurtAt < 0.12;
     for (const { mat, base } of mats) {
       if (hurt) mat.emissive.setRGB(1, 0.15, 0.15);
       else mat.emissive.copy(base);
     }
-    if (camera.position.distanceTo(d.pos) < 55) mixer.update(Math.min(dt, 0.1));
+    if (camera.position.distanceTo(d.pos) < 55) loco.update(speed, step);
   });
   return (
     <group ref={ref} visible={false}>
@@ -550,7 +539,7 @@ function ZombieModel({ index }: { index: number }) {
   };
   const ref = useRef<THREE.Group>(null);
   const prev = useRef({ state: "patrol" as DroneState, firedAt: -1, deadSeen: false, screamAt: -99 });
-  const { scene, mixer, acts, mats } = useMemo(() => {
+  const { scene, loco, acts, mats } = useMemo(() => {
     const s = cloneSkinned(g.body.scene);
     fitCharacter(s, st.height, -TROOPER_CENTER);
     const mats: { mat: THREE.MeshStandardMaterial; base: THREE.Color }[] = [];
@@ -568,47 +557,49 @@ function ZombieModel({ index }: { index: number }) {
       mats.push({ mat, base: mat.emissive.clone() });
     });
     const mixer = new THREE.AnimationMixer(s);
-    const act = (gl: { animations: THREE.AnimationClip[] }) => (gl.animations[0] ? mixer.clipAction(inPlace(gl.animations[0])) : null);
-    const acts = { stagger: act(g.stagger), run: act(g.run), attack: act(g.attack), scream: act(g.scream), death: act(g.death) };
-    for (const a of [acts.attack, acts.scream, acts.death]) if (a) once(a);
-    acts.stagger?.play();
-    acts.run?.play();
-    if (acts.run) acts.run.weight = 0;
-    return { scene: s, mixer, acts, mats };
+    const raw = (gl: { animations: THREE.AnimationClip[] }) => gl.animations[0];
+    const act = (gl: { animations: THREE.AnimationClip[] }) => (raw(gl) ? mixer.clipAction(inPlace(raw(gl))) : null);
+    // Lảo đảo là dáng "đi", chạy là dáng lao tới; tốc độ clip đo từ root motion để chân không trượt
+    const loco = new Locomotion(mixer, null, act(g.stagger), act(g.run), {
+      walk: raw(g.stagger) ? clipRootSpeed(raw(g.stagger), s) : 0,
+      run: raw(g.run) ? clipRootSpeed(raw(g.run), s) : 0,
+      gaitWalk: st.walk,
+      gaitRun: st.chase,
+    });
+    return { scene: s, loco, acts: { attack: act(g.attack), scream: act(g.scream), death: act(g.death) }, mats };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...Object.values(g), st.height]);
   useFrame(({ camera }, dt) => {
     const d = drones[index];
     const grp = ref.current;
     if (!grp) return;
+    const step = Math.min(dt, 0.1);
     const p = prev.current;
     const dead = d.state === "dead";
     const dying = dead && clock - d.deadAt < DEATH_SHOW;
     grp.visible = (!dead || dying) && d.pos.distanceTo(camera.position) < 80;
-    if (!dead) p.deadSeen = false;
+    if (!dead && p.deadSeen) {
+      p.deadSeen = false;
+      loco.release();
+    }
     if (!grp.visible) return;
-    const oneShot = (a: THREE.AnimationAction | null) => a?.reset().setEffectiveWeight(1).fadeIn(0.15).play();
     if (dying) {
       if (!p.deadSeen) {
         p.deadSeen = true;
-        for (const a of [acts.stagger, acts.run, acts.attack, acts.scream]) a?.stop();
-        oneShot(acts.death);
+        loco.play(acts.death, true);
       }
-      mixer.update(Math.min(dt, 0.1));
+      loco.update(0, step);
       return;
     }
-    if (acts.death?.isRunning()) acts.death.stop();
-    if (!acts.stagger?.isRunning()) acts.stagger?.play();
-    if (!acts.run?.isRunning()) acts.run?.play();
     // Vừa phát hiện người chơi: gào lên
     if (d.state === "chase" && p.state !== "chase" && clock - p.screamAt > 12) {
       p.screamAt = clock;
-      oneShot(acts.scream);
+      loco.play(acts.scream);
     }
     p.state = d.state;
     if (d.firedAt !== p.firedAt) {
       p.firedAt = d.firedAt;
-      if (d.state === "chase" && clock - d.firedAt < 0.2) oneShot(acts.attack);
+      if (d.state === "chase" && clock - d.firedAt < 0.2) loco.play(acts.attack);
     }
     grp.position.copy(d.pos);
     const speed = Math.hypot(d.vel.x, d.vel.z);
@@ -617,22 +608,12 @@ function ZombieModel({ index }: { index: number }) {
       const yaw = Math.atan2(face.x, face.z);
       grp.rotation.y = THREE.MathUtils.lerp(grp.rotation.y, grp.rotation.y + shortest(grp.rotation.y, yaw), 0.12);
     }
-    const busy = (acts.attack?.isRunning() ? 1 : 0) || (acts.scream?.isRunning() ? 1 : 0);
-    const k = THREE.MathUtils.clamp((speed - 1.8) / 2, 0, 1);
-    if (acts.stagger) {
-      acts.stagger.weight = (1 - k) * (1 - busy);
-      acts.stagger.timeScale = THREE.MathUtils.clamp(speed / 0.9, 0.3, 1.6);
-    }
-    if (acts.run) {
-      acts.run.weight = k * (1 - busy);
-      acts.run.timeScale = THREE.MathUtils.clamp(speed / 5, 0.5, 1.4);
-    }
     const hurt = clock - d.hurtAt < 0.12;
     for (const { mat, base } of mats) {
       if (hurt) mat.emissive.setRGB(1, 0.15, 0.15);
       else mat.emissive.copy(base);
     }
-    if (camera.position.distanceTo(d.pos) < 55) mixer.update(Math.min(dt, 0.1));
+    if (camera.position.distanceTo(d.pos) < 55) loco.update(speed, step);
   });
   return (
     <group ref={ref} visible={false}>
@@ -919,4 +900,5 @@ function shoot(d: Drone, dist: number, targetSpeed: number, inCar: boolean, want
     fx.tracer(d.pos, _miss, "#ff1f3d");
   }
   playSfx("enemyAttack", Math.max(0, 1 - dist / 45) * 0.8);
+  alarm(d.pos.x, d.pos.z);
 }

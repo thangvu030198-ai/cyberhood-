@@ -10,6 +10,9 @@ import { PALETTE } from "./config";
 import { models } from "./assets";
 import { handles } from "./refs";
 import { useGame } from "./store";
+import type { ParkingBay } from "../traffic/road";
+import { TUNING } from "../traffic/tuning";
+import { claimBay, nearestFreeBay, releaseBays, ROAD } from "./trafficWorld";
 
 export type CarSpec = {
   id: number;
@@ -22,8 +25,9 @@ export type CarSpec = {
   glow: string;
 };
 
-// Xe đậu quanh ngã tư xuất phát. Xe hướng về +Z khi rotationY = 0.
-export const CARS: CarSpec[] = [
+// Xe lái được, đậu quanh ngã tư xuất phát. Xe hướng về +Z khi rotationY = 0.
+// Vị trí ở đây chỉ là gợi ý: mỗi xe được dời vào ô đỗ trống gần nhất (dọc lề, ngoài làn chạy).
+const CAR_HINTS: CarSpec[] = [
   { id: 1, name: "Kuro GT", position: [3.5, 1.2, 14], rotationY: 0, color: "#101014", glow: PALETTE.pink },
   { id: 2, name: "Vapor S", position: [-3.5, 1.2, -12], rotationY: Math.PI, color: "#c9d2dc", glow: PALETTE.cyan },
   { id: 3, name: "Ronin 77", position: [14, 1.2, -3.5], rotationY: Math.PI / 2, color: "#ff5a00", glow: PALETTE.amber },
@@ -31,6 +35,16 @@ export const CARS: CarSpec[] = [
   { id: 5, name: "Kuro GT", position: [3.5, 1.2, 44], rotationY: 0, color: "#b0003a", glow: PALETTE.pink },
   { id: 6, name: "Vapor S", position: [-60, 1.2, 3.5], rotationY: -Math.PI / 2, color: "#0b6b78", glow: PALETTE.cyan },
 ];
+
+export const CARS: CarSpec[] = CAR_HINTS.map((c) => {
+  const bay = nearestFreeBay(c.position[0], c.position[2]);
+  if (!bay) return c;
+  claimBay(bay, `car${c.id}`);
+  return { ...c, position: [bay.x, 1.2, bay.z], rotationY: bay.yaw };
+});
+
+/** Xe bị bỏ lại ngoài ô đỗ: sau một lúc tự trượt vào ô trống gần nhất để không chắn đường */
+type AutoPark = { since: number; from: THREE.Vector3; fromYaw: number; bay: ParkingBay | null; t: number };
 
 // Kích thước lấy từ model "Car Concept": bánh bán kính 0.384m, tâm x ±0.98,
 // trục trước z = 1.485, trục sau z = -1.314. Model dời z -0.24 để thân xe nằm giữa khung vật lý.
@@ -215,7 +229,7 @@ function useCarModel(paint: string) {
 
 let _glowTexture: THREE.CanvasTexture | null = null;
 /** Vệt sáng gầm xe mờ dần ra mép thay vì một tấm chữ nhật màu đặc */
-function glowTexture() {
+export function glowTexture() {
   if (_glowTexture) return _glowTexture;
   const c = document.createElement("canvas");
   c.width = c.height = 128;
@@ -317,8 +331,9 @@ function Car({ spec }: { spec: CarSpec }) {
   // sinh NaN làm hỏng Rapier. Chỉ gắn bánh sau khi thân xe đã đọc được trọng lực.
   const [wheelsOn, setWheelsOn] = useState(false);
   const flippedFor = useRef(0);
+  const park = useRef<AutoPark>({ since: 0, from: new THREE.Vector3(), fromYaw: 0, bay: null, t: 0 });
 
-  useFrame(() => {
+  useFrame((_, dt) => {
     const car = ref.current;
     if (!car) return;
     if (!wheelsOn) {
@@ -327,6 +342,7 @@ function Car({ spec }: { spec: CarSpec }) {
     }
     if (!active) {
       car.setMovement({ forward: false, backward: false, steerLeft: false, steerRight: false, brake: true });
+      autoPark(spec.id, car, park.current, dt);
       // Xe bỏ lại trong tư thế lật thì tự lật lại sau một lúc, tránh nằm chắn đường
       if (car.bodyYAxis.y < 0.4) {
         flippedFor.current += 1 / 60;
@@ -337,6 +353,8 @@ function Car({ spec }: { spec: CarSpec }) {
       } else flippedFor.current = 0;
       return;
     }
+    park.current.since = 0;
+    park.current.bay = null;
     const keys = getKeys() as Record<string, boolean>;
     const stick = Object.values(useJoystickStore.getState().joysticks).find((j) => j.active);
     const sy = stick?.y ?? 0;
@@ -406,6 +424,63 @@ export function Vehicles() {
       <DriveLights />
     </>
   );
+}
+
+const PK = TUNING.parking;
+const _yawQ = new THREE.Quaternion();
+const _Y = new THREE.Vector3(0, 1, 0);
+
+/** Xe đang nằm gọn trong một ô đỗ (đúng chỗ, đúng hướng) */
+function inBay(x: number, z: number, yaw: number) {
+  return ROAD.bays.some((b) => Math.hypot(b.x - x, b.z - z) < 1.6 && Math.abs(Math.sin(b.yaw - yaw)) < 0.3);
+}
+
+/**
+ * Xe lái được không ai dùng mà nằm ngoài ô đỗ (ví dụ người chơi bỏ giữa đường):
+ * đợi người chơi đi xa rồi trượt xe vào ô trống gần nhất, nhường đường cho giao thông.
+ */
+function autoPark(id: number, car: EcctrlVehicleHandle, st: AutoPark, dt: number) {
+  const body = car.body;
+  if (!body) return;
+  const p = car.currPos;
+  const yaw = Math.atan2(car.bodyZAxis.x, car.bodyZAxis.z);
+  if (st.bay) {
+    // Đang trượt vào ô: nội suy vị trí và hướng, khử vận tốc
+    st.t = Math.min(1, st.t + dt / PK.autoParkTime);
+    const k = st.t * st.t * (3 - 2 * st.t);
+    const x = st.from.x + (st.bay.x - st.from.x) * k;
+    const z = st.from.z + (st.bay.z - st.from.z) * k;
+    let dyaw = st.bay.yaw - st.fromYaw;
+    dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+    _yawQ.setFromAxisAngle(_Y, st.fromYaw + dyaw * k);
+    body.setTranslation({ x, y: Math.max(p.y, 0.9), z }, true);
+    body.setRotation({ x: _yawQ.x, y: _yawQ.y, z: _yawQ.z, w: _yawQ.w }, true);
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    if (st.t >= 1) {
+      st.bay = null;
+      st.since = 0;
+    }
+    return;
+  }
+  if (inBay(p.x, p.z, yaw)) {
+    st.since = 0;
+    return;
+  }
+  const player = handles.player?.currPos;
+  const far = !player || Math.hypot(player.x - p.x, player.z - p.z) > PK.autoParkPlayerDistance;
+  st.since = far && car.currLinVel.length() < 1 ? st.since + dt : 0;
+  if (st.since < PK.autoParkDelay) return;
+  const owner = `car${id}`;
+  releaseBays(owner);
+  const bay = nearestFreeBay(p.x, p.z, owner);
+  if (!bay) return;
+  claimBay(bay, owner);
+  st.bay = bay;
+  st.t = 0;
+  st.from.set(p.x, p.y, p.z);
+  // Xe lật thì dựng lại trước
+  st.fromYaw = yaw;
 }
 
 /** Chỉnh xe bị lật: đặt lại thẳng đứng, giữ hướng đầu xe. */

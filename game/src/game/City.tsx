@@ -15,11 +15,11 @@ import {
   DISTRICTS,
   NEON_COLORS,
   districtIdAt,
-  PALETTE,
   mulberry32,
 } from "./config";
 import { NPCS, VAULT_DOOR } from "./story";
-import { SIGN_COUNT, makeLaneTexture, makeRoadTexture, makeFacadeTextures } from "./textures";
+import { SIGN_COUNT, makeRoadTexture, makeFacadeTextures } from "./textures";
+import { RoadMarkings, Sidewalks, TrafficLights } from "./CityRoads";
 
 export type Building = {
   x: number;
@@ -59,6 +59,9 @@ export type BuildingModel = keyof typeof BUILDING_MODELS;
 const MODEL_LIMIT: Partial<Record<BuildingModel, number>> = { mx_bld_pagoda: 3, mx_bld_factory: 4, mx_bld_megacorp: 3, mx_bld_noodle_bar: 3, mx_bld_police_station: 3 };
 
 const WINDOW_VARIANTS = 4;
+/** Mép ngoài toà nhà cách tâm khối tối đa ngần này: phần còn lại tới mép đường (20m) là vỉa hè
+ * (mặt tiền 14.5–16, lối đi bộ 16.5–18.3, dải đèn/cột sát mép 19–20) */
+const FRONTAGE = 14.5;
 
 /** Vùng không được xây: [x, z, bán kính] */
 const RESERVED: [number, number, number][] = [
@@ -101,6 +104,19 @@ function generateBuildings(): Building[] {
             z += (bz - z) * 0.1;
           }
         }
+        // Chừa vỉa hè: mép ngoài toà nhà không vượt quá FRONTAGE tính từ tâm khối (giữ nguyên mép trong)
+        const clampSide = (c: number, size: number, center: number) => {
+          const dir = Math.sign(c - center) || 1;
+          const inner = c - dir * (size / 2);
+          const outer = Math.min(Math.abs(c + dir * (size / 2) - center), FRONTAGE) * dir + center;
+          return { c: (inner + outer) / 2, size: Math.abs(outer - inner) };
+        };
+        const cx = clampSide(x, bw, bx);
+        const cz = clampSide(z, bd, bz);
+        x = cx.c;
+        bw = cx.size;
+        z = cz.c;
+        bd = cz.size;
         const palette = DISTRICTS[districtIdAt(bx, bz)].neon;
         list.push({
           x,
@@ -368,29 +384,10 @@ function Ground() {
     t.repeat.set(size / 12, size / 12);
     return t;
   }, [size]);
-  const lane = useMemo(() => {
-    const t = makeLaneTexture();
-    t.repeat.set(1, (CITY_HALF * 2) / 6);
-    return t;
-  }, []);
-  const streetCenters = useMemo(
-    () => Array.from({ length: CITY.GRID + 1 }, (_, i) => (i - CITY.GRID / 2) * CITY_PITCH),
-    [],
-  );
   return (
     <>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[size / 2, 5, size / 2]} position={[0, -5, 0]} />
-        {/* Vỉa hè của từng block */}
-        {BLOCK_CENTERS.flatMap((bx) =>
-          BLOCK_CENTERS.map((bz) => (
-            <CuboidCollider
-              key={`${bx}:${bz}`}
-              args={[CITY.BLOCK / 2, CITY.SIDEWALK_HEIGHT / 2, CITY.BLOCK / 2]}
-              position={[bx, CITY.SIDEWALK_HEIGHT / 2, bz]}
-            />
-          )),
-        )}
         {/* Tường vô hình giữ người chơi trong thành phố */}
         {[
           [CITY_HALF + 1, 0],
@@ -430,27 +427,9 @@ function Ground() {
         )}
       </mesh>
 
-      {streetCenters.flatMap((c) => [
-        <mesh key={`x${c}`} rotation-x={-Math.PI / 2} position={[c, 0.01, 0]}>
-          <planeGeometry args={[0.6, CITY_HALF * 2]} />
-          <meshBasicMaterial map={lane} transparent color="#bbb59a" />
-        </mesh>,
-        <mesh key={`z${c}`} rotation={[-Math.PI / 2, 0, Math.PI / 2]} position={[0, 0.01, c]}>
-          <planeGeometry args={[0.6, CITY_HALF * 2]} />
-          <meshBasicMaterial map={lane} transparent color="#bbb59a" />
-        </mesh>,
-      ])}
-
-      {BLOCK_CENTERS.flatMap((bx) =>
-        BLOCK_CENTERS.map((bz) => (
-          <group key={`${bx}:${bz}`} position={[bx, 0, bz]}>
-            <mesh position={[0, CITY.SIDEWALK_HEIGHT / 2, 0]} userData={{ cameraCollider: true }}>
-              <boxGeometry args={[CITY.BLOCK, CITY.SIDEWALK_HEIGHT, CITY.BLOCK]} />
-              <meshStandardMaterial color={PALETTE.concrete} roughness={0.6} metalness={0.3} />
-            </mesh>
-          </group>
-        )),
-      )}
+      <RoadMarkings />
+      <Sidewalks />
+      <TrafficLights />
     </>
   );
 }

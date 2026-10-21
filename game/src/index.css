@@ -1507,3 +1507,10 @@ canvas {
 .skin__name { font-size: 10px; letter-spacing: 0.04em; }
 @media (max-width: 520px) { .skins { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .safe-tag--danger { color: #b6ff9e; border-color: rgba(125, 255, 90, 0.6); background: rgba(20, 40, 10, 0.75); }
+
+/* La bàn nhiệm vụ */
+.compass { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 4px 12px; border: 1px solid; border-radius: 999px; background: rgba(8, 6, 18, 0.72); font: 600 12px "JetBrains Mono", monospace; color: #e8e2ff; pointer-events: none; white-space: nowrap; }
+.compass__arrow { display: inline-block; font-size: 14px; transition: transform 0.12s linear; }
+.compass__dist { opacity: 0.75; }
+@media (max-width: 520px) { .compass { top: 46px; font-size: 11px; } }
+.traffic-debug { position: absolute; left: 16px; top: 120px; padding: 8px 10px; max-width: 420px; background: rgba(0, 0, 0, 0.7); border: 1px solid #05d9e8; font: 11px/1.5 "JetBrains Mono", monospace; color: #cfe; pointer-events: none; }

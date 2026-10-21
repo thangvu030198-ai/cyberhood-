@@ -141,14 +141,14 @@ function panelTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
   const g = c.getContext("2d")!;
-  g.fillStyle = "#2a2f45";
+  g.fillStyle = "#9aa2bd";
   g.fillRect(0, 0, 64, 64);
-  g.fillStyle = "#353b57";
+  g.fillStyle = "#c3c9dc";
   g.fillRect(3, 3, 58, 58);
-  g.strokeStyle = "#1a1d2c";
+  g.strokeStyle = "#6c7391";
   g.lineWidth = 2;
   g.strokeRect(3, 3, 58, 58);
-  g.fillStyle = "#5a6288";
+  g.fillStyle = "#7d84a3";
   for (const [x, y] of [
     [8, 8],
     [56, 8],
@@ -156,7 +156,7 @@ function panelTexture() {
     [56, 56],
   ])
     g.fillRect(x - 1.5, y - 1.5, 3, 3);
-  g.fillStyle = "rgba(0,0,0,0.25)";
+  g.fillStyle = "rgba(60,66,96,0.25)";
   g.fillRect(10, 30, 44, 4);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -408,7 +408,7 @@ function Backdrop({ width, theme }: { width: number; theme: LevelTheme }) {
     const list: { name: ExtraModel; x: number; h: number; z: number }[] = [];
     let i = 0;
     for (let x = 6; x < width + 30; x += 24) {
-      list.push({ name: BACK_BUILDINGS[i % BACK_BUILDINGS.length], x, h: 30 + ((i * 7) % 4) * 7, z: -62 - (i % 2) * 16 });
+      list.push({ name: BACK_BUILDINGS[i % BACK_BUILDINGS.length], x, h: 22 + ((i * 7) % 4) * 5, z: -64 - (i % 2) * 16 });
       i++;
     }
     return list;
@@ -427,14 +427,13 @@ function Backdrop({ width, theme }: { width: number; theme: LevelTheme }) {
       ))}
       {/* Lớp giữa: dấu tích vùng cách ly */}
       <Suspense fallback={null}>
-        <Prop name="mx_map_watchtower" height={11} position={[24, 0, -18]} rotationY={0.3} />
-        <Prop name="mx_map_crashed_mech" height={6} position={[46, 0, -16]} rotationY={-0.6} />
-        <Prop name="mx_map_bio_lab" height={12} position={[95, 0, -26]} rotationY={0.2} />
-        <Prop name="mx_map_radio_tower" height={22} position={[125, 0, -30]} rotationY={0} />
-        <Prop name="mx_veh_tank" height={3.2} position={[136, 0, -12]} rotationY={1.2} />
-        <Prop name="mx_car_armored" height={2.4} position={[150, 0, -10]} rotationY={-0.4} />
-        <Prop name="mx_map_watchtower" height={11} position={[160, 0, -18]} rotationY={-0.3} />
-        <Prop name="mx_map_shield_gen" height={14} position={[178, 0, -24]} rotationY={0} selfLit={0.6} />
+        <Prop name="mx_map_watchtower" height={10} position={[24, 0, -34]} rotationY={0.3} />
+        <Prop name="mx_map_crashed_mech" height={6} position={[46, 0, -28]} rotationY={-0.6} />
+                <Prop name="mx_map_radio_tower" height={22} position={[125, 0, -44]} rotationY={0} />
+        <Prop name="mx_veh_tank" height={3.2} position={[136, 0, -22]} rotationY={1.2} />
+        <Prop name="mx_car_armored" height={2.4} position={[150, 0, -20]} rotationY={-0.4} />
+        <Prop name="mx_map_watchtower" height={10} position={[160, 0, -34]} rotationY={-0.3} />
+        <Prop name="mx_map_shield_gen" height={14} position={[178, 0, -34]} rotationY={0} selfLit={0.6} />
       </Suspense>
       <Suspense fallback={null}>
         <Prop name="mx_prop_trash_pile" height={1.6} position={[9, 2, -1.5]} rotationY={0.4} />

@@ -7,6 +7,7 @@ import { pointer } from "../game/pointer";
 import { loadProgress } from "../game/assets";
 import { ContractHud, DropBanner, HunterPanels, MechMeter } from "./HunterUi";
 import { MissionPanel } from "./MissionPanel";
+import { ServicePanels } from "./ServicePanels";
 import { MapSelect } from "./MapSelect";
 import { useMissions } from "../game/missionStore";
 import { useHunter } from "../game/hunter";
@@ -497,6 +498,7 @@ export function Hud() {
       <InventoryPanel />
       <HunterPanels />
       <MissionPanel />
+      <ServicePanels />
       <MapSelect />
       <CharacterCreator />
       <Flatline />

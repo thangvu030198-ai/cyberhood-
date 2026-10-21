@@ -127,7 +127,7 @@ export const THEMES: Record<ThemeId, LevelTheme> = {
     sun: [3, 1.2, 2.6],
     fog: "#2a0a3e",
     fogNear: 30,
-    fogFar: 120,
+    fogFar: 240,
     hemi: { sky: "#e8c8ff", ground: "#3a0e4a", intensity: 1.8 },
     key: { color: "#ffe2f6", intensity: 2.2 },
     rim: { color: "#5fd0ff", intensity: 1.6 },

@@ -63,6 +63,7 @@ export type Interactable =
   | { kind: "terminal" }
   | { kind: "board" }
   | { kind: "gate" }
+  | { kind: "service"; id: import("./services").ServiceId }
   | { kind: "missions" };
 
 type SaveData = {

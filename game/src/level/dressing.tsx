@@ -233,6 +233,17 @@ export function TopDressing({ sim }: { sim: PlatformerSim }) {
           <NeonSign key={`n${c},${y}`} position={[c + 0.5, -0.2 + r() * 0.8, -(y + 0.2)]} text={SIGNS[Math.floor(r() * SIGNS.length)]} color={NEON[Math.floor(r() * NEON.length)]} width={2.2} />,
         );
       }
+    // Dây cáp điện bò ngoằn ngoèo trên sàn
+    for (let i = 0; i < 14; i++) {
+      const x0 = r() * sim.width;
+      const y0 = r() * sim.height;
+      const pts = Array.from({ length: 6 }, (_, k) => new THREE.Vector3(x0 + k * 1.6 + (r() - 0.5) * 2, -1.95, -(y0 + (r() - 0.5) * 3)));
+      out.push(
+        <mesh key={`cb${i}`} geometry={new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.05 + r() * 0.04, 5, false)}>
+          <meshStandardMaterial color={r() < 0.3 ? "#3a2050" : "#14141c"} roughness={0.6} />
+        </mesh>,
+      );
+    }
     // Vũng nước phản chiếu neon trên sàn
     for (let i = 0; i < 26; i++) {
       const c = Math.floor(r() * sim.width);

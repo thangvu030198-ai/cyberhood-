@@ -6,6 +6,7 @@ import { playLevel, useLevel } from "../level/session";
 import { viewById } from "../level/views";
 import { useDuel } from "../level/duelSession";
 import { RIVALS } from "../level/duel";
+import { DIFFICULTIES, useDifficulty } from "../game/difficulty";
 import { useKart } from "../level/KartScene";
 import { useHunter } from "../game/hunter";
 
@@ -17,6 +18,8 @@ export function MapSelect() {
   const setSelecting = useLevel((s) => s.setSelecting);
   const inContract = useHunter((s) => s.contract !== null);
   const beaten = useDuel((s) => s.beaten);
+  const diff = useDifficulty((s) => s.level);
+  const setDiff = useDifficulty((s) => s.set);
   useEffect(() => {
     if (!selecting) return;
     const onKey = (e: KeyboardEvent) => {
@@ -34,6 +37,14 @@ export function MapSelect() {
         <div>
           <p className="bag__eyebrow">CỔNG NHIỆM VỤ · MÙA S1</p>
           <h2 className="bag__title">Chọn map</h2>
+        </div>
+        <div className="map-select__diff" role="radiogroup" aria-label="Độ khó">
+          {DIFFICULTIES.map((d) => (
+            <button key={d.id} role="radio" aria-checked={diff === d.id} className={diff === d.id ? "is-on" : ""} title={d.note} onClick={() => setDiff(d.id)}>
+              {d.label}
+            </button>
+          ))}
+          <small>{DIFFICULTIES.find((d) => d.id === diff)!.note}</small>
         </div>
         <p className="map-select__note">{inContract ? "Đang có hợp đồng: qua màn để hoàn thành" : "Vào màn sẽ mở hợp đồng mới (tốn 1 năng lượng)"}</p>
       </header>

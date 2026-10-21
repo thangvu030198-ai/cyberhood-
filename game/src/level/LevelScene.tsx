@@ -8,6 +8,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import * as THREE from "three";
@@ -34,7 +35,7 @@ import { useLevel } from "./session";
 import type { Enemy, PlatformerSim } from "./platformer";
 import { THEMES, type LevelTheme } from "./themes";
 import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } from "./registry";
-import { GearDrops, HeldWeapon, WeaponShots } from "./gearView";
+import { GearDrops, HeldWeapon, WeaponShots, WornArmor } from "./gearView";
 import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
 import { CityBlocks } from "./cityBlocks";
 import { SideScenery } from "./sideScenery";
@@ -161,13 +162,7 @@ export function LevelCanvas() {
             <Hoverbike sim={sim} />
           </Suspense>
         )}
-        {sim.enemies.map((e) => (
-          <Quiet key={e.id}>
-            <Suspense fallback={null}>
-              <EnemyModel sim={sim} enemy={e} />
-            </Suspense>
-          </Quiet>
-        ))}
+        <EnemyLayer sim={sim} />
       </group>
       <PostFx sim={sim} />
     </Canvas>
@@ -473,45 +468,105 @@ function FloorGround({
   );
 }
 
-/** Nền hẻm núi nhìn từ trên: đáy tím sẫm và những cụm pha lê Meshy dọc hai mép vách */
-function TopGround({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
-  const crystals = useMemo(() => {
-    const list: { x: number; z: number; h: number; rot: number }[] = [];
-    for (let x = 8; x < sim.width; x += 13) {
-      list.push({ x, z: 3.5, h: 2.6 + (x % 3) * 0.5, rot: x * 0.7 });
-      list.push({
-        x: x + 6,
-        z: -sim.height - 3.5,
-        h: 2.4 + (x % 4) * 0.4,
-        rot: x * 1.3,
-      });
+/** Nền hẻm núi nhìn từ trên: khoảng không vũ trụ (sao + tinh vân) sâu bên dưới, đảo đá lơ lửng mọc pha lê
+ * dọc hai mép vách, xác tàu và UFO trôi dưới vực, thành phố tương lai ở xa; vách hẻm dựng bằng CityBlocks */
+function TopGround({ sim }: { sim: PlatformerSim; theme: LevelTheme }) {
+  const space = useMemo(() => spaceTexture(), []);
+  const islands = useMemo(() => {
+    const list: { x: number; z: number; y: number; s: number; rot: number }[] = [];
+    let k = 1;
+    const r = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+    for (let x = 6; x < sim.width + 10; x += 9 + r() * 6) {
+      list.push({ x, z: 4 + r() * 6, y: -3 - r() * 6, s: 2.2 + r() * 2, rot: r() * 6.28 });
+      list.push({ x: x + 4, z: -sim.height - 4 - r() * 6, y: -3 - r() * 6, s: 2.2 + r() * 2, rot: r() * 6.28 });
     }
     return list;
   }, [sim]);
+  const wrecks: [ExtraModel, number, [number, number, number], number][] = [
+    ["mx_map_dropship", 14, [50, -26, -9], 0.6],
+    ["spaceship", 10, [110, -22, -6], 2.2],
+    ["iondrive", 6, [150, -18, -12], 1],
+    ["bigufo", 12, [190, -30, -8], 0],
+    ["mx_map_crashed_mech", 9, [80, -24, 6], 0.3],
+  ];
+  const city: [ExtraModel, number, [number, number, number]][] = [
+    ["mx_map_citadel", 70, [140, -70, -70]],
+    ["mx_bld_megacorp", 50, [60, -60, -60]],
+    ["mx_bld_tower_round", 46, [100, -60, -64]],
+    ["mx_bld_skyscraper", 54, [190, -64, -62]],
+    ["mx_colossus_mech", 30, [230, -50, -50]],
+  ];
   return (
     <group>
-      <mesh
-        rotation-x={-Math.PI / 2}
-        position={[sim.width / 2, -2.05, -sim.height / 2]}
-      >
-        <planeGeometry args={[sim.width + 80, sim.height + 80]} />
-        <meshStandardMaterial color={theme.backFloor} roughness={0.9} />
+      {/* Vũ trụ phía dưới: không bị sương che */}
+      <mesh rotation-x={-Math.PI / 2} position={[sim.width / 2, -80, -sim.height / 2]}>
+        <planeGeometry args={[sim.width + 500, 500]} />
+        <meshBasicMaterial map={space} fog={false} toneMapped={false} color={[1.3, 1.3, 1.4]} />
       </mesh>
-      {crystals.map((c, i) => (
-        <Quiet key={i}>
+      <CityBlocks sim={sim} />
+      {islands.map((c, i) => (
+        <group key={i} position={[c.x, c.y, c.z]} rotation-y={c.rot}>
+          <Quiet>
+            <Suspense fallback={null}>
+              {/* Đáy đảo: đống đá lật ngược */}
+              <group rotation-x={Math.PI}>
+                <Prop name="mx_dr_rocks" height={c.s * 1.2} position={[0, 0, 0]} rotationY={0} selfLit={0.35} />
+              </group>
+              <Prop name="mx_wz_crystal" height={c.s * 1.3} position={[0, 0, 0]} rotationY={c.rot} selfLit={0.7} />
+            </Suspense>
+          </Quiet>
+        </group>
+      ))}
+      {wrecks.map(([name, h, at, rot], i) => (
+        <Quiet key={`w${i}`}>
           <Suspense fallback={null}>
-            <Prop
-              name="mx_wz_crystal"
-              height={c.h}
-              position={[c.x, 1.9, c.z]}
-              rotationY={c.rot}
-              selfLit={0.6}
-            />
+            <Prop name={name} height={h} position={at} rotationY={rot} selfLit={0.4} />
+          </Suspense>
+        </Quiet>
+      ))}
+      {city.map(([name, h, at], i) => (
+        <Quiet key={`c${i}`}>
+          <Suspense fallback={null}>
+            <Prop name={name} height={h} position={at} rotationY={0} selfLit={0.55} />
           </Suspense>
         </Quiet>
       ))}
     </group>
   );
+}
+
+/** Bầu trời sao + tinh vân tím xanh (canvas) */
+function spaceTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 1024;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#04030c";
+  g.fillRect(0, 0, 1024, 1024);
+  let seed = 3;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 9; i++) {
+    const x = rnd() * 1024;
+    const y = rnd() * 1024;
+    const rad = 120 + rnd() * 260;
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+    const col = ["rgba(120,60,200,", "rgba(40,120,220,", "rgba(200,60,160,", "rgba(40,200,200,"][i % 4];
+    gr.addColorStop(0, col + "0.45)");
+    gr.addColorStop(0.5, col + "0.15)");
+    gr.addColorStop(1, col + "0)");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 1024, 1024);
+  }
+  for (let i = 0; i < 2600; i++) {
+    const b = rnd();
+    g.fillStyle = b > 0.97 ? "#bfe8ff" : b > 0.9 ? "#ffffff" : `rgba(255,255,255,${0.3 + rnd() * 0.5})`;
+    const s = b > 0.97 ? 2.5 : b > 0.85 ? 1.6 : 1;
+    g.fillRect(rnd() * 1024, rnd() * 1024, s, s);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(3, 3);
+  return t;
 }
 
 /** Trời chạng vạng vùng cách ly: mặt trời đỏ thấp và dải mây tím */
@@ -582,6 +637,31 @@ function neonFloorTexture() {
   g.moveTo(0, 128);
   g.lineTo(256, 128);
   g.stroke();
+  // Đường mạch điện tử chạy ngoằn ngoèo trên mặt sàn, chân linh kiện
+  g.strokeStyle = "rgba(120,140,190,0.55)";
+  g.lineWidth = 2;
+  for (let i = 0; i < 18; i++) {
+    let x = Math.floor(rnd() * 16) * 16;
+    let y = Math.floor(rnd() * 16) * 16;
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let k = 0; k < 5; k++) {
+      if (rnd() < 0.5) x += (rnd() < 0.5 ? -1 : 1) * 16;
+      else y += (rnd() < 0.5 ? -1 : 1) * 16;
+      g.lineTo(x, y);
+    }
+    g.stroke();
+    g.fillStyle = "rgba(160,180,220,0.7)";
+    g.fillRect(x - 3, y - 3, 6, 6);
+  }
+  for (let i = 0; i < 6; i++) {
+    g.fillStyle = "#15121e";
+    const x = rnd() * 220;
+    const y = rnd() * 220;
+    g.fillRect(x, y, 22, 14);
+    g.fillStyle = "rgba(180,190,210,0.6)";
+    for (let k = 0; k < 4; k++) g.fillRect(x + 2 + k * 5, y - 3, 2, 3);
+  }
   // Vạch kẻ vàng đứt đoạn
   g.fillStyle = "rgba(255,210,60,0.7)";
   for (let y = 12; y < 256; y += 48) g.fillRect(60, y, 6, 24);
@@ -654,7 +734,7 @@ function Tiles({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       for (let r = 0; r < sim.height; r++) {
         const t = sim.tile(c, r);
         // Đi 8 hướng: khối nền do CityBlocks dựng thành toà nhà
-        if (t === "#" && sim.mode === "topdown") continue;
+        if (t === "#" && (sim.mode === "topdown" || sim.mode === "shmup")) continue;
         if (t === "#") {
           solid.push([c, r]);
           if (sim.tile(c, r + 1) !== "#") edges.push([c, r]);
@@ -1183,7 +1263,11 @@ function Fx({ sim }: { sim: PlatformerSim }) {
               ? 0.25
               : f.kind === "dust"
                 ? 0.35
-                : 0;
+                : f.kind === "block"
+                  ? 0.25
+                  : f.kind === "slam"
+                    ? 0.5
+                    : 0;
       const age = sim.time - f.at;
       if (!life || age > life) continue;
       const o = g.children[i++] as THREE.Mesh;
@@ -1195,14 +1279,16 @@ function Fx({ sim }: { sim: PlatformerSim }) {
             ? 0.3 + u * 1.2
             : f.kind === "dust"
               ? 0.12 + u * 0.3
-              : 0.25 + u * 0.5;
+              : f.kind === "slam"
+                ? 0.6 + u * 5.5
+                : 0.25 + u * 0.5;
       o.visible = true;
       o.position.set(
         f.x,
         f.y + (f.kind === "land" ? 0.1 : f.kind === "dust" ? u * 0.4 : 0),
         zFloor(sim) + (sim.mode === "topdown" ? 1.2 : 0.4),
       );
-      o.scale.set(size, f.kind === "land" ? size * 0.25 : size, size);
+      o.scale.set(size, f.kind === "land" || f.kind === "slam" ? size * 0.18 : size, size);
       const mat = o.material as THREE.MeshBasicMaterial;
       mat.opacity = (1 - u) * (f.kind === "dust" ? 0.5 : 1);
       mat.color.setRGB(
@@ -1212,7 +1298,11 @@ function Fx({ sim }: { sim: PlatformerSim }) {
             ? [1, 1, 1.4]
             : f.kind === "dust"
               ? [0.75, 0.72, 0.8]
-              : [2.6, 2.6, 3]) as [number, number, number]),
+              : f.kind === "block"
+                ? [0.6, 2.8, 3.2]
+                : f.kind === "slam"
+                  ? [3, 2, 0.6]
+                  : [2.6, 2.6, 3]) as [number, number, number]),
       );
     }
     for (; i < FX_POOL; i++) g.children[i].visible = false;
@@ -1613,6 +1703,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
         <primitive object={rig.scene} />
       </group>
       <HeldWeapon rig={rig.scene} weapon={sim.weapon} />
+      <WornArmor rig={rig.scene} armor={sim.armor} />
       <mesh ref={shadow} rotation-x={-Math.PI / 2}>
         <circleGeometry args={[0.55, 24]} />
         <meshBasicMaterial
@@ -1793,7 +1884,57 @@ function PlaceholderHero({ sim }: { sim: PlatformerSim }) {
   );
 }
 
+/** Danh sách địch có thể dài thêm giữa màn (trùm gọi lính): theo dõi số lượng để dựng model mới */
+function EnemyLayer({ sim }: { sim: PlatformerSim }) {
+  const [n, setN] = useState(sim.enemies.length);
+  useFrame(() => {
+    if (sim.enemies.length !== n) setN(sim.enemies.length);
+  });
+  return (
+    <>
+      {sim.enemies.slice(0, n).map((e) => (
+        <Quiet key={e.id}>
+          <Suspense fallback={null}>
+            <EnemyModel sim={sim} enemy={e} />
+          </Suspense>
+        </Quiet>
+      ))}
+    </>
+  );
+}
+
+/** Khiên bong bóng quanh trùm khi miễn sát thương */
+function BossShield({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    const m = ref.current;
+    if (!m) return;
+    m.visible = enemy.alive && enemy.guard && enemy.fade > 0.5;
+    const top = sim.mode === "topdown";
+    m.position.set(enemy.x, enemy.y + (top ? 0 : enemy.h / 2), zFloor(sim) + (top ? enemy.h / 2 : 0));
+    m.scale.setScalar(Math.max(enemy.w, enemy.h) * 0.75 * (1 + Math.sin(clock.elapsedTime * 6) * 0.03));
+    (m.material as THREE.MeshBasicMaterial).opacity = 0.16 + Math.sin(clock.elapsedTime * 3) * 0.05;
+  });
+  return (
+    <mesh ref={ref}>
+      <icosahedronGeometry args={[1, 2]} />
+      <meshBasicMaterial color={[0.5, 1.8, 3]} transparent opacity={0.18} depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} wireframe />
+    </mesh>
+  );
+}
+
 function EnemyModel({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
+  if (enemy.kind === "boss")
+    return (
+      <>
+        <BossShield sim={sim} enemy={enemy} />
+        <EnemyModelInner sim={sim} enemy={enemy} />
+      </>
+    );
+  return <EnemyModelInner sim={sim} enemy={enemy} />;
+}
+
+function EnemyModelInner({ sim, enemy }: { sim: PlatformerSim; enemy: Enemy }) {
   const set = levelById(sim.def.id).looks[enemy.kind];
   if (!set) return <DroneModel sim={sim} enemy={enemy} />;
   // Nhóm kiểu: mỗi địch một kiểu theo số thứ tự cho đám đông đa dạng
@@ -1836,7 +1977,7 @@ function StaticEnemy({
     if (!o || !b) return;
     const e = enemy;
     const age = sim.time - e.deadAt;
-    o.visible = e.alive || age < 1;
+    o.visible = (e.alive || age < 1) && (e.fade > 0.5 || Math.floor(sim.time * 18) % 3 === 0 && e.fade > 0.1);
     if (!o.visible) return;
     if (Math.abs(e.x - sim.player.x) > 30) return;
     dt = Math.min(dt, 0.1);
@@ -1927,7 +2068,7 @@ function RiggedEnemy({
     if (!o) return;
     const e = enemy;
     // Hạ xong thì nằm lại 1.2 giây rồi biến mất
-    o.visible = e.alive || sim.time - e.deadAt < 1.2;
+    o.visible = (e.alive || sim.time - e.deadAt < 1.2) && (e.fade > 0.5 || Math.floor(sim.time * 18) % 3 === 0 && e.fade > 0.1);
     if (!o.visible) return;
     const nearCam = Math.abs(e.x - sim.player.x) < 26;
     if (!nearCam) return;
@@ -1971,15 +2112,23 @@ function RiggedEnemy({
     else if (e.kind === "zombie")
       setAnim(
         rig,
-        Math.hypot(e.vx, sim.mode === "topdown" ? e.vy : 0) > 1.5
-          ? "run"
-          : "walk",
-        0.2,
+        sim.time - e.skillAt < 0.5 && rig.actions.attack
+          ? "attack"
+          : Math.hypot(e.vx, sim.mode === "topdown" ? e.vy : 0) > 1.5
+            ? "run"
+            : "walk",
+        0.12,
       );
     else if (e.kind === "boss") {
       const anim = !e.awake
         ? "scream"
-        : e.move === "volley"
+        : sim.time < e.stunUntil && rig.actions.hit
+          ? "hit"
+          : e.move === "windup" || e.move === "appear"
+            ? "scream"
+            : e.move === "charge"
+              ? "run"
+              : e.move === "volley"
           ? "attack"
           : e.move === "jump"
             ? "run"

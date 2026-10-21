@@ -249,3 +249,91 @@ describe("màn 1", () => {
     expect(sim.time).toBeLessThan(180);
   });
 });
+
+describe("trùm có mẹo", () => {
+  const arena = (style: import("./platformer").BossStyle, mode?: import("./platformer").PlayMode) => {
+    const b = new LevelBuilder(60, 16);
+    b.ground(0, 0, 16).ground(59, 59, 16).ground(1, 58, 2);
+    const def: LevelDef = { id: "t", name: "t", rows: b.rows(), start: [5.5, 2], checkpoints: [], enemies: [{ kind: "boss", x: 40.5, y: 2 }], pickups: [], bossArena: [20, 50], theme: "quarantine", bossStyle: style, mode };
+    const sim = ready(def);
+    sim.player.x = 25;
+    play(sim, 2, {});
+    expect(sim.bossActive).toBe(true);
+    return sim;
+  };
+  const hit = (sim: PlatformerSim) => {
+    const boss = sim.boss!;
+    sim.shots.push({ x: boss.x, y: boss.y + 1, vx: 0, vy: 0, r: 0.3, dmg: 2, pierce: false, life: 0.5, enemy: false, level: 0 });
+    const hp = boss.hp;
+    play(sim, 1, {});
+    return hp - boss.hp;
+  };
+
+  it("charger: có khiên thì đạn bật ra; lao vào tường thì choáng và nhận sát thương tăng", () => {
+    const sim = arena("charger");
+    play(sim, 10, {});
+    expect(sim.boss!.guard).toBe(true);
+    expect(hit(sim)).toBe(0);
+    // Đứng sát tường phải để nó lao vào, nhảy lên tránh
+    sim.player.x = 49;
+    let stunned = false;
+    for (let f = 0; f < 60 * 8 && !stunned; f++) {
+      sim.player.invuln = 9;
+      sim.step({ ...NO_INPUT, jump: f % 30 < 20 });
+      stunned = sim.time < sim.boss!.stunUntil;
+    }
+    expect(stunned).toBe(true);
+    play(sim, 1, {});
+    expect(sim.boss!.guard).toBe(false);
+    expect(hit(sim)).toBeCloseTo(2 * T.boss.stunMul, 5);
+  });
+
+  it("phantom: ẩn hình thì miễn sát thương, hiện hình thì trúng và gọi hồn ma", () => {
+    const sim = arena("phantom");
+    let sawGuard = false;
+    let sawOpen = false;
+    for (let f = 0; f < 60 * 12; f++) {
+      sim.player.invuln = 9;
+      sim.step(NO_INPUT);
+      if (sim.boss!.guard) sawGuard = true;
+      else if (sim.boss!.move === "appear") sawOpen = true;
+    }
+    expect(sawGuard && sawOpen).toBe(true);
+    expect(sim.enemies.some((e) => e.minion)).toBe(true);
+  });
+
+  it("overlord: bắn hạ đủ tên lửa thì khiên vỡ", () => {
+    const sim = arena("overlord");
+    play(sim, 10, {});
+    expect(sim.boss!.guard).toBe(true);
+    for (let k = 0; k < T.boss.overlordBreak; k++) {
+      sim.shots.push({ x: 30, y: 5, vx: 0, vy: 0, r: 0.35, dmg: 3, pierce: false, life: 5, enemy: true, level: 1, missile: true });
+      sim.shots.push({ x: 30, y: 5, vx: 0, vy: 0, r: 0.2, dmg: 1, pierce: false, life: 1, enemy: false, level: 0 });
+      play(sim, 1, {});
+    }
+    play(sim, 1, {});
+    expect(sim.boss!.guard).toBe(false);
+  });
+
+  it("đập đất: rơi thẳng xuống và hạ quái quanh chỗ đáp", () => {
+    const def: LevelDef = { ...testLevel(), enemies: [{ kind: "zombie", x: 7.5, y: 2 }] };
+    const sim = ready(def);
+    sim.enemies[0].awake = true;
+    sim.enemies[0].hp = 3;
+    play(sim, 12, { jump: true });
+    play(sim, 1, { jump: false, down: true });
+    play(sim, 2, { jump: true, down: true });
+    play(sim, 40, {});
+    expect(sim.enemies[0].alive).toBe(false);
+  });
+
+  it("nhảy kép: nhấn nhảy lần nữa trên không thì bay cao hơn", () => {
+    const one = ready(testLevel());
+    let top1 = 0;
+    play(one, 70, (f) => ((top1 = Math.max(top1, one.player.y)), { jump: f < 30 }));
+    const two = ready(testLevel());
+    let top2 = 0;
+    play(two, 90, (f) => ((top2 = Math.max(top2, two.player.y)), { jump: f < 20 || (f > 24 && f < 50) }));
+    expect(top2).toBeGreaterThan(top1 + 1);
+  });
+});

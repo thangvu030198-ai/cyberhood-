@@ -2,6 +2,7 @@
 // cọc tiêu, đồi cỏ, trời xanh mây trắng. Xe là xe Meshy của thành phố; HUD: thời gian, vòng, tốc độ, hạng, bản đồ.
 
 import { Suspense, use, useEffect, useMemo, useRef, useState } from "react";
+import { DIFF_MODS, useDifficulty } from "../game/difficulty";
 import * as THREE from "three";
 import { create } from "zustand";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -26,7 +27,9 @@ export const useKart = create<KartState>((set) => ({
   rewarded: false,
   start: () => {
     document.exitPointerLock?.();
-    set({ sim: new KartSim(), rewarded: false });
+    const sim = new KartSim();
+    sim.aiMul = DIFF_MODS[useDifficulty.getState().level].kartAi;
+    set({ sim, rewarded: false });
     useGame.getState().setLocation("level");
   },
   leave: () => {

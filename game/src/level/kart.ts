@@ -152,6 +152,9 @@ export class KartSim {
   private prev: KartInput = NO_KART;
   private acc = 0;
 
+  /** Độ khó: nhân tốc độ của xe AI */
+  aiMul = 1;
+
   constructor() {
     // Lưới xuất phát: 2 hàng sau vạch, người chơi ở cuối (vượt lên cho có không khí)
     this.karts = Array.from({ length: 6 }, (_, i) => ({
@@ -304,7 +307,7 @@ export class KartSim {
     if (k.finishedAt !== null) return NO_KART;
     const curve = this.track.curvature(k.s + 12);
     const behind = Math.max(-1, Math.min(1, (playerProgress - this.progress(k)) / 80));
-    const target = KART.maxSpeed * KART.aiSpeed[k.id] * (1 + behind * KART.rubber) * (curve > 0.05 ? 0.78 : 1);
+    const target = KART.maxSpeed * KART.aiSpeed[k.id] * this.aiMul * (1 + behind * KART.rubber) * (curve > 0.05 ? 0.78 : 1);
     const lane = k.lane * 2.5 + Math.sin(this.time * 0.3 + k.id) * 0.8;
     return {
       gas: k.v < target,

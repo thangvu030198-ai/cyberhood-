@@ -91,6 +91,7 @@ function build(): LevelDef {
 
   return {
     id: "quarantine",
+    bossStyle: "charger",
     name: "VÙNG CÁCH LY",
     rows: b.rows(),
     start: [4.5, 2],

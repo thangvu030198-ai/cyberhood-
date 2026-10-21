@@ -5,7 +5,7 @@ import { Suspense, use, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { extraModel } from "../game/assets";
-import { GEAR, type GearId, type WeaponId } from "./gear";
+import { GEAR, type ArmorId, type GearId, type WeaponId } from "./gear";
 import type { PlatformerSim } from "./platformer";
 
 const RARITY_RGB: Record<string, [number, number, number]> = {
@@ -245,5 +245,68 @@ export function WeaponShots({ sim, z }: { sim: PlatformerSim; z: number }) {
         <meshBasicMaterial toneMapped={false} />
       </instancedMesh>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Giáp mặc trên người: gắn model giáp vào xương ngực, giữ hướng đứng thẳng của nhân vật
+
+const ARMOR_FIT: Record<string, { height: number; drop: number; depth: number }> = {
+  darkset: { height: 1.05, drop: 0.32, depth: 0.02 },
+  void: { height: 1.15, drop: 0.36, depth: -0.02 },
+};
+
+function WornArmorInner({ rig, armor }: { rig: THREE.Object3D; armor: Exclude<ArmorId, "none"> }) {
+  const gltf = use(extraModel(GEAR[armor].model));
+  useMemo(() => {
+    let chest: THREE.Object3D | undefined;
+    rig.traverse((o) => {
+      if (!chest && (o as THREE.Bone).isBone && /^Spine02$/i.test(o.name)) chest = o;
+    });
+    if (!chest) return;
+    const old = chest.getObjectByName("worn-armor");
+    if (old) chest.remove(old);
+    const fit = ARMOR_FIT[armor];
+    const obj = gltf.scene.clone(true);
+    obj.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.frustumCulled = false;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      if (mat.map) {
+        mat.emissiveMap = mat.map;
+        mat.emissive.set("#ffffff");
+        mat.emissiveIntensity = 0.4;
+      }
+      m.material = mat;
+    });
+    const box = new THREE.Box3().setFromObject(obj);
+    const size = box.getSize(new THREE.Vector3());
+    const c = box.getCenter(new THREE.Vector3());
+    const k = fit.height / size.y;
+    obj.scale.setScalar(k);
+    obj.position.set(-c.x * k, -c.y * k - fit.drop, -c.z * k + fit.depth);
+    const holder = new THREE.Group();
+    holder.name = "worn-armor";
+    holder.add(obj);
+    // Đưa về hệ trục của cả nhân vật (đứng thẳng, nhìn +Z) dù xương ngực xoay thế nào lúc dựng
+    rig.updateMatrixWorld(true);
+    const boneQ = chest.getWorldQuaternion(new THREE.Quaternion());
+    const rigQ = rig.getWorldQuaternion(new THREE.Quaternion());
+    holder.quaternion.copy(boneQ.invert().multiply(rigQ));
+    const ws = chest.getWorldScale(new THREE.Vector3());
+    const rs = rig.getWorldScale(new THREE.Vector3());
+    holder.scale.setScalar(rs.x / Math.max(1e-6, ws.x));
+    chest.add(holder);
+  }, [rig, gltf, armor]);
+  return null;
+}
+
+export function WornArmor({ rig, armor }: { rig: THREE.Object3D; armor: ArmorId }) {
+  if (armor === "none") return null;
+  return (
+    <Suspense fallback={null}>
+      <WornArmorInner rig={rig} armor={armor} />
+    </Suspense>
   );
 }

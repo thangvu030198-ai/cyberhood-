@@ -123,6 +123,7 @@ function warzone(): LevelDef {
 
   return {
     id: "warzone",
+    bossStyle: "dragon",
     name: "WARZONE",
     mode: "shmup",
     rows: b.rows(),
@@ -202,6 +203,7 @@ function citadel(): LevelDef {
 
   return {
     id: "citadel_raid",
+    bossStyle: "overlord",
     name: "CITADEL",
     rows: b.rows(),
     start: [4.5, 2],
@@ -285,6 +287,7 @@ function hollowHotel(): LevelDef {
   b.block(159, W - 2, H, 4);
   return {
     id: "hollow_hotel",
+    bossStyle: "phantom",
     name: "HOLLOW HOTEL",
     rows: b.rows(),
     start: [4.5, 8],
@@ -351,6 +354,7 @@ function huntZone(): LevelDef {
   // Khu mục tiêu (phòng trùm) phía đông: cửa đóng sau khi vào
   return {
     id: "hunt_neon",
+    bossStyle: "armored",
     name: "KHU SĂN NEON",
     mode: "topdown",
     rows: b.rows(),
@@ -413,6 +417,7 @@ function hollowParish(): LevelDef {
   b.spikes(9, 11, 10).spikes(14, 15, 18).spikes(30, 32, 10).spikes(22, 23, 32);
   return {
     id: "hollow_parish",
+    bossStyle: "watcher",
     name: "GIÁO XỨ NEON",
     mode: "topdown",
     rows: b.rows(),

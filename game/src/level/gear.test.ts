@@ -147,3 +147,46 @@ describe("trang bị: rơi đồ", () => {
     expect([...seen].sort()).toEqual([...GEAR_IDS].sort());
   });
 });
+
+describe("tủ đồ 6 ô, cường hoá", () => {
+  it("cộng chỉ số từ mũ / găng / giày / chip, cấp cường hoá tăng chỉ số", async () => {
+    const { loadoutStats, ENHANCE_STEP } = await import("./gear");
+    const l = { weapon: "celestial" as const, armor: "void" as const, head: "helm_oni" as const, hands: "glove_titan" as const, feet: "boot_grav" as const, chip: "chip_luck" as const };
+    const a = loadoutStats(l, {});
+    expect(a.atk).toBeCloseTo(0.12 + 0.18, 5);
+    expect(a.luck).toBeCloseTo(0.25, 5);
+    const b = loadoutStats(l, { helm_oni: 5, celestial: 3 });
+    expect(b.atk).toBeCloseTo(0.12 * (1 + 5 * ENHANCE_STEP) + 0.18 + 3 * ENHANCE_STEP, 5);
+  });
+
+  it("đập đồ: thành công lên cấp, thất bại từ +5 tụt một cấp, dưới +5 giữ nguyên", async () => {
+    const { forgeRoll, FORGE } = await import("./gear");
+    expect(forgeRoll(0, 0.99)).toEqual({ ok: true, next: 1 });
+    expect(forgeRoll(3, 0.999)).toEqual({ ok: false, next: 3 });
+    expect(forgeRoll(6, 0.999)).toEqual({ ok: false, next: 5 });
+    expect(FORGE.cost(9)).toBeGreaterThan(FORGE.cost(1));
+  });
+
+  it("chỉ số áp vào màn chơi: chạy nhanh hơn, máu nhiều hơn, đánh đau hơn", () => {
+    const base = ready({});
+    const fast = ready({ stats: { atk: 0.5, hp: 10, def: 0, speed: 0.5, jump: 0, charge: 0, luck: 0 } });
+    expect(fast.maxHp).toBe(base.maxHp + 10);
+    const x0 = base.player.x;
+    play(base, 30, { right: true });
+    play(fast, 30, { right: true });
+    expect(fast.player.x - x0).toBeGreaterThan((base.player.x - x0) * 1.3);
+  });
+});
+
+describe("vòng quay may mắn", () => {
+  it("trọng số: ô thường ra nhiều, Jackpot hiếm", async () => {
+    const { pickPrize } = await import("../game/gearStore");
+    const n: Record<string, number> = {};
+    for (let i = 0; i < 5000; i++) {
+      const p = pickPrize((i + 0.5) / 5000);
+      n[p.id] = (n[p.id] ?? 0) + 1;
+    }
+    expect(n.cred30).toBeGreaterThan(n.jackpot * 5);
+    expect(n.jackpot).toBeGreaterThan(0);
+  });
+});

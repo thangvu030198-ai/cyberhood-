@@ -18,8 +18,10 @@ import { createRng } from "../sim/rng";
 import { RARITY_LABEL } from "../sim/loot";
 import { rarityIndex } from "../sim/config";
 import { trackMission } from "../game/missionStore";
-import { useGear } from "../game/gearStore";
-import { GEAR } from "./gear";
+import { loadoutOf, useGear } from "../game/gearStore";
+import { useDifficulty } from "../game/difficulty";
+import { LEVEL_TUNING as T } from "./levelTuning";
+import { GEAR, loadoutStats } from "./gear";
 
 /** Khoá lưu danh sách map đã qua (khai báo trước store vì store đọc ngay lúc khởi tạo) */
 const CLEARED_KEY = "cyberhood.levels.cleared.v1";
@@ -67,6 +69,8 @@ export const useLevel = create<LevelState>((set, get) => ({
       chestKeys: g.inventory.chestKey ?? 0,
       mapMultiplier: entry.mapMultiplier,
       weapon: useGear.getState().weapon,
+      difficulty: useDifficulty.getState().level,
+      stats: loadoutStats(loadoutOf(useGear.getState()), useGear.getState().enh),
       armor: useGear.getState().armor,
     });
     let lastCheckpoint = -1;
@@ -136,7 +140,9 @@ function finish() {
   if (st.rewarded || !st.sim) return;
   const sim = st.sim;
   const g = useGame.getState();
-  g.addCred(LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill);
+  // Thưởng theo độ khó và hạng qua màn (S thưởng gấp đôi)
+  const base = (LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill) * T.difficulty[sim.difficulty].reward;
+  g.addCred(Math.round(base * (1 + T.score.rankBonus[sim.rank])));
   trackMission("clear");
   trackMission("boss");
   grantLoot(sim.collected, sim.chestKeys);

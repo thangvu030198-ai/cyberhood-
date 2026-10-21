@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { GearBag } from "./GearBag";
+import { serviceById } from "../game/services";
 import { PALETTE } from "../game/config";
 import { chooseDialogue, currentStep } from "../game/quests";
 import { useGame } from "../game/store";
@@ -276,5 +277,6 @@ const INTERACT_LABEL = {
 
 export function interactLabel(i: NonNullable<ReturnType<typeof useGame.getState>["nearInteract"]>) {
   if (i.kind === "npc") return `Nói chuyện với ${NPCS[i.id].name}`;
+  if (i.kind === "service") return `${serviceById(i.id).npc} · ${serviceById(i.id).title}`;
   return INTERACT_LABEL[i.kind];
 }

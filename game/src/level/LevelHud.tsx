@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { GEAR } from "./gear";
+import { LEVEL_TUNING as T } from "./levelTuning";
+import { DIFFICULTIES } from "../game/difficulty";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { LEVEL_REWARD, useLevel } from "./session";
 import type { Input } from "./platformer";
@@ -19,6 +21,8 @@ function useTicker(hz: number) {
     return () => clearInterval(id);
   }, [hz]);
 }
+
+const bossSeenRef: { sim: unknown; at: number } = { sim: null, at: 0 };
 
 export function LevelHud() {
   const sim = useLevel((s) => s.sim);
@@ -55,9 +59,13 @@ export function LevelHud() {
   if (!sim) return null;
   const p = sim.player;
   const boss = sim.boss;
-  const cred = LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill;
+  const cred = Math.round((LEVEL_REWARD.clear + sim.kills * LEVEL_REWARD.perKill) * T.difficulty[sim.difficulty].reward * (1 + T.score.rankBonus[sim.rank]));
   const entry = levelById(sim.def.id);
   const v = viewById(entry.view);
+  // Lúc trùm vừa thức dậy: hiện câu thoại của trùm vài giây
+  if (sim.bossActive && bossSeenRef.sim !== sim) bossSeenRef.sim = sim, bossSeenRef.at = sim.time;
+  if (!sim.bossActive && bossSeenRef.sim === sim) bossSeenRef.sim = null;
+  const bossSeen = bossSeenRef.at;
   const showView = sim.time < 5;
   return (
     <div className={`lv lv--${v.post}`}>
@@ -67,6 +75,13 @@ export function LevelHud() {
           <div className="lv__bars lv__bars--bottom" />
         </>
       )}
+      {sim.time < 7 && (
+        <div className="lv__story">
+          <small>{entry.story.chapter}</small>
+          <p>{entry.story.intro}</p>
+        </div>
+      )}
+      {sim.bossActive && boss && boss.alive && boss.awake && sim.time - bossSeen < 4.5 && <div className="lv__bossline">{entry.story.boss}</div>}
       {showView && (
         <div className="lv__view">
           <b>{entry.howTo}</b>
@@ -91,6 +106,7 @@ export function LevelHud() {
               <i key={i} className={i < Math.ceil((boss.hp / boss.maxHp) * 28) ? "on" : ""} />
             ))}
           </div>
+          {boss.cue && <div className={`lv__cue ${boss.guard ? "" : "lv__cue--open"}`}>{boss.cue}</div>}
         </div>
       )}
       <div className="lv__top">
@@ -102,6 +118,10 @@ export function LevelHud() {
         <span className="lv__loot">
           Chìa rương ×{sim.chestKeys} · Linh kiện {sim.collected.filter((d) => d.kind === "part").length}
           {sim.collected.some((d) => d.kind === "gear") && ` · Trang bị ${sim.collected.filter((d) => d.kind === "gear").length}`}
+        </span>
+        <span className="lv__score">
+          {sim.score.toLocaleString("vi-VN")} điểm
+          {sim.combo > 1 && sim.time - sim.comboAt < 3 && <b className="lv__combo"> COMBO ×{sim.combo}</b>}
         </span>
         <span className="lv__weapon">
           {sim.weapon === "buster" ? "Súng tay X-Buster" : GEAR[sim.weapon].name}
@@ -123,7 +143,12 @@ export function LevelHud() {
       {sim.status === "cleared" && (
         <div className="lv__panel">
           <p className="lv__panel-tag">MISSION COMPLETE</p>
+          <div className={`lv__rank lv__rank--${sim.rank}`}>{sim.rank}</div>
           <h2>Đã hạ trùm {entry.bossName}</h2>
+          <p className="lv__outro">{entry.story.outro}</p>
+          <p>
+            {sim.score.toLocaleString("vi-VN")} điểm · combo dài nhất ×{sim.bestCombo} · {Math.round(sim.clearedAt)} giây (chuẩn {Math.round(sim.parTime)}) · độ khó {DIFFICULTIES.find((d) => d.id === sim.difficulty)!.label}
+          </p>
           <p>
             +{cred} CRED · {sim.kills} địch bị hạ · chết {sim.deaths} lần
           </p>

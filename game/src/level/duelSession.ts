@@ -5,6 +5,7 @@ import { DuelSim, RIVALS } from "./duel";
 import { useGear } from "../game/gearStore";
 import { rollGear } from "./gear";
 import { createRng } from "../sim/rng";
+import { DIFF_MODS, useDifficulty } from "../game/difficulty";
 import { useGame } from "../game/store";
 import { trackMission } from "../game/missionStore";
 import { handles } from "../game/refs";
@@ -42,7 +43,11 @@ export const useDuel = create<DuelState>((set, get) => ({
   start: (rival) => {
     document.exitPointerLock?.();
     const i = Math.min(rival ?? get().beaten, RIVALS.length - 1);
-    set({ sim: new DuelSim((Date.now() & 0xffff) + 1, RIVALS[i]), rewarded: false, prize: null });
+    // Độ khó nhân máu, lực đòn, tốc độ phản ứng của đối thủ
+    const d = DIFF_MODS[useDifficulty.getState().level];
+    const r = RIVALS[i];
+    const scaled = { ...r, hp: r.hp * d.duelHp, power: r.power * d.duelPower, think: r.think * d.duelThink, reward: Math.round(r.reward * d.reward) };
+    set({ sim: new DuelSim((Date.now() & 0xffff) + 1, scaled), rewarded: false, prize: null });
     useGame.getState().setLocation("level");
   },
   leave: () => {
@@ -66,7 +71,7 @@ export function settleDuel() {
   g.addItem("chestKey", DUEL_REWARD.chestKeys);
   trackMission("kill");
   trackMission("boss");
-  const idx = RIVALS.indexOf(sim.rival);
+  const idx = RIVALS.findIndex((r) => r.id === sim.rival.id);
   const beaten = Math.max(useDuel.getState().beaten, idx + 1);
   try {
     localStorage.setItem(LADDER_KEY, String(beaten));

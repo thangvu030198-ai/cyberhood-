@@ -7,7 +7,22 @@ import type { Rng } from "../sim/rng";
 
 export type WeaponId = "buster" | "ar" | "shotgun" | "sniper" | "bow" | "celestial" | "frost" | "scythe" | "cosmic";
 export type ArmorId = "none" | "darkset" | "void";
-export type GearId = Exclude<WeaponId, "buster"> | Exclude<ArmorId, "none">;
+/** Mũ, găng, giày, chip cấy: chỉ cộng chỉ số (model Meshy tạo riêng) */
+export type AccessoryId = "helm_visor" | "helm_oni" | "glove_shock" | "glove_titan" | "boot_runner" | "boot_grav" | "chip_luck" | "chip_overclock";
+export type GearId = Exclude<WeaponId, "buster"> | Exclude<ArmorId, "none"> | AccessoryId;
+export type Slot = "weapon" | "armor" | "head" | "hands" | "feet" | "chip";
+export const SLOTS: { id: Slot; label: string }[] = [
+  { id: "weapon", label: "Vũ khí" },
+  { id: "armor", label: "Giáp" },
+  { id: "head", label: "Mũ" },
+  { id: "hands", label: "Găng" },
+  { id: "feet", label: "Giày" },
+  { id: "chip", label: "Chip" },
+];
+
+/** Chỉ số cộng thêm: tấn công %, máu, giảm sát thương %, tốc chạy %, nhảy cao %, nạp đạn nhanh %, may mắn rơi đồ % */
+export type Stats = { atk: number; hp: number; def: number; speed: number; jump: number; charge: number; luck: number };
+export const NO_STATS: Stats = { atk: 0, hp: 0, def: 0, speed: 0, jump: 0, charge: 0, luck: 0 };
 
 /**
  * Kiểu bắn:
@@ -36,7 +51,9 @@ export type WeaponSpec = {
 
 export type GearInfo = {
   name: string;
-  slot: "weapon" | "armor";
+  slot: Slot;
+  /** Chỉ số gốc (cấp cường hoá +0) */
+  stats?: Partial<Stats>;
   rarity: Rarity;
   model: ExtraModel;
   /** Mô tả ngắn hiện trong Túi đồ */
@@ -72,11 +89,59 @@ export const GEAR: Record<GearId, GearInfo> = {
   cosmic: { name: "Kiếm Vũ Trụ", slot: "weapon", rarity: "mythic", model: "mx_dr_w_cosmic", blurb: "Nhát chém mạnh nhất; sóng kiếm khổng lồ xuyên tường." },
   darkset: { name: "Giáp Hiệp Sĩ Bóng Đêm", slot: "armor", rarity: "epic", model: "mx_dr_a_darkset", blurb: "+8 máu, giảm 10% sát thương nhận vào." },
   void: { name: "Giáp Hư Không", slot: "armor", rarity: "legendary", model: "mx_dr_a_void", blurb: "+14 máu, giảm 20% sát thương nhận vào." },
+  helm_visor: { name: "Mũ Kính Neon", slot: "head", rarity: "rare", model: "mx_gr_helm_visor", stats: { def: 0.06, charge: 0.1 }, blurb: "Kính ngắm: nạp đạn nhanh hơn, đỡ đòn nhẹ." },
+  helm_oni: { name: "Mặt Nạ Oni Hắc Diện", slot: "head", rarity: "legendary", model: "mx_gr_helm_oni", stats: { def: 0.12, atk: 0.12 }, blurb: "Mặt nạ samurai: tăng tấn công và phòng thủ." },
+  glove_shock: { name: "Găng Sốc Điện", slot: "hands", rarity: "rare", model: "mx_gr_glove_shock", stats: { atk: 0.1 }, blurb: "Cuộn điện ở đốt tay: tăng sát thương." },
+  glove_titan: { name: "Nắm Đấm Titan", slot: "hands", rarity: "epic", model: "mx_gr_glove_titan", stats: { atk: 0.18, hp: 4 }, blurb: "Găng mech vàng: sát thương lớn, thêm máu." },
+  boot_runner: { name: "Giày Chạy Neon", slot: "feet", rarity: "rare", model: "mx_gr_boot_runner", stats: { speed: 0.12, jump: 0.05 }, blurb: "Đế phản lực: chạy nhanh hơn." },
+  boot_grav: { name: "Giày Phản Trọng Lực", slot: "feet", rarity: "legendary", model: "mx_gr_boot_grav", stats: { speed: 0.15, jump: 0.14 }, blurb: "Nhảy cao, chạy nhanh, lướt xa." },
+  chip_luck: { name: "Chip Cỏ Bốn Lá", slot: "chip", rarity: "epic", model: "mx_gr_chip_luck", stats: { luck: 0.25 }, blurb: "Đồ hiếm rơi nhiều hơn 25%." },
+  chip_overclock: { name: "Chip Ép Xung", slot: "chip", rarity: "legendary", model: "mx_gr_chip_overclock", stats: { atk: 0.15, charge: 0.3, def: -0.05 }, blurb: "Bắn nạp siêu nhanh, mạnh hơn nhưng dễ vỡ." },
 };
 
 export const GEAR_IDS = Object.keys(GEAR) as GearId[];
 
 export const isWeapon = (id: GearId): id is Exclude<WeaponId, "buster"> => GEAR[id].slot === "weapon";
+
+/** Mỗi cấp cường hoá cộng thêm phần này của chỉ số gốc (vũ khí: sát thương) */
+export const ENHANCE_STEP = 0.08;
+export const MAX_ENHANCE = 10;
+
+/** Đồ đang mặc ở từng ô */
+export type Loadout = { weapon: WeaponId; armor: ArmorId; head: AccessoryId | null; hands: AccessoryId | null; feet: AccessoryId | null; chip: AccessoryId | null };
+
+/** Tổng chỉ số từ đồ đang mặc + cấp cường hoá (vũ khí cộng tấn công, giáp cộng máu / giảm sát thương theo cấp) */
+export function loadoutStats(l: Loadout, enh: Partial<Record<GearId, number>>): Stats {
+  const out: Stats = { ...NO_STATS };
+  const add = (id: GearId | null | undefined, base: Partial<Stats>) => {
+    if (!id) return;
+    const k = 1 + ENHANCE_STEP * (enh[id] ?? 0);
+    for (const [key, v] of Object.entries(base)) out[key as keyof Stats] += (v ?? 0) * k;
+  };
+  // Vũ khí / giáp: chỉ phần cộng thêm từ cấp cường hoá (chỉ số gốc nằm ở WEAPONS / ARMORS)
+  if (l.weapon !== "buster") out.atk += ENHANCE_STEP * (enh[l.weapon] ?? 0);
+  if (l.armor !== "none") out.hp += ARMORS[l.armor].hp * ENHANCE_STEP * (enh[l.armor] ?? 0);
+  for (const slot of ["head", "hands", "feet", "chip"] as const) {
+    const id = l[slot];
+    if (id) add(id, GEAR[id].stats ?? {});
+  }
+  out.def = Math.max(-0.2, Math.min(0.5, out.def));
+  return out;
+}
+
+/** Cường hoá (đập đồ): tỉ lệ thành công theo cấp hiện tại, giá CRED, linh kiện cần (từ +5 cần 1 linh kiện Hiếm trở lên) */
+export const FORGE = {
+  chance: [1, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2],
+  cost: (level: number) => Math.round(40 * (level + 1) ** 1.6),
+  needsPart: (level: number) => level >= 5,
+  /** Thất bại từ +5 trở lên: tụt một cấp */
+  dropFrom: 5,
+};
+
+export function forgeRoll(level: number, roll: number): { ok: boolean; next: number } {
+  const ok = roll < (FORGE.chance[level] ?? 0);
+  return { ok, next: ok ? level + 1 : level >= FORGE.dropFrom ? level - 1 : level };
+}
 
 /** Tỉ lệ rơi trang bị: mỗi địch thường / trùm / từng loại rương */
 export const GEAR_DROP = {

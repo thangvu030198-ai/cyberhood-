@@ -34,6 +34,7 @@ import { Hud } from "./ui/Hud";
 import { HUB_PEACEFUL } from "./game/config";
 import { LedBoards } from "./game/LedBoards";
 import { HubHolo } from "./game/HubHolo";
+import { HubServices } from "./game/HubServices";
 import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
 import { DuelCanvas, DuelHud } from "./level/DuelScene";
@@ -159,6 +160,7 @@ export default function App() {
             <ObjectiveArrow />
             <LedBoards />
             <HubHolo />
+            <HubServices />
             <TrafficDebug />
             <Rain />
             <DebugHook />

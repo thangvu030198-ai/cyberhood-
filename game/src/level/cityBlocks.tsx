@@ -62,19 +62,19 @@ export function canvasPair(w: number, h: number, draw: (base: CanvasRenderingCon
 }
 
 /** Mái nhà: tấm thép xanh rêu, đường mạch điện tử, lỗ thông gió, ống dẫn, đèn báo nhỏ */
-function roofTexture(seed: number) {
+function roofTexture(seed: number, space = false) {
   const r = rng(seed);
   return canvasPair(256, 256, (g, e) => {
-    g.fillStyle = "#1e2a2e";
+    g.fillStyle = space ? "#2a1a40" : "#1e2a2e";
     g.fillRect(0, 0, 256, 256);
     // Tấm thép ghép
     for (let y = 0; y < 256; y += 64)
       for (let x = 0; x < 256; x += 64) {
-        g.fillStyle = `rgb(${30 + r() * 14},${44 + r() * 14},${48 + r() * 14})`;
+        g.fillStyle = space ? `rgb(${58 + r() * 16},${36 + r() * 12},${86 + r() * 16})` : `rgb(${30 + r() * 14},${44 + r() * 14},${48 + r() * 14})`;
         g.fillRect(x + 2, y + 2, 60, 60);
       }
     // Đường mạch điện tử
-    g.strokeStyle = "#3b5a60";
+    g.strokeStyle = space ? "#9a6ad0" : "#3b5a60";
     g.lineWidth = 3;
     for (let i = 0; i < 14; i++) {
       let x = Math.floor(r() * 8) * 32 + 16;
@@ -87,8 +87,13 @@ function roofTexture(seed: number) {
         g.lineTo(x, y);
       }
       g.stroke();
-      g.fillStyle = "#4f7a80";
+      g.fillStyle = space ? "#c08aff" : "#4f7a80";
       g.fillRect(x - 4, y - 4, 8, 8);
+      // Vũ trụ: đường mạch phát sáng nhẹ
+      if (space) {
+        e.fillStyle = "#6a2a9a";
+        e.fillRect(x - 3, y - 3, 6, 6);
+      }
     }
     // Lỗ thông gió có nan
     for (let i = 0; i < 3; i++) {
@@ -118,11 +123,28 @@ function roofTexture(seed: number) {
 }
 
 /** Mặt tiền 2 m: cửa cuốn / cửa kính, cửa sổ sáng đèn, poster neon, ống điều hoà, vết bẩn. `barrier`: rào chắn sọc */
-function facadeTexture(seed: number, barrier: boolean) {
+function facadeTexture(seed: number, barrier: boolean, space = false) {
   const r = rng(seed);
   return canvasPair(256, 256, (g, e) => {
-    g.fillStyle = barrier ? "#2a2830" : "#232633";
+    g.fillStyle = space ? "#3a2454" : barrier ? "#2a2830" : "#232633";
     g.fillRect(0, 0, 256, 256);
+    if (space) {
+      // Vách pháo đài vũ trụ: tấm hợp kim tím kẻ mạch, hai dải neon hồng
+      g.strokeStyle = "#7a4aa8";
+      g.lineWidth = 3;
+      for (let y = 30; y < 256; y += 48) {
+        g.beginPath();
+        g.moveTo(0, y);
+        for (let x = 0; x < 256; x += 32) g.lineTo(x + 32, y + (r() < 0.3 ? 16 : 0));
+        g.stroke();
+      }
+      for (const ctx of [g, e]) {
+        ctx.fillStyle = "#ff5fe0";
+        ctx.fillRect(0, 4, 256, 5);
+        ctx.fillRect(0, 247, 256, 4);
+      }
+      return;
+    }
     if (barrier) {
       // Rào thép: sọc cảnh báo dưới chân, dải neon trên đỉnh
       for (let x = -40; x < 256; x += 40) {
@@ -194,8 +216,8 @@ function facadeTexture(seed: number, barrier: boolean) {
   });
 }
 
-function useTex(seed: number, kind: "roof" | "facade" | "barrier") {
-  return useMemo(() => (kind === "roof" ? roofTexture(seed) : facadeTexture(seed, kind === "barrier")), [seed, kind]);
+function useTex(seed: number, kind: "roof" | "facade" | "barrier", space = false) {
+  return useMemo(() => (kind === "roof" ? roofTexture(seed, space) : facadeTexture(seed, kind === "barrier", space)), [seed, kind, space]);
 }
 
 /** Vật liệu có texture lặp theo kích thước mặt (u: dài theo mét / 2, v: 1 tầng) */
@@ -209,9 +231,9 @@ function faceMaterial(t: { map: THREE.Texture; glow: THREE.Texture }, ru: number
   return new THREE.MeshStandardMaterial({ map, emissiveMap: glow, emissive: new THREE.Color("#ffffff"), emissiveIntensity: 1.6, roughness: 0.75, metalness: 0.25 });
 }
 
-function Block({ rect, height, seed, barrier }: { rect: Rect; height: number; seed: number; barrier: boolean }) {
-  const roof = useTex(seed % 3, "roof");
-  const face = useTex(seed % 4, barrier ? "barrier" : "facade");
+function Block({ rect, height, seed, barrier, space = false }: { rect: Rect; height: number; seed: number; barrier: boolean; space?: boolean }) {
+  const roof = useTex(seed % 3, "roof", space);
+  const face = useTex(seed % 4, barrier ? "barrier" : "facade", space);
   const { c, r, w, h } = rect;
   const cx = c + w / 2;
   const cz = -(r + h / 2);
@@ -223,7 +245,7 @@ function Block({ rect, height, seed, barrier }: { rect: Rect; height: number; se
     }),
     [roof, face, w, h],
   );
-  const neon = useMemo(() => new THREE.Color(NEON[seed % NEON.length]).multiplyScalar(2.4), [seed]);
+  const neon = useMemo(() => new THREE.Color(space ? "#ff5fe0" : NEON[seed % NEON.length]).multiplyScalar(2.4), [seed, space]);
   const top = FLOOR + height;
   return (
     <group>
@@ -243,7 +265,7 @@ function Block({ rect, height, seed, barrier }: { rect: Rect; height: number; se
         <planeGeometry args={[h, height]} />
       </mesh>
       {/* Dải neon quanh mép mái */}
-      {!barrier && (
+      {(!barrier || space) && (
         <>
           <mesh position={[cx, top + 0.03, cz + h / 2 - 0.05]}>
             <boxGeometry args={[w, 0.06, 0.06]} />
@@ -326,18 +348,20 @@ const SKYLINE: ExtraModel[] = ["mx_bld_skyscraper", "mx_bld_megacorp", "mx_bld_t
 
 export function CityBlocks({ sim }: { sim: PlatformerSim }) {
   const farm = sim.def.theme === "parish";
+  // Bay bắn trong không gian: vách pháo đài tím cao bằng cả khối nền, không có cao ốc / biển hiệu bao quanh
+  const space = sim.mode === "shmup";
   const data = useMemo(() => {
     const r = rng(sim.width * 977 + sim.height);
     const rects = mergeRects(sim);
     const blocks = rects.map((rect, i) => {
       const big = rect.w >= 3 && rect.h >= 3;
       const single = rect.w === 1 && rect.h === 1;
-      const height = farm ? (big ? 2.6 : single ? 1 : 1.3) : big ? 3.2 + r() * 1.2 : 2.2;
+      const height = space ? 4 : farm ? (big ? 2.6 : single ? 1 : 1.3) : big ? 3.2 + r() * 1.2 : 2.2;
       return { rect, height, seed: i * 7 + 3, barrier: !big && !single, big };
     });
     const roofs: { key: string; el: "ac" | [ExtraModel, number]; pos: [number, number, number]; rot: number }[] = [];
     for (const b of blocks) {
-      if (!b.big) continue;
+      if (!b.big || space) continue;
       const top = FLOOR + b.height;
       const { c, r: row, w, h } = b.rect;
       const n = Math.min(4, Math.floor((w * h) / 12) + 1);
@@ -351,12 +375,12 @@ export function CityBlocks({ sim }: { sim: PlatformerSim }) {
     // Dãy cao ốc ngoài rìa phía bắc và phía tây (hướng camera nhìn tới), gắn biển neon
     const sky: { name: ExtraModel; pos: [number, number, number]; h: number; rot: number }[] = [];
     const signs: { pos: [number, number, number]; rot: number; text: string; color: string }[] = [];
-    for (let x = -6; x < sim.width + 12; x += 9 + r() * 4) {
+    for (let x = -6; !space && x < sim.width + 12; x += 9 + r() * 4) {
       const h = 26 + r() * 22;
       sky.push({ name: SKYLINE[Math.floor(r() * SKYLINE.length)], pos: [x, FLOOR, -(sim.height + 9 + r() * 6)], h, rot: r() * 0.6 - 0.3 });
       signs.push({ pos: [x, FLOOR + 6 + r() * (h - 10), -(sim.height + 3.5)], rot: 0, text: VN_SIGNS[Math.floor(r() * VN_SIGNS.length)], color: NEON[Math.floor(r() * NEON.length)] });
     }
-    if (!farm)
+    if (!farm && !space)
       for (let y = -6; y < sim.height + 6; y += 9 + r() * 4) {
         const h = 26 + r() * 22;
         sky.push({ name: SKYLINE[Math.floor(r() * SKYLINE.length)], pos: [-(9 + r() * 6), FLOOR, -y], h, rot: Math.PI / 2 + r() * 0.6 - 0.3 });
@@ -367,7 +391,7 @@ export function CityBlocks({ sim }: { sim: PlatformerSim }) {
   return (
     <group>
       {data.blocks.map((b) => (
-        <Block key={b.seed} rect={b.rect} height={b.height} seed={b.seed} barrier={b.barrier} />
+        <Block key={b.seed} rect={b.rect} height={b.height} seed={b.seed} barrier={b.barrier} space={space} />
       ))}
       {data.roofs.map((p) =>
         p.el === "ac" ? (

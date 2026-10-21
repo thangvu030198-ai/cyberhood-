@@ -45,6 +45,48 @@ export const LEVEL_TUNING = {
     knockSpeed: 4,
     spikeDamage: 6,
     healthPickup: 8,
+    /** Nhảy kép: lực bằng phần này của cú nhảy thường */
+    airJumpMul: 0.85,
+    /** Đập đất: tốc độ rơi, bán kính và sát thương sóng chấn động */
+    slamSpeed: 24,
+    slamRadius: 2.8,
+    slamDamage: 4,
+  },
+
+  /** Mẹo đánh trùm (platformer.ts · BossStyle) */
+  boss: {
+    /** Choáng / lộ điểm yếu bao lâu, nhận sát thương nhân bao nhiêu */
+    stunTime: 2.4,
+    stunMul: 1.5,
+    /** Gồng trước khi lao / đập chuỳ / há miệng */
+    windup: 0.9,
+    chargeSpeed: 15,
+    /** La Madre: ẩn hình bao lâu, hiện hình bao lâu */
+    vanishTime: 2.2,
+    appearTime: 2.4,
+    /** Rồng: nghỉ (vảy cứng) bao lâu, phun lửa bao lâu */
+    dragonRest: 3,
+    breathTime: 2.2,
+    /** Director Vane: bắn tên lửa mỗi bao lâu, hạ bao nhiêu quả thì vỡ khiên */
+    missileEvery: 2.6,
+    overlordBreak: 3,
+    /** Kẻ Canh Giữ: nhắm mắt / mở mắt bao lâu, sát thương khi mắt mở */
+    eyeClosed: 3.6,
+    eyeOpen: 2.6,
+    eyeMul: 2,
+    /** Lính trùm gọi ra tối đa cùng lúc */
+    maxMinions: 4,
+  },
+
+  /** Điểm: mỗi địch / trùm, nhân theo chuỗi combo (tối đa), chuỗi đứt nếu quá lâu không hạ được ai */
+  score: { kill: 100, boss: 2000, comboWindow: 3, comboCap: 8, rankBonus: { S: 1, A: 0.5, B: 0.2, C: 0 } as Record<"S" | "A" | "B" | "C", number> },
+
+  /** Độ khó: máu và sát thương của địch, hệ số phần thưởng (CRED, đồ rơi) */
+  difficulty: {
+    easy: { hp: 0.7, dmg: 0.6, reward: 0.8 },
+    normal: { hp: 1, dmg: 1, reward: 1 },
+    hard: { hp: 1.4, dmg: 1.35, reward: 1.35 },
+    nightmare: { hp: 2, dmg: 1.8, reward: 1.9 },
   },
 
   shot: {
@@ -89,6 +131,8 @@ export const LEVEL_TUNING = {
     /** Địch chỉ hoạt động khi cách người chơi ít hơn mức này */
     wakeRange: 16,
     contactDamage: 3,
+    /** Kỹ năng quái: zombie vồ, lính nhảy né đạn, drone bổ nhào */
+    skill: { lungeRange: 3.2, lungeEvery: 2.6, lungeTime: 0.45, lungeVy: 7.5, lungeSpeed: 6.5, dodgeEvery: 2.2, dodgeRange: 4, dodgeVy: 10, diveEvery: 5.5, diveRange: 9, diveTime: 1.4 },
     trooper: { w: 0.9, h: 1.9, hp: 4, sight: 11, fireEvery: 2.2, shotSpeed: 9, shotDamage: 2, patrol: 3, walk: 1.4 },
     drone: { w: 1.1, h: 0.9, hp: 2, sway: 2.5, sight: 12, fireEvery: 2.8, shotSpeed: 7, shotDamage: 2 },
     zombie: { w: 0.9, h: 1.8, hp: 5, sight: 9, chase: 2.4, walk: 0.8 },

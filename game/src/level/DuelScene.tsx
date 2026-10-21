@@ -295,7 +295,7 @@ export function DuelHud() {
         <div className="duel__time">{Math.ceil(sim.timeLeft)}</div>
         <div className="duel__side duel__side--right">
           <span className="duel__name">
-            {sim.rival.name} · BẬC {RIVALS.indexOf(sim.rival) + 1}/{RIVALS.length}
+            {sim.rival.name} · BẬC {RIVALS.findIndex((r) => r.id === sim.rival.id) + 1}/{RIVALS.length}
           </span>
           {bar(sim.foe, true)}
         </div>
@@ -316,15 +316,15 @@ export function DuelHud() {
               {prize && ` · Nhận ${GEAR[prize as GearId].name} (vào Túi đồ)`}
             </p>
           )}
-          {sim.status === "won" && RIVALS.indexOf(sim.rival) < RIVALS.length - 1 && (
-            <button className="lv__btn" onClick={() => useDuel.getState().start(RIVALS.indexOf(sim.rival) + 1)}>
-              Đấu bậc tiếp: {RIVALS[RIVALS.indexOf(sim.rival) + 1].name}
+          {sim.status === "won" && RIVALS.findIndex((r) => r.id === sim.rival.id) < RIVALS.length - 1 && (
+            <button className="lv__btn" onClick={() => useDuel.getState().start(RIVALS.findIndex((r) => r.id === sim.rival.id) + 1)}>
+              Đấu bậc tiếp: {RIVALS[RIVALS.findIndex((r) => r.id === sim.rival.id) + 1].name}
             </button>
           )}
           <button className="lv__btn" onClick={leave}>
             Về thành phố <kbd>Enter</kbd>
           </button>
-          <button className="lv__btn lv__btn--ghost" onClick={() => useDuel.getState().start(RIVALS.indexOf(sim.rival))}>
+          <button className="lv__btn lv__btn--ghost" onClick={() => useDuel.getState().start(RIVALS.findIndex((r) => r.id === sim.rival.id))}>
             Đấu lại
           </button>
         </div>

@@ -5,6 +5,7 @@ import { LEVELS, isUnlocked } from "../level/registry";
 import { playLevel, useLevel } from "../level/session";
 import { viewById } from "../level/views";
 import { useDuel } from "../level/duelSession";
+import { useKart } from "../level/KartScene";
 import { useHunter } from "../game/hunter";
 
 const MODE_LABEL = { platform: "Đi ngang", climb: "Leo tháp", shmup: "Bay bắn", topdown: "Đi 8 hướng" } as const;
@@ -57,6 +58,23 @@ export function MapSelect() {
             </li>
           );
         })}
+        <li className={cleared.includes(LEVELS[0].def.id) ? "" : "locked"}>
+          <button
+            disabled={!cleared.includes(LEVELS[0].def.id)}
+            onClick={() => {
+              setSelecting(false);
+              useKart.getState().start();
+            }}
+          >
+            <span className="map-select__num">★</span>
+            <span className="map-select__body">
+              <b>ĐƯỜNG ĐUA NEON LOOP</b>
+              <span>Đua 3 vòng với 5 tay đua Legion. Tấm tăng tốc, hộp turbo / tên lửa. Về nhất nhận Chìa rương.</span>
+              <small>Đua kart · camera sau lưng (học từ Chocobo Racing · Crash Team Racing PS1) · không tốn năng lượng</small>
+            </span>
+            <span className="map-select__state">{cleared.includes(LEVELS[0].def.id) ? "VÀO" : `Qua ${LEVELS[0].def.name}`}</span>
+          </button>
+        </li>
         <li className={cleared.includes(LEVELS[0].def.id) ? "" : "locked"}>
           <button
             disabled={!cleared.includes(LEVELS[0].def.id)}

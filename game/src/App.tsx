@@ -37,6 +37,7 @@ import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
 import { DuelCanvas, DuelHud } from "./level/DuelScene";
 import { useDuel } from "./level/duelSession";
+import { KartCanvas, KartHud, useKart } from "./level/KartScene";
 import { enterLevel, playLevel, useLevel } from "./level/session";
 
 const KEYMAP = [
@@ -111,6 +112,7 @@ export default function App() {
   // Trong màn đi ngang: thành phố đứng hình (không vẽ, không chạy) nhưng vẫn giữ nguyên trạng thái
   const inLevel = useGame((s) => s.location === "level");
   const inDuel = useDuel((s) => s.sim !== null);
+  const inKart = useKart((s) => s.sim !== null);
   return (
     <Crash>
       <KeyboardControls map={KEYMAP}>
@@ -168,7 +170,12 @@ export default function App() {
         </Canvas>
         {inLevel ? (
           <Suspense fallback={null}>
-            {inDuel ? (
+            {inKart ? (
+              <>
+                <KartCanvas />
+                <KartHud />
+              </>
+            ) : inDuel ? (
               <>
                 <DuelCanvas />
                 <DuelHud />

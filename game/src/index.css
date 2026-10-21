@@ -1794,3 +1794,43 @@ canvas {
   background: #000;
   border: 2px solid #ffe08a;
 }
+
+/* Đua kart */
+.kart__time {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  display: grid;
+  justify-items: end;
+  padding: 6px 14px;
+  background: rgba(30, 40, 90, 0.75);
+  border: 2px solid #fff;
+  border-radius: 6px;
+  font-family: var(--font-display);
+  color: #fff;
+}
+.kart__time b { font-size: 26px; letter-spacing: 0.05em; }
+.kart__time span { font-size: 18px; color: #ffe066; }
+.kart__rank {
+  position: absolute;
+  left: 22px;
+  bottom: 60px;
+  font: 900 64px var(--font-display);
+  color: #ffe066;
+  text-shadow: 3px 3px 0 #c0392b, -1px -1px 0 #000;
+}
+.kart__item {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 110px;
+  padding: 8px 12px;
+  text-align: center;
+  font: 700 16px var(--font-display);
+  color: #fff;
+  background: rgba(30, 40, 90, 0.75);
+  border: 2px solid #fff;
+  border-radius: 6px;
+}
+.kart__map { position: absolute; right: 18px; top: 130px; width: 130px; height: 130px; }

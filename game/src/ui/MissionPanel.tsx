@@ -97,7 +97,7 @@ export function MissionPanel() {
         })}
         <li className={`mission-bonus ${state[tab].bonusClaimed ? "claimed" : ""}`}>
           <div className="mission-list__text">
-            <span className="mission-list__title">Thưởng hoàn thành cả {TABS.find((t) => t.id === tab)!.label.toLowerCase()}</span>
+            <span className="mission-list__title">{tab === "daily" ? "Thưởng hoàn thành cả ngày" : tab === "weekly" ? "Thưởng hoàn thành cả tuần" : "Thưởng hoàn thành cả tháng"}</span>
             <span className="mission-list__reward">{rewardText(PERIOD_BONUS[tab])}</span>
           </div>
           <span />

@@ -11,5 +11,5 @@ export const handles = {
   /** 0 = người thường, 1 = dạng Mech hoàn toàn; nội suy trong lúc biến hình */
   mechBlend: 0,
   /** Xoay camera theo góc azimuth (rad; 0 = nhìn về −z) — dùng khi dịch chuyển sang bản đồ khác */
-  aimCamera: null as null | ((azimuth: number) => void),
+  aimCamera: null as null | ((azimuth: number, polar?: number) => void),
 };

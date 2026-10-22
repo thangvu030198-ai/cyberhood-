@@ -99,7 +99,7 @@ function Vitals() {
       </div>
       <div className="vitals__row">
         <span className="vitals__label">CRED</span>
-        <span className="cred">{cred.toLocaleString("vi-VN")}</span>
+        <span className="cred">{cred.toLocaleString("en-US")}</span>
         {lastLoot && now - lastLoot.at < 1.6 && <span className="loot">+{lastLoot.amount}</span>}
       </div>
     </div>
@@ -241,7 +241,7 @@ function ShopPanel() {
           <h2 className="shop__title">Ripperdoc Kiosk</h2>
         </div>
         <p className="shop__wallet">
-          <span>CRED</span> {cred.toLocaleString("vi-VN")}
+          <span>CRED</span> {cred.toLocaleString("en-US")}
         </p>
       </header>
       <ul className="shop__list">

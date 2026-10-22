@@ -154,7 +154,7 @@ export function LevelHud() {
           {sim.collected.some((d) => d.kind === "gear") && ` · Trang bị ${sim.collected.filter((d) => d.kind === "gear").length}`}
         </span>
         <span className="lv__score">
-          {sim.score.toLocaleString("vi-VN")} điểm
+          {sim.score.toLocaleString("en-US")} điểm
           {sim.combo > 1 && sim.time - sim.comboAt < 3 && <b className="lv__combo"> COMBO ×{sim.combo}</b>}
         </span>
         <span className="lv__weapon">
@@ -181,7 +181,7 @@ export function LevelHud() {
           <h2>Đã hạ trùm {entry.bossName}</h2>
           <p className="lv__outro">{entry.story.outro}</p>
           <p>
-            {sim.score.toLocaleString("vi-VN")} điểm · combo dài nhất ×{sim.bestCombo} · {Math.round(sim.clearedAt)} giây (chuẩn {Math.round(sim.parTime)}) · độ khó {DIFFICULTIES.find((d) => d.id === sim.difficulty)!.label}
+            {sim.score.toLocaleString("en-US")} điểm · combo dài nhất ×{sim.bestCombo} · {Math.round(sim.clearedAt)} giây (chuẩn {Math.round(sim.parTime)}) · độ khó {DIFFICULTIES.find((d) => d.id === sim.difficulty)!.label}
           </p>
           <p>
             +{cred} CRED · {sim.kills} địch bị hạ · chết {sim.deaths} lần

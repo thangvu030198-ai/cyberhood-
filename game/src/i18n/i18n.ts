@@ -69,12 +69,15 @@ const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 
 // Từ điển chính xác + danh sách mẫu có chỗ trống (dài trước, để mẫu cụ thể thắng mẫu chung)
 const exact = new Map<string, string[]>();
+/** Tra theo chữ in hoa (code gọi toUpperCase() trên câu tiếng Việt): kết quả cũng in hoa */
+const upper = new Map<string, string[]>();
 type Pat = { re: RegExp; idx: number[]; out: string[] };
 const pats: Pat[] = [];
 for (const [vi, out] of Object.entries(DICT)) {
   const k = norm(vi);
   if (!/\{\d+\}/.test(k)) {
     exact.set(k, out);
+    upper.set(k.toUpperCase(), out);
     continue;
   }
   const idx: number[] = [];
@@ -120,6 +123,8 @@ function translate(text: string, lang: Exclude<Lang, "vi">, depth: number): stri
   const wrap = (s: string) => lw + s.trim() + tw;
   const ex = exact.get(k);
   if (ex) return wrap(ex[li] || ex[0]);
+  const up = k === k.toUpperCase() ? upper.get(k) : undefined;
+  if (up) return wrap((up[li] || up[0]).toUpperCase());
   if (depth > 3) return text;
   for (const p of pats) {
     const m = p.re.exec(k);
@@ -129,6 +134,12 @@ function translate(text: string, lang: Exclude<Lang, "vi">, depth: number): stri
       s = s.split(`{${n}}`).join(translate(m[i + 1], lang, depth + 1));
     });
     return wrap(s);
+  }
+  // Mảnh chữ có dấu chấm giữa ở đầu/cuối: "bay ·", "· giữ", "· Phố, biển neon: … · CC0"
+  const dot = /^(·\s*)?(.+?)(\s*·)?$/.exec(k);
+  if (dot && (dot[1] || dot[3])) {
+    const mid = translate(dot[2], lang, depth + 1);
+    if (mid !== dot[2]) return wrap((dot[1] ?? "") + mid.trim() + (dot[3] ?? ""));
   }
   // Chuỗi ghép bằng dấu " · " hoặc xuống dòng: dịch từng phần
   if (k.includes(" · ")) return wrap(k.split(" · ").map((p) => translate(p, lang, depth + 1)).join(" · "));

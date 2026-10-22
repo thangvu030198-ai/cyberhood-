@@ -54,7 +54,7 @@ export function CameraRig() {
     controls.distance = FOOT_DISTANCE;
     controls.rotateTo(Math.PI, Math.PI * 0.475, false);
     controls.colliderMeshes = colliders;
-    handles.aimCamera = (az) => controls.rotateTo(az, Math.PI * 0.44, false);
+    handles.aimCamera = (az, polar = Math.PI * 0.44) => controls.rotateTo(az, polar, false);
     // Chuột phải dành cho ngắm bắn, không dùng để kéo dịch camera
     controls.mouseButtons.right = CameraControlsImpl.ACTION.NONE;
 

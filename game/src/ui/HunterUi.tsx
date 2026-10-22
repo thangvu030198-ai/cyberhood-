@@ -130,7 +130,7 @@ function SeasonBlock() {
       <div className="hunter-season__head">
         <span>MÙA {season.season}</span>
         <span>
-          Điểm mùa <b>{season.points.toLocaleString("vi-VN")}</b>
+          Điểm mùa <b>{season.points.toLocaleString("en-US")}</b>
         </span>
         <span>Tier: {tier ? <b>{TIER_LABEL[tier]}</b> : "chưa đạt"}</span>
       </div>

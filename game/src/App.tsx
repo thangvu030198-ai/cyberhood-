@@ -1,3 +1,5 @@
+import { useService } from "./game/services";
+import { useMissions as useMissionsDbg } from "./game/missionStore";
 import { vfxDebug } from "./fx/skillVfx";
 import { useLang } from "./i18n/i18n";
 import * as THREE from "three";
@@ -45,6 +47,7 @@ import { Hud } from "./ui/Hud";
 import { HUB_PEACEFUL } from "./game/config";
 import { LedBoards } from "./game/LedBoards";
 import { HubHolo } from "./game/HubHolo";
+import { NftBoard } from "./game/NftBoard";
 import { HubServices } from "./game/HubServices";
 import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
@@ -116,7 +119,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid },
+      __level: { useService, useMissions: useMissionsDbg, useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid },
     });
   }
   return null;
@@ -185,6 +188,7 @@ export default function App() {
               <MeshyDynamic />
               <LedBoards />
               <HubHolo />
+              <NftBoard />
               <HubServices />
             </group>
             {!inSiege && <ObjectiveArrow />}

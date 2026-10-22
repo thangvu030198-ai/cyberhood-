@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { GEAR } from "./gear";
+import { GearBag } from "../ui/GearBag";
 import { LEVEL_TUNING as T } from "./levelTuning";
 import { DIFFICULTIES } from "../game/difficulty";
 import { bindLevelKeys, levelInput } from "./levelInput";
@@ -38,11 +39,21 @@ export function LevelHud() {
   const feed = useLevel((s) => s.feed);
 
   const [paused, setPaused] = useState(false);
+  const [bag, setBag] = useState(false);
+  // Phím I: mở tủ đồ giữa màn (tạm dừng), I / Esc đóng lại
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "KeyI" || e.repeat) return;
+      setBag((b) => !b);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   useTicker(20);
 
   useEffect(() => {
-    levelInput.paused = paused;
-  }, [paused]);
+    levelInput.paused = paused || bag;
+  }, [paused, bag]);
   useEffect(() => {
     const unbind = bindLevelKeys(() => {
       const s = useLevel.getState().sim;
@@ -183,6 +194,15 @@ export function LevelHud() {
           <button className="lv__btn" onClick={leave}>
             Về thành phố <kbd>Enter</kbd>
           </button>
+        </div>
+      )}
+      {bag && (
+        <div className="lv__bag" onClick={(e) => e.target === e.currentTarget && setBag(false)}>
+          <div className="lv__bag-box">
+            <h2>TỦ ĐỒ</h2>
+            <p className="note">Mũ, găng, giày đổi ngay trên người. Vũ khí và giáp áp dụng từ lần vào màn sau. <kbd>I</kbd> đóng.</p>
+            <GearBag />
+          </div>
         </div>
       )}
       {paused && sim.status !== "cleared" && (

@@ -402,6 +402,7 @@ function ParishYard({ sim }: { sim: PlatformerSim }) {
     const crosses: Placed[] = [];
     const trees: { x: number; z: number; h: number; rot: number }[] = [];
     const candles: { x: number; z: number; rot: number }[] = [];
+    const extras: { name: ExtraModel; x: number; z: number; h: number; rot: number; light?: string }[] = [];
     const solid = (c: number, r: number) => sim.tile(c, r) === "#";
     const grave = (x: number, z: number, rot: number) => graves.push({ x, y: FLOOR, z, w: 0.75, h: 1.0, d: 0.35, rot });
     const cross = (x: number, z: number, rot: number) => crosses.push({ x, y: FLOOR, z, w: 0.75, h: 1.5, d: 0.25, rot });
@@ -438,14 +439,24 @@ function ParishYard({ sim }: { sim: PlatformerSim }) {
       const k = r0();
       const x = c + 0.5;
       const z = -(r + 0.5);
-      if (k < 0.45) grave(x, z, side + (r0() - 0.5) * 0.5);
-      else if (k < 0.7) cross(x, z, side + (r0() - 0.5) * 0.4);
-      else if (k < 0.85) trees.push({ x, z, h: 3 + r0() * 1.5, rot: r0() * 6.28 });
-      else candles.push({ x, z, rot: r0() * 6.28 });
+      const rot = side + (r0() - 0.5) * 0.5;
+      if (k < 0.28) grave(x, z, rot);
+      else if (k < 0.42) cross(x, z, side + (r0() - 0.5) * 0.4);
+      else if (k < 0.53) trees.push({ x, z, h: 3 + r0() * 1.5, rot: r0() * 6.28 });
+      else if (k < 0.62) candles.push({ x, z, rot: r0() * 6.28 });
+      else if (k < 0.73) extras.push({ name: "mx_pr_broken_column", x, z, h: 2.2 + r0() * 1.2, rot });
+      else if (k < 0.83) extras.push({ name: "mx_pr_skull_candles", x, z, h: 0.9, rot, light: "#ff5030" });
+      else if (k < 0.91) extras.push({ name: "mx_pr_hanging_cage", x, z, h: 2.6, rot });
+      else extras.push({ name: "mx_pr_neon_cross", x, z, h: 2.4, rot, light: "#ff2040" });
     };
     for (let c = 2; c < sim.width - 2; c += 2 + Math.floor(r0() * 3)) for (const r of [1, sim.height - 2]) deco(c, r, 0);
     for (let r = 3; r < sim.height - 3; r += 3 + Math.floor(r0() * 3)) for (const c of [1, sim.width - 2]) deco(c, r, Math.PI / 2);
-    return { fence, pews, graves, crosses, trees, candles };
+    // Cảnh mốc ngoài tường bao: tháp chuông đổ nát hai góc, thập giá neon đỏ khổng lồ giữa hai cạnh dài
+    extras.push({ name: "mx_pr_bell_tower", x: -3.5, z: -3, h: 9, rot: 0.5 });
+    extras.push({ name: "mx_pr_bell_tower", x: sim.width + 3.5, z: -(sim.height - 3), h: 10, rot: -2.4 });
+    extras.push({ name: "mx_pr_neon_cross", x: sim.width / 2, z: 2.5, h: 6, rot: 0, light: "#ff2040" });
+    extras.push({ name: "mx_pr_neon_cross", x: sim.width / 2, z: -(sim.height + 2.5), h: 6, rot: Math.PI, light: "#ff2040" });
+    return { fence, pews, graves, crosses, trees, candles, extras };
   }, [sim]);
   return (
     <Suspense fallback={null}>
@@ -455,6 +466,12 @@ function ParishYard({ sim }: { sim: PlatformerSim }) {
       <ModelSet name="mx_pr_stone_cross" items={data.crosses} selfLit={0.3} />
       {data.trees.map((t, i) => (
         <FitProp key={`t${i}`} name="mx_pr_dead_tree" height={t.h} x={t.x} z={t.z} rot={t.rot} selfLit={0.2} />
+      ))}
+      {data.extras.map((t, i) => (
+        <group key={`e${i}`}>
+          <FitProp name={t.name} height={t.h} x={t.x} z={t.z} rot={t.rot} selfLit={t.light ? 0.9 : 0.3} />
+          {t.light && <pointLight position={[t.x, FLOOR + t.h * 0.7, t.z]} color={t.light} intensity={t.h > 3 ? 18 : 4} distance={t.h > 3 ? 14 : 5} decay={1.5} />}
+        </group>
       ))}
       {data.candles.map((t, i) => (
         <group key={`c${i}`}>
@@ -506,4 +523,101 @@ export function TopSkin({ sim }: { sim: PlatformerSim }) {
 export function topSkinned(sim: PlatformerSim) {
   const th = sim.def.theme;
   return (sim.mode === "shmup" && th === "crystal") || (sim.mode === "topdown" && (th === "harbor" || th === "parish"));
+}
+
+/**
+ * Nền nghĩa địa Giáo Xứ: đất tối, đá cuội lát lệch rêu phủ, vết nứt, lá khô đỏ. Vẽ bằng canvas, lặp liền mạch
+ * (đá chạm mép được vẽ lặp sang mép đối diện).
+ */
+export function graveyardTexture() {
+  const S = 1024;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = S;
+  const g = cv.getContext("2d")!;
+  let seed = 17;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = "#17121a";
+  g.fillRect(0, 0, S, S);
+  const wrap = (fn: (ox: number, oy: number) => void) => {
+    for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) fn(ox, oy);
+  };
+  // Đất loang lổ
+  for (let i = 0; i < 260; i++) {
+    const x = r() * S;
+    const y = r() * S;
+    const rad = 20 + r() * 70;
+    const c = r() < 0.5 ? `rgba(40,30,34,${0.25 + r() * 0.3})` : `rgba(18,26,20,${0.3 + r() * 0.3})`;
+    wrap((ox, oy) => {
+      const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
+      gr.addColorStop(0, c);
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gr;
+      g.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
+    });
+  }
+  // Đá cuội: lưới lệch hàng, mỗi viên một sắc xám tím, mép tối, mặt sáng nhẹ phía trên
+  const cell = 64;
+  for (let row = 0; row < S / cell; row++)
+    for (let col = 0; col < S / cell; col++) {
+      if (r() < 0.22) continue; // chỗ mất đá: lộ đất
+      const x = col * cell + (row % 2) * cell * 0.5 + (r() - 0.5) * 10;
+      const y = row * cell + (r() - 0.5) * 10;
+      const w = cell * (0.78 + r() * 0.14);
+      const h = cell * (0.7 + r() * 0.18);
+      const v = 38 + r() * 22;
+      wrap((ox, oy) => {
+        const px = x + ox;
+        const py = y + oy;
+        if (px > S + cell || py > S + cell || px < -cell * 2 || py < -cell * 2) return;
+        g.fillStyle = "rgba(0,0,0,0.6)";
+        g.beginPath();
+        g.roundRect(px - 2, py - 2, w + 4, h + 4, 14);
+        g.fill();
+        g.fillStyle = `rgb(${v},${v - 4},${v + 8})`;
+        g.beginPath();
+        g.roundRect(px, py, w, h, 12);
+        g.fill();
+        const hl = g.createLinearGradient(px, py, px, py + h);
+        hl.addColorStop(0, "rgba(255,255,255,0.08)");
+        hl.addColorStop(1, "rgba(0,0,0,0.18)");
+        g.fillStyle = hl;
+        g.fill();
+      });
+    }
+  // Rêu và cỏ mọc kẽ đá
+  for (let i = 0; i < 900; i++) {
+    const x = r() * S;
+    const y = r() * S;
+    g.fillStyle = `rgba(${40 + r() * 30},${60 + r() * 40},${30 + r() * 20},${0.25 + r() * 0.35})`;
+    wrap((ox, oy) => g.fillRect(x + ox, y + oy, 2 + r() * 5, 2 + r() * 5));
+  }
+  // Vết nứt
+  g.strokeStyle = "rgba(0,0,0,0.55)";
+  g.lineWidth = 1.5;
+  for (let i = 0; i < 40; i++) {
+    let x = r() * S;
+    let y = r() * S;
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let k = 0; k < 6; k++) {
+      x += (r() - 0.5) * 40;
+      y += (r() - 0.5) * 40;
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  // Lá khô đỏ cam rải rác
+  for (let i = 0; i < 220; i++) {
+    const x = r() * S;
+    const y = r() * S;
+    g.fillStyle = `rgba(${120 + r() * 80},${30 + r() * 40},${20},${0.5 + r() * 0.4})`;
+    g.beginPath();
+    g.ellipse(x, y, 3 + r() * 4, 1.5 + r() * 2, r() * 3.14, 0, Math.PI * 2);
+    g.fill();
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
 }

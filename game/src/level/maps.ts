@@ -124,6 +124,8 @@ function warzone(): LevelDef {
   return {
     id: "warzone",
     bossStyle: "dragon",
+    // Warzone: tàu laser quét, tàu pháo bắn loạt
+    traits: { trooper: ["basic"], zombie: ["basic"], drone: ["basic", "laser", "mortar"] },
     name: "WARZONE",
     mode: "shmup",
     rows: b.rows(),
@@ -204,6 +206,8 @@ function citadel(): LevelDef {
   return {
     id: "citadel_raid",
     bossStyle: "overlord",
+    // Citadel: lính bắn tỉa, lính lựu đạn
+    traits: { trooper: ["basic", "sniper", "grenadier"], zombie: ["basic"], drone: ["basic"] },
     name: "CITADEL",
     rows: b.rows(),
     start: [4.5, 2],
@@ -288,6 +292,8 @@ function hollowHotel(): LevelDef {
   return {
     id: "hollow_hotel",
     bossStyle: "phantom",
+    // Hollow Hotel: hồn ma dịch chuyển, xác sống phát sóng, dơi thả bom
+    traits: { trooper: ["basic", "blink"], zombie: ["basic", "pulse"], drone: ["basic", "bomber"] },
     name: "HOLLOW HOTEL",
     rows: b.rows(),
     start: [4.5, 8],
@@ -355,6 +361,8 @@ function huntZone(): LevelDef {
   return {
     id: "hunt_neon",
     bossStyle: "armored",
+    // Khu Săn: lính xung kích húc, ổ bọ đẻ bọ con
+    traits: { trooper: ["basic", "charger"], zombie: ["basic", "summoner"], drone: ["basic"] },
     name: "KHU SĂN NEON",
     mode: "topdown",
     rows: b.rows(),
@@ -419,6 +427,8 @@ function hollowParish(): LevelDef {
   return {
     id: "hollow_parish",
     bossStyle: "watcher",
+    // Giáo Xứ: thầy tế gọi sét lan, hồn ma thả vũng nguyền
+    traits: { trooper: ["basic"], zombie: ["basic", "chain"], drone: ["basic", "curse"] },
     name: "GIÁO XỨ NEON",
     mode: "topdown",
     rows: b.rows(),

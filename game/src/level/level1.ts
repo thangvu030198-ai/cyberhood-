@@ -92,6 +92,8 @@ function build(): LevelDef {
   return {
     id: "quarantine",
     bossStyle: "charger",
+    // Vùng Cách Ly: lính khiên, zombie tự nổ, zombie phun axit
+    traits: { trooper: ["basic", "shield"], zombie: ["basic", "exploder", "basic", "spitter"], drone: ["basic"] },
     name: "VÙNG CÁCH LY",
     rows: b.rows(),
     start: [4.5, 2],

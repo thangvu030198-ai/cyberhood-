@@ -60,7 +60,7 @@ export const THEMES: Record<ThemeId, LevelTheme> = {
     hemi: { sky: "#e0d4ff", ground: "#3a1e50", intensity: 2 },
     key: { color: "#ffd8ee", intensity: 2.3 },
     rim: { color: "#00f0ff", intensity: 2 },
-    tile: "#6a7498",
+    tile: "#3c4466",
     edge: [0.3, 2.6, 3],
     ledge: "#ff3ad9",
     backFloor: "#2c2044",
@@ -75,7 +75,7 @@ export const THEMES: Record<ThemeId, LevelTheme> = {
     fogNear: 34,
     fogFar: 150,
     // Phố đêm: ánh trời dịu để toà nhà có khối sáng tối rõ, đèn cửa sổ / biển neon tự sáng nổi lên
-    hemi: { sky: "#9fc4ff", ground: "#0a1424", intensity: 1.15 },
+    hemi: { sky: "#9fc4ff", ground: "#1a2840", intensity: 1.9 },
     key: { color: "#ffe2c8", intensity: 2.2 },
     rim: { color: "#ff4fd8", intensity: 2.2 },
     tile: "#4a6a88",

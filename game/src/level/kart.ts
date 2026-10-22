@@ -2,8 +2,8 @@
 // tấm tăng tốc, hộp vật phẩm (turbo / tên lửa), xếp hạng theo thời gian thực. Thuần TypeScript, có test.
 // Xe chạy trong toạ độ đường đua: s = quãng đường dọc tâm đường, d = lệch ngang so với tâm (âm = trái).
 
-export type KartInput = { left: boolean; right: boolean; gas: boolean; brake: boolean; item: boolean };
-export const NO_KART: KartInput = { left: false, right: false, gas: false, brake: false, item: false };
+export type KartInput = { left: boolean; right: boolean; gas: boolean; brake: boolean; item: boolean; drift?: boolean };
+export const NO_KART: KartInput = { left: false, right: false, gas: false, brake: false, item: false, drift: false };
 
 export const KART = {
   step: 1 / 60,
@@ -20,6 +20,11 @@ export const KART = {
   wallKeep: 0.55,
   boostSpeed: 36,
   boostTime: 1.2,
+  /**
+   * Drift (giữ Space + lái khi đủ nhanh, kiểu Mario Kart / CTR): ôm cua gắt hơn, tích lực; nhả ra được turbo ngắn.
+   * Tích đủ `lv1` giây: tia lửa xanh, turbo `boost1`; đủ `lv2`: tia lửa cam, turbo `boost2`
+   */
+  drift: { minSpeed: 14, steerMul: 1.45, decel: 3, lv1: 0.7, lv2: 1.5, boost1: 0.45, boost2: 0.9 },
   /** Trúng tên lửa: tốc độ còn lại và thời gian xoay vòng */
   spinKeep: 0.2,
   spinTime: 1.1,
@@ -40,6 +45,9 @@ export type Kart = {
   bestS: number;
   boostUntil: number;
   spinUntil: number;
+  /** Đang drift về phía nào (0 = không), đã tích bao lâu */
+  drift: -1 | 0 | 1;
+  driftCharge: number;
   item: "turbo" | "missile" | null;
   finishedAt: number | null;
   /** Lệch ngang mong muốn của AI */
@@ -148,7 +156,7 @@ export class KartSim {
   karts: Kart[];
   pads: KartPad[] = [];
   missiles: Missile[] = [];
-  events: { kind: "boost" | "item" | "hit" | "lap" | "finish" | "wall"; kart: number; at: number }[] = [];
+  events: { kind: "boost" | "item" | "hit" | "lap" | "finish" | "wall" | "drift"; kart: number; at: number; n?: number }[] = [];
   private prev: KartInput = NO_KART;
   private acc = 0;
 
@@ -165,6 +173,8 @@ export class KartSim {
       lap: 0,
       bestS: 0,
       boostUntil: -9,
+      drift: 0,
+      driftCharge: 0,
       spinUntil: -9,
       item: null,
       finishedAt: null,
@@ -235,7 +245,24 @@ export class KartSim {
     if (boosting) k.v = Math.max(k.v, KART.boostSpeed * 0.92);
     // Đánh lái: trượt ngang, nhạy hơn khi chạy nhanh
     const dir = (c.right ? 1 : 0) - (c.left ? 1 : 0);
-    if (!spinning) k.d += dir * KART.steer * Math.min(1, Math.abs(k.v) / 10) * dt;
+    const D = KART.drift;
+    if (!spinning && c.drift && k.v > D.minSpeed && (k.drift !== 0 || dir !== 0)) {
+      // Vào drift theo hướng đang lái, giữ nguyên hướng tới khi nhả
+      if (k.drift === 0) k.drift = dir as -1 | 1;
+      k.driftCharge += dt * (dir === k.drift ? 1.3 : 0.7);
+      k.v -= D.decel * dt;
+    } else if (k.drift !== 0) {
+      // Nhả drift: tích đủ thì bật turbo ngắn
+      const lv = k.driftCharge >= D.lv2 ? 2 : k.driftCharge >= D.lv1 ? 1 : 0;
+      if (lv > 0 && !spinning) {
+        k.boostUntil = Math.max(k.boostUntil, t + (lv === 2 ? D.boost2 : D.boost1));
+        this.events.push({ kind: "boost", kart: k.id, at: t, n: lv });
+      }
+      k.drift = 0;
+      k.driftCharge = 0;
+    }
+    const steer = k.drift !== 0 ? (dir === k.drift ? D.steerMul : dir === 0 ? 0.75 : 0.35) * k.drift : dir;
+    if (!spinning) k.d += steer * KART.steer * Math.min(1, Math.abs(k.v) / 10) * dt;
     if (Math.abs(k.d) > KART.halfWidth) {
       k.d = Math.sign(k.d) * KART.halfWidth;
       k.v *= KART.wallKeep ** (dt * 6);

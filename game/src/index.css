@@ -1877,6 +1877,11 @@ canvas {
 .lv__rank--C { color: #b0a0c0; }
 
 .gbag__equip { display: grid; grid-template-columns: repeat(2, 74px); gap: 6px; align-content: start; }
+.gbag__preview { grid-column: 1 / -1; width: 154px; height: 210px; border-radius: 6px; background: radial-gradient(ellipse at 50% 85%, #2a1848, #0c0618 70%); border: 1px solid #3c2c60; overflow: hidden; }
+.lv__bag { position: absolute; inset: 0; display: grid; place-items: center; background: #05020cd0; z-index: 30; }
+.lv__bag-box { max-width: min(760px, 96vw); max-height: 92vh; overflow: auto; padding: 14px 16px; background: #0d0720; border: 2px solid #b05cff; border-radius: 10px; box-shadow: 0 0 30px #b05cff55; }
+.lv__bag-box h2 { margin: 0 0 4px; font: 800 16px/1.2 var(--font-mono, monospace); color: #e8dcff; letter-spacing: 0.08em; }
+.lv__bag-box p.note { margin: 0 0 6px; font-size: 11px; color: #9fe8ff; }
 .gbag__total { grid-column: 1 / -1; font-size: 11px; color: #9fe8ff; max-width: 154px; margin: 2px 0 0; }
 .gbag__slot--eq { cursor: pointer; }
 .gbag__enh { position: absolute; left: 2px; bottom: 0; font: 700 10px/1.2 var(--font-mono, monospace); color: #ffd23d; text-shadow: 0 0 3px #000; }

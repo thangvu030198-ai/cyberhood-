@@ -155,8 +155,8 @@ export const LEVELS: LevelEntry[] = [
     keyLabel: "Chìa Pha Lê",
     mapMultiplier: 1.5,
     blurb: "Hẻm núi pha lê của hành tinh chiến tranh. Cưỡi xe bay ngược lên giữa hai vách pha lê.",
-    view: "topdown",
-    howTo: "Bay bắn cuộn dọc nhìn từ trên (kiểu 1942 / Raiden). W/A/S/D bay, K tăng tốc, J bắn.",
+    view: "chase",
+    howTo: "Lái tàu góc nhìn thứ 3 sau lưng (kiểu Star Fox): W tăng tốc lao lên, S lùi lại, A/D né ngang, K tăng tốc, J bắn (giữ nạp chưởng đuổi).",
     looks: {
       trooper: { base: "mx_wz_heavy", clips: { walk: "walk", idle: "walk", shoot: "walkshoot", death: "death" }, height: 1.95 },
       zombie: zombieLook("mx_zmb_soldier"),

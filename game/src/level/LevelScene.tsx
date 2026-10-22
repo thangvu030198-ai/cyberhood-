@@ -21,7 +21,7 @@ import {
   Pixelation,
   Vignette,
 } from "@react-three/postprocessing";
-import { GameBoyPalette, RetroGrade } from "./retroEffects";
+import { GameBoyPalette, PunchGrade, RetroGrade } from "./retroEffects";
 import { viewById } from "./views";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { extraModel, models, playSfx, type ExtraModel } from "../game/assets";
@@ -37,8 +37,9 @@ import { THEMES, type LevelTheme } from "./themes";
 import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } from "./registry";
 import { GearDrops, HeroArms, WeaponShots, WornArmor } from "./gearView";
 import { FIGHT_CLIPS, fightModel } from "./fightClips";
+import { WornGear } from "./wornGear";
 import { CombatFx } from "./combatFx";
-import { SideSkin, TopSkin, asphaltTexture, skinSkips } from "./terrainSkin";
+import { SideSkin, TopSkin, asphaltTexture, graveyardTexture, skinSkips } from "./terrainSkin";
 import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
 import { CityBlocks } from "./cityBlocks";
 import { SideScenery } from "./sideScenery";
@@ -115,17 +116,18 @@ export function LevelCanvas() {
       <fog attach="fog" args={[th.fog, th.fogNear, th.fogFar]} />
       <SimDriver sim={sim} />
       <LevelCamera sim={sim} theme={th} />
+      {/* Ánh sáng tương phản: giảm đèn môi trường (đỡ bệt màu), tăng đèn chính và đèn viền để khối có sáng tối rõ */}
       <hemisphereLight
-        args={[th.hemi.sky, th.hemi.ground, th.hemi.intensity]}
+        args={[th.hemi.sky, th.hemi.ground, th.hemi.intensity * LIGHT_MIX.hemi]}
       />
       <directionalLight
         position={[-20, 30, 25]}
-        intensity={th.key.intensity}
+        intensity={th.key.intensity * LIGHT_MIX.key}
         color={th.key.color}
       />
       <directionalLight
         position={[30, 10, -30]}
-        intensity={th.rim.intensity}
+        intensity={th.rim.intensity * LIGHT_MIX.rim}
         color={th.rim.color}
       />
       {matte && <Matte file={matte} scroll={top ? "top" : "x"} parallax={top ? 0.35 : 0.25} />}
@@ -365,6 +367,29 @@ function LevelCamera({
       }
       return;
     }
+    if (v.chase) {
+      // Sau lưng tàu: camera thấp phía sau khung cuộn, trôi ngang theo tàu một phần cho có cảm giác né
+      const k2 = 1 - Math.exp(-v.damp * dt);
+      const lat = THREE.MathUtils.lerp(sim.height / 2, p.y + p.h / 2, 0.65);
+      look.current.y += (lat - look.current.y) * k2;
+      const cz = -look.current.y;
+      const back = sim.scrollX - T.shmup.viewHalf - dist;
+      camera.up.set(0, 1, 0);
+      camera.position.set(back, v.rise, cz);
+      camera.lookAt(back + dist + v.lookAhead, 0, cz);
+      // Nghiêng camera theo hướng né
+      camera.rotateZ(THREE.MathUtils.clamp(-p.vy * 0.012, -0.12, 0.12));
+      if (feel.shake > 0.005) {
+        camera.position.y += (Math.random() - 0.5) * feel.shake;
+        camera.position.z += (Math.random() - 0.5) * feel.shake;
+        feel.shake *= Math.exp(-12 * dt);
+      }
+      if (scene.fog instanceof THREE.Fog) {
+        scene.fog.near = 25;
+        scene.fog.far = 140;
+      }
+      return;
+    }
     if (v.plane === "top") {
       // Nhìn từ trên: thế giới đã xoay nên trục y mô phỏng nằm theo -z; camera hơi lùi về sau cho có phối cảnh
       const cx = sim.scrollX;
@@ -412,7 +437,8 @@ function PostFx({ sim }: { sim: PlatformerSim }) {
           luminanceThreshold={0.95}
           luminanceSmoothing={0.25}
         />
-        <RetroGrade />
+        <RetroGrade strength={0.5} />
+        <PunchGrade />
         <Vignette eskil={false} offset={0.3} darkness={0.5} />
       </EffectComposer>
     );
@@ -425,8 +451,9 @@ function PostFx({ sim }: { sim: PlatformerSim }) {
           luminanceThreshold={0.95}
           luminanceSmoothing={0.25}
         />
+        <PunchGrade />
         <ChromaticAberration offset={new THREE.Vector2(0.0009, 0.0006)} />
-        <Noise opacity={0.06} />
+        <Noise opacity={0.04} />
         <Vignette eskil={false} offset={0.25} darkness={0.6} />
       </EffectComposer>
     );
@@ -438,7 +465,8 @@ function PostFx({ sim }: { sim: PlatformerSim }) {
         luminanceThreshold={1}
         luminanceSmoothing={0.2}
       />
-      <Vignette eskil={false} offset={0.3} darkness={0.35} />
+      <PunchGrade />
+      <Vignette eskil={false} offset={0.3} darkness={0.45} />
     </EffectComposer>
   );
 }
@@ -454,6 +482,12 @@ function FloorGround({
   entry: LevelEntry;
 }) {
   const tex = useMemo(() => {
+    // Giáo Xứ: nền nghĩa địa đá cuội rêu phủ (thay ảnh mẫu phố neon)
+    if (sim.def.theme === "parish") {
+      const t = graveyardTexture();
+      t.repeat.set(sim.width / 9, sim.height / 9);
+      return t;
+    }
     // Sàn vẽ sẵn từ ảnh mẫu: mỗi ô ảnh phủ ~11 × 20 m, lặp đối xứng cho liền mạch
     if (entry.floorTex) {
       const t = new THREE.TextureLoader().load(`mattes/${entry.floorTex}.webp`);
@@ -481,7 +515,9 @@ function FloorGround({
         position={[sim.width / 2, -2.02, -sim.height / 2]}
       >
         <planeGeometry args={[sim.width, sim.height]} />
-        {entry.floorTex ? (
+        {sim.def.theme === "parish" ? (
+          <meshStandardMaterial map={tex} roughness={0.92} color="#b8aec8" />
+        ) : entry.floorTex ? (
           <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.36} roughness={0.6} color="#8f88a8" />
         ) : sim.def.theme === "harbor" ? (
           <meshStandardMaterial map={tex} roughness={0.35} metalness={0.25} color="#b8bccc" />
@@ -1649,6 +1685,9 @@ export function flash(scene: THREE.Object3D, amount: number, color: THREE.Color)
 export const WHITE = new THREE.Color(1, 1, 1);
 export const RED = new THREE.Color(1, 0.15, 0.1);
 
+/** Hệ số trộn đèn theo theme: đèn môi trường thấp, đèn chính / viền cao hơn cho hình khối tương phản */
+const LIGHT_MIX = { hemi: 0.62, key: 1.3, rim: 1.45 };
+
 /** Nhát kiếm: hoạt ảnh kéo dài bao lâu, tua nhanh gấp mấy lần, lúc vung mạnh nhất rơi vào bao lâu sau khi bấm */
 const SWING_TIME = 0.4;
 const SWING_SPEED = 2.2;
@@ -1853,6 +1892,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       </group>
       <HeroArms rig={rig.scene} sim={sim} />
       <WornArmor rig={rig.scene} armor={sim.armor} />
+      <WornGear rig={rig.scene} armor={false} />
       <mesh ref={shadow} rotation-x={-Math.PI / 2}>
         <circleGeometry args={[0.55, 24]} />
         <meshBasicMaterial

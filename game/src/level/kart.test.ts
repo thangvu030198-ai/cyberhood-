@@ -71,3 +71,23 @@ describe("đua kart", () => {
     expect(sim.karts[hit!.kart].spinUntil).toBeGreaterThan(sim.time - 1);
   });
 });
+
+describe("drift", () => {
+  it("giữ drift khi lái đủ nhanh thì tích lực; nhả ra được turbo", () => {
+    const sim = new KartSim();
+    drive(sim, Math.ceil(KART.introTime / KART.step) + 1, {});
+    sim.player.v = 24;
+    // Giữ xe giữa đường (không chạm vách) để chỉ thử phần tích lực
+    drive(sim, 100, () => {
+      sim.player.d = 0;
+      sim.player.v = Math.max(sim.player.v, 20);
+      return { gas: true, right: true, drift: true };
+    });
+    expect(sim.player.drift).toBe(1);
+    expect(sim.player.driftCharge).toBeGreaterThan(KART.drift.lv2);
+    drive(sim, 1, { gas: true });
+    expect(sim.player.drift).toBe(0);
+    expect(sim.time < sim.player.boostUntil).toBe(true);
+    expect(sim.events.some((e) => e.kind === "boost" && e.n === 2)).toBe(true);
+  });
+});

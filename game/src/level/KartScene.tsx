@@ -15,7 +15,8 @@ import { handles } from "../game/refs";
 import { MISSION_GATE } from "../game/config";
 import { KART, KartSim, type KartInput } from "./kart";
 import { bindLevelKeys, levelInput } from "./levelInput";
-import { RetroGrade } from "./retroEffects";
+import { PunchGrade } from "./retroEffects";
+import { DriftFx, NitroFlames, SpeedLines, driftYaw, kartShake } from "./kartFx";
 import { Quiet } from "./LevelScene";
 import { asphaltTexture } from "./terrainSkin";
 
@@ -45,10 +46,10 @@ export const useKart = create<KartState>((set) => ({
   },
 }));
 
-/** W/↑ ga, S/↓ phanh, A/D lái, J dùng vật phẩm */
+/** W/↑ ga, S/↓ phanh, A/D lái, giữ Space drift (nhả ra được turbo), J/K dùng vật phẩm */
 function kartInput(): KartInput {
   const i = levelInput.state();
-  return { gas: i.up || i.jump, brake: i.down, left: i.left, right: i.right, item: i.shoot || i.dash };
+  return { gas: i.up || i.jump, brake: i.down, left: i.left, right: i.right, item: i.shoot || i.dash, drift: i.jump };
 }
 
 /** Xe của 6 tay đua: AI dùng xe phố, người chơi dùng siêu xe Velocity */
@@ -84,9 +85,14 @@ export function KartCanvas() {
         </Quiet>
       ))}
       <Missiles sim={sim} />
+      {sim.karts.map((k) => (
+        <NitroFlames key={`n${k.id}`} sim={sim} id={k.id} />
+      ))}
+      <DriftFx sim={sim} />
+      <SpeedLines sim={sim} />
       <EffectComposer multisampling={0}>
         <Bloom mipmapBlur intensity={0.7} luminanceThreshold={1} luminanceSmoothing={0.2} />
-        <RetroGrade strength={0.45} />
+        <PunchGrade />
         <Vignette eskil={false} offset={0.35} darkness={0.4} />
       </EffectComposer>
     </Canvas>
@@ -100,6 +106,7 @@ function KartDriver({ sim }: { sim: KartSim }) {
     for (let i = seen.current; i < sim.events.length; i++) {
       const e = sim.events[i];
       if (e.kart !== 5 && e.kind !== "hit") continue;
+      if (e.kart === 5) kartShake.amount = Math.max(kartShake.amount, e.kind === "hit" ? 0.6 : e.kind === "boost" ? 0.3 : e.kind === "wall" ? 0.18 : 0);
       if (e.kind === "boost") playSfx("repeater", 0.5);
       else if (e.kind === "item" || e.kind === "lap") playSfx("pickup", 0.7);
       else if (e.kind === "hit") playSfx("enemyDestroy", e.kart === 5 ? 0.8 : 0.3);
@@ -120,6 +127,7 @@ function ChaseCamera({ sim }: { sim: KartSim }) {
   const camera = useThree((s) => s.camera);
   const pos = useRef(new THREE.Vector3());
   const first = useRef(true);
+  const roll = useRef(0);
   useFrame((_, dt) => {
     const k = sim.player;
     const back = sim.track.at(k.s - 7.5, k.d * 0.85);
@@ -132,11 +140,21 @@ function ChaseCamera({ sim }: { sim: KartSim }) {
     }
     pos.current.lerp(target, 1 - Math.exp(-8 * Math.min(dt, 0.1)));
     camera.position.copy(pos.current);
+    // Rung: turbo / va vách / trúng tên lửa
+    kartShake.amount = Math.max(0, kartShake.amount - Math.min(dt, 0.1) * 1.6);
+    const sh = kartShake.amount * kartShake.amount;
+    const t = sim.time;
+    camera.position.x += Math.sin(t * 71) * sh * 0.4;
+    camera.position.y += Math.sin(t * 53) * sh * 0.3;
     camera.lookAt(ahead.x, 1.1, ahead.z);
+    // Drift: nghiêng camera nhẹ theo hướng văng đuôi
+    roll.current = THREE.MathUtils.damp(roll.current, -k.drift * 0.05, 6, Math.min(dt, 0.1));
+    camera.rotateZ(roll.current);
     const cam = camera as THREE.PerspectiveCamera;
-    const fov = boosting ? 72 : 62;
+    // FOV giãn theo tốc độ, turbo giãn thêm (cảm giác lao vút)
+    const fov = 58 + Math.min(1, Math.max(0, k.v) / KART.maxSpeed) * 8 + (boosting ? 12 : 0);
     if (Math.abs(cam.fov - fov) > 0.1) {
-      cam.fov += (fov - cam.fov) * 0.1;
+      cam.fov += (fov - cam.fov) * 0.12;
       cam.updateProjectionMatrix();
     }
   });
@@ -496,7 +514,9 @@ function KartCar({ sim, id, model }: { sim: KartSim; id: number; model: ExtraMod
     if (!o) return;
     o.position.set(w.x, 0.05, w.z);
     const spin = sim.time < k.spinUntil ? (k.spinUntil - sim.time) * 14 : 0;
-    o.rotation.y = w.yaw + spin;
+    o.rotation.y = w.yaw + spin + driftYaw(sim, id);
+    // Thân xe nghiêng ra ngoài khi drift
+    o.rotation.z = THREE.MathUtils.damp(o.rotation.z, k.drift * 0.06, 8, 1 / 60);
     // Nhún nhẹ theo tốc độ
     o.position.y = 0.05 + Math.abs(Math.sin(sim.time * 18 + id)) * 0.03 * Math.min(1, k.v / 20);
   });
@@ -628,7 +648,7 @@ export function KartHud() {
       )}
       <div className="lv__help">
         <kbd>W</kbd> ga · <kbd>S</kbd> phanh · <kbd>A</kbd>
-        <kbd>D</kbd> lái · <kbd>J</kbd> dùng vật phẩm (turbo / tên lửa) · tấm cam = tăng tốc · <kbd>Esc</kbd> thoát
+        <kbd>D</kbd> lái · giữ <kbd>Space</kbd> + lái = drift (tia lửa xanh → cam, nhả ra được turbo) · <kbd>J</kbd> dùng vật phẩm (turbo / tên lửa) · tấm cam = tăng tốc · <kbd>Esc</kbd> thoát
       </div>
     </div>
   );

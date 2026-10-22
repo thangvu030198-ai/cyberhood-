@@ -53,6 +53,9 @@ const HAZARD_RGB: Record<HazardKind, [number, number, number]> = {
   crystal: [0.7, 2.8, 3.2],
   tentacle: [1, 3, 0.8],
   shock: [2.6, 3, 3.2],
+  void: [2.2, 0.5, 3.2],
+  pulse: [3.2, 0.4, 1.2],
+  curse: [1.6, 0.3, 2.8],
 };
 
 function rand(a: number, b: number) {

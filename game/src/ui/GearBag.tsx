@@ -1,6 +1,7 @@
 // Túi đồ dạng lưới ô (kiểu Stardew Valley, màu neon cyberpunk): hai ô trang bị (vũ khí, giáp) và lưới ô vật phẩm. Bấm một ô để xem, bấm "Trang bị" để mặc.
 // Trang bị dùng cho màn 2D sau cổng nhiệm vụ.
 
+import { GearPreview } from "../level/wornGear";
 import { useEffect, useState } from "react";
 import { GEAR, GEAR_IDS, WEAPONS, ARMORS, SLOTS, loadoutStats, type GearId, type Slot } from "../level/gear";
 import { loadoutOf, useGear } from "../game/gearStore";
@@ -115,6 +116,7 @@ export function GearBag() {
     <section className="gbag" aria-label="Trang bị">
       {/* Búp bê trang bị: 6 ô quanh nhân vật, bấm ô đang mặc để tháo */}
       <div className="gbag__equip">
+        <GearPreview />
         {SLOTS.map((sl) => {
           const id = worn[sl.id];
           return (

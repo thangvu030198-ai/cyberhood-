@@ -92,6 +92,20 @@ export const LEVEL_TUNING = {
     bomber: { above: 3.9, every: 1.9, grav: 20, r: 1.5, dmg: 4, follow: 3.2 },
     /** Drone laser: khoảng cách giữ, thời gian nạp (tia cảnh báo), độ dài / độ dày tia, thời gian bắn, sát thương, nghỉ */
     laser: { keep: 6.5, tele: 0.95, length: 15, width: 0.55, dur: 0.35, dmg: 4, rest: 2.6 },
+    /** Hồn ma dịch chuyển (Hollow Hotel): tầm, nhịp, thời gian báo trước, bán kính, sát thương */
+    blink: { range: 11, every: 3.6, warn: 0.85, r: 1.2, dmg: 4 },
+    /** Xác sống phát sóng (Hollow Hotel): bán kính sóng quanh thân, báo trước, nhịp, sát thương */
+    pulse: { r: 2.6, warn: 0.8, every: 2.2, dmg: 4 },
+    /** Tàu pháo (Warzone): số quả mỗi loạt, độ toả, báo trước, cách nhau, bán kính, sát thương, nhịp, tầm */
+    mortar: { n: 3, spread: 2.2, warn: 1.0, stagger: 0.18, r: 1.3, dmg: 3, every: 3.4, range: 22 },
+    /** Lính xung kích (Khu Săn): báo trước, thời gian lao, quãng lao, bề rộng vệt, sát thương, nhịp */
+    charger: { warn: 0.65, dash: 0.32, length: 7, width: 1.1, dmg: 5, every: 3 },
+    /** Ổ bọ (Khu Săn): số bọ con mỗi lần, nhịp */
+    summoner: { n: 2, every: 6.5 },
+    /** Thầy tế gọi sét (Giáo Xứ): tầm, nhịp, báo trước, bề rộng, quãng lan, sát thương */
+    chain: { range: 11, every: 3.4, warn: 0.85, width: 0.5, jump: 3.5, dmg: 4 },
+    /** Hồn ma nguyền (Giáo Xứ): tầm, nhịp, báo trước, vũng tồn tại, bán kính, sát thương, đi chậm còn bao nhiêu / bao lâu */
+    curse: { range: 12, every: 3.6, warn: 0.9, dur: 2.4, r: 1.6, dmg: 1, slow: 0.5, slowTime: 1.4 },
   },
 
   /**

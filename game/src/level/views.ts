@@ -6,7 +6,7 @@
 // - Game Boy: phẳng hoàn toàn, 4 sắc xanh lá, hạt to
 // - Điện ảnh: camera thấp, zoom theo nhịp (đứng yên thì gần, lướt thì xa), khung đen trên dưới khi đánh trùm
 
-export type ViewId = "classic" | "ps2" | "snes" | "gameboy" | "cinema" | "topdown" | "iso" | "farm";
+export type ViewId = "classic" | "ps2" | "snes" | "gameboy" | "cinema" | "topdown" | "iso" | "farm" | "chase";
 
 export type ViewPreset = {
   id: ViewId;
@@ -28,6 +28,8 @@ export type ViewPreset = {
   iso?: boolean;
   /** Nhìn từ trên kiểu nông trại: không xoay, chúc dốc ~58°, lên màn hình = lên bản đồ */
   farm?: boolean;
+  /** Góc nhìn thứ 3 sau lưng tàu (kiểu Star Fox): tiến = vào sâu màn hình, trái / phải = né ngang */
+  chase?: boolean;
 };
 
 export const VIEWS: ViewPreset[] = [
@@ -38,6 +40,7 @@ export const VIEWS: ViewPreset[] = [
   { id: "topdown", label: "Nhìn từ trên, cuộn dọc", inspired: "1942 · Raiden · bắn máy bay hẻm núi", fov: 40, distance: 36, yaw: 0, rise: 7, lookAhead: 0, damp: 6, post: "none", plane: "top" },
   { id: "iso", label: "Nhìn chéo sa bàn", inspired: "Final Fantasy Tactics (PS1)", fov: 26, distance: 46, yaw: 0, rise: 0, lookAhead: 0, damp: 6, post: "none", plane: "top", iso: true },
   { id: "farm", label: "Nhìn từ trên kiểu nông trại", inspired: "Stardew Valley · Harvest Moon (SNES)", fov: 30, distance: 27, yaw: 0, rise: 0, lookAhead: 0, damp: 6, post: "none", plane: "top", farm: true },
+  { id: "chase", label: "Góc nhìn thứ 3 sau tàu", inspired: "Star Fox 64 · Panzer Dragoon", fov: 58, distance: 9, yaw: 0, rise: 4.6, lookAhead: 16, damp: 5, post: "cinema", plane: "top", chase: true },
   { id: "cinema", label: "Điện ảnh", inspired: "Shinobi · Strider 2 (PS2)", fov: 38, distance: 24, yaw: -0.14, rise: 0.8, lookAhead: 3.5, damp: 3, post: "cinema" },
 ];
 

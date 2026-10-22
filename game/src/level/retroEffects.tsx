@@ -60,3 +60,36 @@ export function RetroGrade({ strength = 1 }: { strength?: number }) {
   const effect = useMemo(() => new RetroGradeEffect(strength), [strength]);
   return <primitive object={effect} dispose={null} />;
 }
+
+/**
+ * Màu kiểu anime hành động (tham khảo SlashZero): đen sâu (không nâng đáy đen), bão hoà cao, đường cong S mạnh,
+ * bóng đổ ngả xanh lam lạnh và vùng sáng ấm để nhân vật / hiệu ứng nổi khỏi nền.
+ */
+const PUNCH_FRAG = /* glsl */ `
+uniform float strength;
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec3 c = max(inputColor.rgb, 0.0);
+  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  // Bão hoà: vùng tối giữ nguyên, vùng giữa đậm hơn
+  c = mix(vec3(l), c, 1.0 + 0.32 * strength);
+  // Tách tông lạnh / ấm
+  vec3 cool = vec3(0.86, 0.95, 1.12);
+  vec3 warm = vec3(1.08, 1.0, 0.9);
+  c *= mix(vec3(1.0), mix(cool, warm, smoothstep(0.15, 0.75, l)), strength);
+  // Nén đen rồi kéo tương phản đường cong S
+  c = max(c - 0.025 * strength, 0.0) / (1.0 - 0.025 * strength);
+  vec3 s = clamp(c, 0.0, 1.0);
+  c = mix(c, s * s * (3.0 - 2.0 * s), 0.42 * strength);
+  outputColor = vec4(c, inputColor.a);
+}`;
+
+class PunchGradeEffect extends Effect {
+  constructor(strength: number) {
+    super("PunchGradeEffect", PUNCH_FRAG, { blendFunction: BlendFunction.NORMAL, uniforms: new Map([["strength", new Uniform(strength)]]) });
+  }
+}
+
+export function PunchGrade({ strength = 1 }: { strength?: number }) {
+  const effect = useMemo(() => new PunchGradeEffect(strength), [strength]);
+  return <primitive object={effect} dispose={null} />;
+}

@@ -31,10 +31,10 @@ export type EnemyKind = "trooper" | "drone" | "zombie" | "boss";
  * - zombie: basic (vồ), exploder (chạy tới, nháy đỏ rồi tự nổ, nổ cả quái khác), spitter (phun axit thành vũng độc)
  * - drone: basic (bổ nhào), bomber (bay trên đầu thả bom, cột cảnh báo), laser (nạp rồi quét tia laser ngang)
  */
-export type Trait = "basic" | "shield" | "sniper" | "grenadier" | "exploder" | "spitter" | "bomber" | "laser";
+export type Trait = "basic" | "shield" | "sniper" | "grenadier" | "exploder" | "spitter" | "bomber" | "laser" | "blink" | "pulse" | "mortar" | "charger" | "summoner" | "chain" | "curse";
 
 /** Vùng nguy hiểm có báo trước: hiện viền đỏ từ `warnAt`, gây sát thương từ `liveAt` tới `endAt` */
-export type HazardKind = "blast" | "fire" | "laser" | "hands" | "rock" | "elec" | "acid" | "crystal" | "tentacle" | "shock";
+export type HazardKind = "blast" | "fire" | "laser" | "hands" | "rock" | "elec" | "acid" | "crystal" | "tentacle" | "shock" | "void" | "pulse" | "curse";
 export type Hazard = {
   id: number;
   kind: HazardKind;
@@ -276,6 +276,8 @@ export class PlatformerSim {
     /** Chế độ vũ khí: súng cầm tay (kiếm đeo sau lưng) hoặc kiếm trên tay; nút L đổi qua lại */
     weaponMode: "gun" as "gun" | "sword",
     swapAt: -9,
+    /** Dính lời nguyền (vũng tím ở Giáo Xứ): đi chậm tới lúc này */
+    slowUntil: -9,
     /** Lúc phóng sóng kiếm gần nhất (để vẽ đúng động tác chém nạp) */
     waveAt: -9,
     /** Ngắm khi đi ngang (giữ W / ↑): 0 thẳng ngang, 1 chéo lên, 2 thẳng lên */
@@ -362,7 +364,7 @@ export class PlatformerSim {
         const list = def.traits?.[e.kind] ?? DEFAULT_TRAITS[e.kind];
         const i = (seen[e.kind] = (seen[e.kind] ?? -1) + 1);
         en.trait = list[i % list.length];
-        if (this.mode === "shmup" && en.trait !== "laser") en.trait = "basic";
+        if (this.mode === "shmup" && en.trait !== "laser" && en.trait !== "mortar") en.trait = "basic";
         const S = T.traits;
         if (en.trait === "shield") en.shieldHp = S.shield.hits;
         if (en.trait === "exploder") en.maxHp = S.exploder.hp;
@@ -835,7 +837,7 @@ export class PlatformerSim {
     }
     p.dashTime -= dt;
     p.knock -= dt;
-    const speed = W.speed * (1 + this.stats.speed) * (p.dashTime > 0 ? W.dashMul : 1);
+    const speed = W.speed * (1 + this.stats.speed) * (p.dashTime > 0 ? W.dashMul : 1) * (this.time < p.slowUntil ? T.traits.curse.slow : 1);
     if (p.knock <= 0) {
       p.vx = dx * speed;
       p.vy = dy * speed;
@@ -1382,6 +1384,62 @@ export class PlatformerSim {
       if ((!this.solid(ahead, Math.floor(e.y) - 1) && this.tile(ahead, Math.floor(e.y) - 1) !== "=") || this.solid(ahead, Math.floor(e.y))) e.vx = 0;
     };
     switch (e.trait) {
+      case "blink": {
+        // Hồn ma Hollow Hotel: đánh dấu chỗ người chơi đứng (vòng tím), biến mất rồi hiện ra đúng chỗ đó chém xuống
+        const S = R.blink;
+        if (e.tele > 0) {
+          e.vx = 0;
+          if (this.time - e.tele >= S.warn) {
+            e.x = e.aimX;
+            e.y = this.groundBelow(e.aimX, e.aimY + 0.5);
+            e.vy = 0;
+            e.tele = -9;
+            e.skillAt = this.time;
+            this.fx.push({ kind: "dash", x: e.x, y: e.y + 1, at: this.time });
+          }
+        } else if (adx < S.range && Math.abs(p.y - e.y) < 5 && p.onGround && this.time - e.skillAt > S.every) {
+          e.tele = this.time;
+          e.aimX = p.x;
+          e.aimY = p.y;
+          this.fx.push({ kind: "dash", x: e.x, y: e.y + 1, at: this.time });
+          this.warnCircle("void", p.x, p.y + 0.9, S.r, S.warn, 0.2, S.dmg);
+        } else if (level && adx < 12) walk(T.enemy.trooper.walk, dx > 0 ? 1 : -1);
+        else e.vx = 0;
+        this.fall(e, dt);
+        return true;
+      }
+      case "pulse": {
+        // Xác sống Hollow Hotel: áp sát rồi gồng, phát sóng xung quanh thân (vòng đỏ quanh nó)
+        const S = R.pulse;
+        if (e.tele > 0) {
+          e.vx = 0;
+          if (this.time - e.tele > S.warn + 0.3) (e.tele = -9), (e.skillAt = this.time);
+        } else if (adx < S.r - 0.4 && level && this.time - e.skillAt > S.every) {
+          e.tele = this.time;
+          face();
+          this.warnCircle("pulse", e.x, e.y + 0.9, S.r, S.warn, 0.2, S.dmg);
+        } else if (level && adx < 10) walk(T.enemy.zombie.chase, dx > 0 ? 1 : -1);
+        else e.vx = 0;
+        this.fall(e, dt);
+        return true;
+      }
+      case "mortar": {
+        // Tàu pháo Warzone: bắn loạt 3 quả pháo rơi xuống quanh chỗ người chơi (vòng cam lần lượt bùng)
+        const S = R.mortar;
+        const t = this.time + e.id;
+        e.y = e.homeY + Math.sin(t * 1.3) * 1.2;
+        face();
+        if (adx < S.range && this.time - e.skillAt > S.every) {
+          e.skillAt = this.time;
+          e.firedAt = this.time;
+          for (let i = 0; i < S.n; i++) {
+            const ox = (i - (S.n - 1) / 2) * S.spread + p.vx * 0.4;
+            const oy = Math.sin(i * 2.4 + t) * S.spread * 0.6;
+            this.warnCircle("blast", p.x + ox, p.y + p.h / 2 + oy, S.r, S.warn + i * S.stagger, 0.25, S.dmg);
+          }
+        }
+        return true;
+      }
       case "shield": {
         if (e.shieldHp <= 0) return false;
         const S = R.shield;
@@ -1567,6 +1625,65 @@ export class PlatformerSim {
       this.move(e, dt);
     };
     switch (e.trait) {
+      case "charger": {
+        // Lính xung kích Khu Săn: khoá hướng (vệt đỏ dài), khựng một nhịp rồi lao thẳng húc người
+        const S = R.charger;
+        if (e.tele > 0) {
+          const k = this.time - e.tele;
+          if (k >= S.warn && k < S.warn + S.dash) go(S.length / S.dash, e.aimX, e.aimY);
+          else if (k >= S.warn + S.dash + 0.4) (e.tele = -9), (e.skillAt = this.time);
+          return true;
+        }
+        if (d < S.length + 1 && this.time - e.skillAt > S.every) {
+          e.tele = this.time;
+          e.aimX = ux;
+          e.aimY = uy;
+          this.warnLine("shock", ex, ey, ex + ux * (S.length + 0.8), ey + uy * (S.length + 0.8), S.width, S.warn, S.dash, S.dmg);
+        } else if (d < 12) go(T.enemy.trooper.walk);
+        return true;
+      }
+      case "summoner": {
+        // Ổ bọ Khu Săn: giữ khoảng cách, cứ vài giây đẻ thêm bọ con quanh mình
+        const S = R.summoner;
+        if (d < 4) go(T.enemy.zombie.walk * 1.4, -ux, -uy);
+        else if (d > 9) go(T.enemy.zombie.walk);
+        if (d < 13 && this.time - e.skillAt > S.every) {
+          e.skillAt = this.time;
+          e.firedAt = this.time;
+          this.summon(e, S.n);
+          this.fx.push({ kind: "warn", x: ex, y: ey, at: this.time });
+        }
+        return true;
+      }
+      case "chain": {
+        // Thầy tế Giáo Xứ: gọi sét (vệt xanh) nối từ nó tới người chơi rồi lan tiếp sang một hướng
+        const S = R.chain;
+        if (e.tele > 0) {
+          if (this.time - e.tele > S.warn + 0.4) (e.tele = -9), (e.skillAt = this.time);
+          return true;
+        }
+        if (d < S.range && this.time - e.skillAt > S.every) {
+          e.tele = this.time;
+          e.firedAt = this.time;
+          const a = Math.atan2(uy, ux) + (e.id % 2 ? 1 : -1) * 0.9;
+          this.warnLine("elec", ex, ey, px, py, S.width, S.warn, 0.25, S.dmg);
+          this.warnLine("elec", px, py, px + Math.cos(a) * S.jump, py + Math.sin(a) * S.jump, S.width, S.warn + 0.15, 0.25, S.dmg);
+        } else if (d > S.range - 2) go(T.enemy.zombie.walk);
+        else if (d < 4) go(T.enemy.zombie.walk, -ux, -uy);
+        return true;
+      }
+      case "curse": {
+        // Hồn ma Giáo Xứ: lượn quanh, thả vũng nguyền tím dưới chân người chơi (dẫm vào bị chậm)
+        const S = R.curse;
+        const t = this.time + e.id;
+        go(2.2, ux * 0.6 - uy * 0.8 * Math.sign(Math.sin(t * 0.5)), uy * 0.6 + ux * 0.8 * Math.sign(Math.sin(t * 0.5)));
+        if (d < S.range && this.time - e.skillAt > S.every) {
+          e.skillAt = this.time;
+          e.firedAt = this.time;
+          this.warnCircle("curse", px + p.vx * 0.3, py + p.vy * 0.3, S.r, S.warn, S.dur, S.dmg);
+        }
+        return true;
+      }
       case "shield": {
         if (e.shieldHp <= 0) return false;
         const S = R.shield;
@@ -1780,6 +1897,7 @@ export class PlatformerSim {
     const p = this.player;
     for (const h of this.hazards) {
       if (this.time < h.liveAt || this.time > h.endAt) continue;
+      if (h.kind === "curse" && this.hazardTouches(h, p)) p.slowUntil = this.time + T.traits.curse.slowTime;
       if (!h.hit && this.hazardTouches(h, p)) {
         h.hit = true;
         this.hurt(h.dmg, p.x < (h.x0 + h.x1) / 2 ? -1 : 1);

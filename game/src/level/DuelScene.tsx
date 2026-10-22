@@ -14,7 +14,7 @@ import { FIGHT_CLIPS, fightModel, type FightClip } from "./fightClips";
 import { GEAR, type GearId } from "./gear";
 import { DUEL_REWARD, settleDuel, useDuel } from "./duelSession";
 import { bindLevelKeys, levelInput } from "./levelInput";
-import { RetroGrade } from "./retroEffects";
+import { PunchGrade } from "./retroEffects";
 import { addOutline, buildRig, flash, Quiet, RED, setAnim, WHITE } from "./LevelScene";
 
 /** Phím: A/D đi, W/Space nhảy, S đỡ (giữ S + đòn = đòn thấp), J đấm, K đá, L né */
@@ -38,13 +38,14 @@ export function DuelCanvas() {
       <fog attach="fog" args={["#1a0a26", 16, 62]} />
       <DuelDriver sim={sim} />
       <DuelCamera sim={sim} />
-      <hemisphereLight args={["#b0b8ff", "#1a0a24", 1.0]} />
+      <hemisphereLight args={["#9aa4ff", "#120618", 0.7]} />
       <directionalLight position={[-6, 12, 8]} intensity={2.2} color="#f0e8ff" />
       <directionalLight position={[8, 5, -6]} intensity={1.6} color="#ff4fd8" />
       <Arena />
       <Quiet>
         <Suspense fallback={null}>
           <Throne />
+          <ArenaProps />
         </Suspense>
       </Quiet>
       <Quiet>
@@ -60,7 +61,7 @@ export function DuelCanvas() {
       <HitSparks sim={sim} />
       <EffectComposer multisampling={0}>
         <Bloom mipmapBlur intensity={0.9} luminanceThreshold={1} luminanceSmoothing={0.2} />
-        <RetroGrade strength={0.7} />
+        <PunchGrade />
         <Vignette eskil={false} offset={0.3} darkness={0.55} />
       </EffectComposer>
     </Canvas>
@@ -303,6 +304,33 @@ function Arena() {
   );
 }
 
+/** Một đạo cụ Meshy đặt cố định quanh sàn đấu */
+function Prop({ name, size, at, rot = 0, lit = 0.3 }: { name: ExtraModel; size: number; at: [number, number, number]; rot?: number; lit?: number }) {
+  const { root } = useFitted(name, size, "height", lit);
+  return <primitive object={root} position={at} rotation-y={rot} />;
+}
+
+/** Khán đài thép hai bên ngai, cột đèn sân vận động ở bốn góc, dàn loa cạnh lối vào: không khí võ đài ngầm */
+function ArenaProps() {
+  return (
+    <>
+      <Prop name="mx_du_bleachers" size={4.2} at={[-10.5, 0, -11]} rot={0.25} />
+      <Prop name="mx_du_bleachers" size={4.2} at={[10.5, 0, -11]} rot={-0.25} />
+      <Prop name="mx_du_bleachers" size={4.6} at={[-17, 0, -4]} rot={Math.PI / 2} />
+      <Prop name="mx_du_bleachers" size={4.6} at={[17, 0, -4]} rot={-Math.PI / 2} />
+      <Prop name="mx_du_floodlight" size={11} at={[-14, 0, -9]} rot={0.6} lit={0.5} />
+      <Prop name="mx_du_floodlight" size={11} at={[14, 0, -9]} rot={-0.6} lit={0.5} />
+      <Prop name="mx_du_speaker_stack" size={2.8} at={[-4.6, 0, -7]} rot={0.3} lit={0.4} />
+      <Prop name="mx_du_speaker_stack" size={2.8} at={[4.6, 0, -7]} rot={-0.3} lit={0.4} />
+      <Prop name="mx_du_speaker_stack" size={2.2} at={[-11.5, 0, -1]} rot={Math.PI / 2} lit={0.4} />
+      <Prop name="mx_du_speaker_stack" size={2.2} at={[11.5, 0, -1]} rot={-Math.PI / 2} lit={0.4} />
+      {/* Đèn rọi từ cột đèn xuống sàn: nhân vật sáng rõ, nền tối sâu */}
+      <spotLight position={[-12, 10, -6]} target-position={[0, 0, 0]} angle={0.5} penumbra={0.6} intensity={180} distance={40} color="#e8f0ff" />
+      <spotLight position={[12, 10, -6]} target-position={[0, 0, 0]} angle={0.5} penumbra={0.6} intensity={140} distance={40} color="#ffd6f0" />
+    </>
+  );
+}
+
 /** Ngai sắt của nhà vô địch đặt cuối sàn, sau hàng cọc: mục tiêu của cả thang đấu */
 function Throne() {
   const { root } = useFitted("mx_dr_throne", 4.2, "height", 0.35);
@@ -436,8 +464,9 @@ function HitSparks({ sim }: { sim: DuelSim }) {
     <group ref={group}>
       {Array.from({ length: SPARKS }, (_, i) => (
         <mesh key={i} visible={false}>
-          <icosahedronGeometry args={[0.5, 0]} />
-          <meshBasicMaterial transparent depthWrite={false} toneMapped={false} />
+          {/* Vòng xung kích mỏng toả ra ở chỗ trúng đòn (kiểu manga) */}
+          <ringGeometry args={[0.36, 0.5, 28]} />
+          <meshBasicMaterial transparent depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>

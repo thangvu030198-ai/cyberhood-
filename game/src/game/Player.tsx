@@ -1,4 +1,5 @@
 import { Suspense, use, useEffect, useMemo, useRef } from "react";
+import { WornGear } from "../level/wornGear";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useKeyboardControls } from "@react-three/drei";
@@ -177,6 +178,7 @@ function CharacterModel() {
         <primitive object={scene} />
       </group>
       {arm && armed && <Gun hand={arm.hand} offset={GUN_OFFSET} />}
+      <WornGear rig={scene} />
     </group>
   );
 }

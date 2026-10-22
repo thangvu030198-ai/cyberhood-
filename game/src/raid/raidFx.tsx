@@ -35,6 +35,8 @@ export function RaidDriver({ sim }: { sim: RaidSim }) {
       P.vz = (nz - P.z) / Math.max(dt, 1e-3);
       P.x = nx;
       P.z = nz;
+      const q = body?.rotation();
+      if (q) P.yaw = 2 * Math.atan2(q.y, q.w);
       P.y = Math.max(0, pos.y - 0.8);
     }
     P.inMech = mechActive();
@@ -377,6 +379,41 @@ function SkillModels({ sim }: { sim: RaidSim }) {
   );
 }
 
+/** Tia hồi máu xanh lá nối Kỹ sư y tế với đồng đội được hồi (0,35 s) */
+function HealBeams({ sim }: { sim: RaidSim }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const m = useMemo(() => new THREE.Matrix4(), []);
+  const q = useMemo(() => new THREE.Quaternion(), []);
+  const p = useMemo(() => new THREE.Vector3(), []);
+  const s = useMemo(() => new THREE.Vector3(), []);
+  const z = useMemo(() => new THREE.Vector3(0, 0, 1), []);
+  useFrame(({ clock }) => {
+    const o = ref.current;
+    if (!o) return;
+    let n = 0;
+    for (let i = sim.events.length - 1; i >= 0 && n < 16; i--) {
+      const e = sim.events[i];
+      if (sim.time - e.at > 0.35) break;
+      if (e.kind !== "heal" || e.fx === undefined || e.fz === undefined) continue;
+      const dx = e.x - e.fx;
+      const dz = e.z - e.fz;
+      const len = Math.hypot(dx, dz) || 0.1;
+      q.setFromUnitVectors(z, p.set(dx / len, 0, dz / len));
+      const w = 0.08 + Math.sin(clock.elapsedTime * 40 + i) * 0.03;
+      m.compose(p.set((e.x + e.fx) / 2, 1.4, (e.z + e.fz) / 2), q, s.set(w, w, len));
+      o.setMatrixAt(n++, m);
+    }
+    o.count = n;
+    o.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, 16]} frustumCulled={false}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshBasicMaterial color={[0.6, 3.2, 1.2]} toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
 export function RaidFx({ sim }: { sim: RaidSim }) {
   return (
     <>
@@ -384,6 +421,7 @@ export function RaidFx({ sim }: { sim: RaidSim }) {
       <Tracers sim={sim} />
       <Numbers sim={sim} />
       <Warns sim={sim} />
+      <HealBeams sim={sim} />
       <SkillModels sim={sim} />
     </>
   );

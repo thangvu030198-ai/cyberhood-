@@ -2,12 +2,13 @@
 // Quái, Lò rèn Thần binh; danh sách đội), HUD trong trận (thanh máu sinh vật + giai đoạn + giờ cuồng nộ, thanh choáng,
 // bộ phận, cột thu lôi, khung đồng đội, kỹ năng, đồng bộ Mech, cảnh báo lên mái), bảng kết quả + chấm Uy tín.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGame } from "../game/store";
 import { GEAR } from "../level/gear";
 import { CREATURES, RAID, ROLES, creatureHp, teamCheck, type CreatureId, type Difficulty, type Role, type Skill } from "./raidSim";
 import { DIVINE, HIRE_COST, MATERIALS, useRaid, weekId, type RaidTab } from "./raidSession";
 import { tr } from "../i18n/i18n";
+import { MAT_ICON } from "./matIcons";
 
 function useTick(fps: number) {
   const [, set] = useState(0);
@@ -170,8 +171,9 @@ export function RaidLobby() {
                 <p className="rd-note">Nguyên liệu cổ đại chế bộ Thần binh – trang bị mạnh nhất game, hàng VIP trên chợ NFT.</p>
                 <div className="rd-mats">
                   {(Object.keys(MATERIALS) as (keyof typeof MATERIALS)[]).map((k) => (
-                    <span key={k} style={{ color: MATERIALS[k].color }}>
-                      {MATERIALS[k].icon} {MATERIALS[k].name}: <b>{S.materials[k]}</b>
+                    <span key={k} className="rd-mat" style={{ color: MATERIALS[k].color }}>
+                      <img src={MAT_ICON[k]} alt="" />
+                      {MATERIALS[k].name}: <b>{S.materials[k]}</b>
                     </span>
                   ))}
                 </div>
@@ -321,6 +323,7 @@ export function RaidHud() {
           </div>
         ))}
       </div>
+      <RaidMap />
       <div className="rd-sync">
         Đồng bộ Mech: <b>{mechs}</b>/{RAID.mechSync} · <kbd>T</kbd>
       </div>
@@ -383,6 +386,95 @@ export function RaidHud() {
   );
 }
 
+
+/** Bản đồ nhỏ đấu trường: mái nhà, cao ốc, cột thu lôi, thân Leviathan, lươn máy, đồng đội, vùng nguy hiểm */
+function RaidMap() {
+  const sim = useRaid((s) => s.sim);
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    let id = 0;
+    const draw = () => {
+      id = requestAnimationFrame(draw);
+      const c = ref.current;
+      if (!c || !sim) return;
+      const g = c.getContext("2d")!;
+      const W = c.width;
+      const k = W / (RAID.arena.half * 2 + 8);
+      const X = (x: number) => W / 2 + x * k;
+      const Z = (z: number) => W / 2 + z * k;
+      g.clearRect(0, 0, W, W);
+      g.fillStyle = "rgba(4,14,24,0.85)";
+      g.fillRect(0, 0, W, W);
+      g.strokeStyle = "#36e7ff55";
+      g.strokeRect(1, 1, W - 2, W - 2);
+      for (const r of RAID.roofs) {
+        g.fillStyle = r.rod ? "#1f4f60" : "#2a3442";
+        g.fillRect(X(r.x - r.half), Z(r.z - r.half), r.half * 2 * k, r.half * 2 * k);
+      }
+      g.fillStyle = "#56607a";
+      for (const T of RAID.towers) {
+        g.beginPath();
+        g.arc(X(T.x), Z(T.z), T.r * k, 0, Math.PI * 2);
+        g.fill();
+      }
+      for (const w of sim.warns) {
+        if (w.done || w.byPlayer || w.kind === "discharge" || w.kind === "tsunami") continue;
+        g.strokeStyle = "#ff3d5a";
+        g.beginPath();
+        if (w.kind === "breath" || w.kind === "bite") {
+          g.lineWidth = Math.max(2, w.kind === "breath" ? w.r * 2 * k : 3);
+          g.moveTo(X(w.x0), Z(w.z0));
+          g.lineTo(X(w.x1), Z(w.z1));
+        } else {
+          g.lineWidth = 1.5;
+          g.arc(X(w.x0), Z(w.z0), w.r * k, 0, Math.PI * 2);
+        }
+        g.stroke();
+      }
+      for (const r of sim.rods) {
+        g.fillStyle = r.alive ? "#36e7ff" : "#333a44";
+        g.fillRect(X(r.x) - 3, Z(r.z) - 3, 6, 6);
+      }
+      // Thân rắn
+      g.strokeStyle = sim.exposed() ? "#ffd166" : "#2fd8f0";
+      g.lineWidth = 4;
+      g.lineCap = "round";
+      g.beginPath();
+      g.moveTo(X(sim.head.x), Z(sim.head.z));
+      for (const b of sim.body) g.lineTo(X(b.x), Z(b.z));
+      g.stroke();
+      g.fillStyle = "#ffffff";
+      g.beginPath();
+      g.arc(X(sim.head.x), Z(sim.head.z), 5, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "#ff4fd8";
+      for (const e of sim.eels) if (e.alive) g.fillRect(X(e.x) - 2, Z(e.z) - 2, 4, 4);
+      for (const m of sim.members) {
+        if (m.kind === "player") continue;
+        g.fillStyle = m.alive ? ROLES[m.role].color : "#555";
+        g.beginPath();
+        g.arc(X(m.x), Z(m.z), 3, 0, Math.PI * 2);
+        g.fill();
+      }
+      const P = sim.player;
+      g.save();
+      g.translate(X(P.x), Z(P.z));
+      g.rotate(-P.yaw + Math.PI);
+      g.fillStyle = "#ffffff";
+      g.beginPath();
+      g.moveTo(0, -6);
+      g.lineTo(4, 5);
+      g.lineTo(-4, 5);
+      g.closePath();
+      g.fill();
+      g.restore();
+    };
+    draw();
+    return () => cancelAnimationFrame(id);
+  }, [sim]);
+  return <canvas ref={ref} className="rd-map" width={180} height={180} />;
+}
+
 function Result() {
   const r = useRaid((s) => s.result);
   const rated = useRaid((s) => s.rated);
@@ -399,8 +491,8 @@ function Result() {
         <li>+{r.cred} CRED</li>
         <li>+{r.points} Điểm Hunter</li>
         {Object.entries(r.mats).map(([k, v]) => (
-          <li key={k} style={{ color: MATERIALS[k as keyof typeof MATERIALS].color }}>
-            +{v} {MATERIALS[k as keyof typeof MATERIALS].name}
+          <li key={k} className="rd-mat" style={{ color: MATERIALS[k as keyof typeof MATERIALS].color }}>
+            <img src={MAT_ICON[k]} alt="" />+{v} {MATERIALS[k as keyof typeof MATERIALS].name}
           </li>
         ))}
         {r.chestNote && <li>{r.chestNote}</li>}

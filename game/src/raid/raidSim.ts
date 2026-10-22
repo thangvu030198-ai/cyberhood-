@@ -157,7 +157,7 @@ export type RaidEvent =
   | { kind: "tracer"; x0: number; y0: number; z0: number; x1: number; y1: number; z1: number; member: boolean; at: number }
   | { kind: "hit"; x: number; y: number; z: number; dmg: number; byPlayer: boolean; crit: boolean; at: number }
   | { kind: "boom"; x: number; y: number; z: number; big: boolean; at: number }
-  | { kind: "heal"; x: number; z: number; amount: number; at: number }
+  | { kind: "heal"; x: number; z: number; amount: number; at: number; fx?: number; fz?: number }
   | { kind: "break"; part: PartId; at: number }
   | { kind: "material"; mat: MaterialId; n: number; at: number }
   | { kind: "callout"; text: string; color: string; at: number }
@@ -982,7 +982,7 @@ export class RaidSim {
       if (low) {
         const a = 45 * m.power;
         low.hp = Math.min(low.maxHp, low.hp + a);
-        this.events.push({ kind: "heal", x: low.x, z: low.z, amount: Math.round(a), at: t });
+        this.events.push({ kind: "heal", x: low.x, z: low.z, amount: Math.round(a), at: t, fx: m.x, fz: m.z });
         return;
       }
     }

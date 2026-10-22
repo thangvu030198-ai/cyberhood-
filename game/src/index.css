@@ -2136,3 +2136,7 @@ canvas {
 .rd-rate button { font: inherit; background: #0a1822; border: 1px solid #ffffff33; border-radius: 4px; cursor: pointer; padding: 2px 8px; }
 .rd-rate button.is-on { border-color: #36e7ff; }
 @media (max-width: 760px) { .rd-creatures { grid-template-columns: 1fr 1fr; } .rd-cols { grid-template-columns: 1fr; } .rd-frames { top: 150px; width: 140px; } .rd-danger { font-size: 16px; } }
+.rd-mat { display: inline-flex; align-items: center; gap: 6px; }
+.rd-mat img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 0 6px currentColor); }
+.rd-map { position: absolute; right: 12px; top: 160px; width: 180px; height: 180px; border-radius: 6px; box-shadow: 0 0 14px #36e7ff33; }
+@media (max-width: 760px) { .rd-map { width: 120px; height: 120px; top: 150px; } }

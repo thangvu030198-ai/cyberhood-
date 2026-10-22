@@ -38,8 +38,9 @@ export const HIRE_COST: Record<Difficulty, { cred: number; token: boolean }> = {
   legend: { cred: 550, token: true },
 };
 
-const NAMES = ["NeonFox", "KaitoX", "Mai_Linh", "Blitz", "ZeroCool", "Akira77", "Lyra", "HexQueen", "Duc.Pham", "Sora", "Kenji_R", "Vesper", "Nova", "BaoNgoc", "Quinn", "RyuGhost", "Tama", "Juno", "Viper99", "Minh.K"];
-const ELITE = ["Thợ Săn Kael", "Thợ Săn Rhea", "Thợ Săn Orin", "Thợ Săn Yuki", "Thợ Săn Brann", "Thợ Săn Sable", "Thợ Săn Ivo", "Thợ Săn Nyx", "Thợ Săn Taka"];
+const NAMES = ["NeonFox", "KaitoX", "MiraX", "Blitz", "ZeroCool", "Akira77", "Lyra", "HexQueen", "DukeNova", "Sora", "Kenji_R", "Vesper", "Nova", "BlazeKid", "Quinn", "RyuGhost", "Tama", "Juno", "Viper99", "Max.K"];
+/** Tên NPC Thợ Săn Quái: tên nước ngoài (không dùng tên tiếng Việt) */
+const ELITE = ["Hunter Kael", "Hunter Rhea", "Hunter Orin", "Hunter Yuki", "Hunter Brann", "Hunter Sable", "Hunter Ivo", "Hunter Nyx", "Hunter Taka", "Hunter Vance", "Hunter Freya", "Hunter Dax"];
 
 type Saved = {
   materials: Record<MaterialId, number>;

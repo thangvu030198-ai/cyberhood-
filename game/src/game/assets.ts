@@ -456,7 +456,7 @@ const EXTRA_SIZES = {
   mx_pr_stone_cross: 605_068,
   mx_prop_neon_arch: 357_076,
   mx_prop_trash_pile: 763_320,
-  mx_raid_all: 4_619_736,
+  mx_raid_all: 5_134_720,
   mx_sg_barricade: 623_324,
   mx_sg_cannon: 768_228,
   mx_sg_core: 1_064_164,

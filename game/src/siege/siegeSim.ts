@@ -147,7 +147,8 @@ export type SiegeEvent =
 
 export type SiegeOpts = { perSide?: number; playerSide?: Side; seed?: number; extraCoin?: boolean };
 
-const HERO_NAMES = ["Kaito", "Mira", "Zed", "Linh", "Raven", "Nova", "Bao", "Yuki", "Ash", "Tran", "Vex", "Kiro", "Hana", "Duc", "Sora", "Neo", "Lyra", "Minh", "Jax", "Iris", "Quan", "Echo", "Rin", "Phong", "Ghost", "Ly", "Talon", "Hoa", "Blitz", "Nam"];
+/** Tên tay súng tinh nhuệ: tên nước ngoài (không dùng tên tiếng Việt) */
+const HERO_NAMES = ["Kaito", "Mira", "Zed", "Leon", "Raven", "Nova", "Bryn", "Yuki", "Ash", "Troy", "Vex", "Kiro", "Hana", "Dex", "Sora", "Neo", "Lyra", "Milo", "Jax", "Iris", "Quill", "Echo", "Rin", "Finn", "Ghost", "Lux", "Talon", "Hale", "Blitz", "Nash"];
 
 export class SiegeSim {
   time = 0;

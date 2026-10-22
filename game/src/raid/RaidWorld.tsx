@@ -15,6 +15,9 @@ import { once } from "../game/meshyAnim";
 import { RAID, ROLES, type Member, type RaidSim } from "./raidSim";
 import { useRaid } from "./raidSession";
 import { RaidDriver, RaidFx } from "./raidFx";
+import { BreathBeams, HitSparks, LeviathanFx, Lightning, MaterialDrops, StreetDressing } from "./raidDetail";
+import { CityBlocks } from "./raidCity";
+import { Nature } from "./raidNature";
 
 const O = RAID_ORIGIN;
 
@@ -116,104 +119,6 @@ function Water({ sim }: { sim: RaidSim }) {
 // ---------------------------------------------------------------------------
 // Cao ốc ngập (3 cột rắn quấn quanh) + viền thành phố chìm nửa thân
 
-function towerTex(seed: number) {
-  const c = document.createElement("canvas");
-  c.width = 128;
-  c.height = 512;
-  const g = c.getContext("2d")!;
-  g.fillStyle = "#0b1018";
-  g.fillRect(0, 0, 128, 512);
-  for (let y = 0; y < 64; y++)
-    for (let x = 0; x < 8; x++) {
-      const r = Math.sin(seed * 91 + x * 13.1 + y * 7.7) * 0.5 + 0.5;
-      g.fillStyle = r > 0.82 ? "#ffd27a" : r > 0.7 ? "#7fe8ff" : r > 0.62 ? "#ff6ad5" : "#141b26";
-      g.fillRect(4 + x * 15.5, 4 + y * 8, 10, 4);
-    }
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
-/** 3 cao ốc ngập giữa phố (rắn quấn quanh): thân kính tối cửa sổ sáng, vạch neon dọc cạnh, đỉnh ăng-ten đèn đỏ */
-function Towers() {
-  const items = useMemo(() => RAID.towers.map((_, i) => towerTex(i + 1)), []);
-  return (
-    <>
-      {RAID.towers.map((T, i) => {
-        const col = ["#36e7ff", "#ff4fd8", "#ffd166"][i % 3];
-        const w = T.r * 1.7;
-        return (
-          <group key={i} position={[T.x, 0, T.z]} rotation-y={i * 0.7}>
-            <mesh position={[0, T.h / 2 - 4, 0]}>
-              <boxGeometry args={[w, T.h, w]} />
-              <meshStandardMaterial map={items[i]} emissiveMap={items[i]} emissive="#ffffff" emissiveIntensity={0.9} color="#3a4658" roughness={0.3} metalness={0.6} />
-            </mesh>
-            {[
-              [1, 1],
-              [1, -1],
-              [-1, 1],
-              [-1, -1],
-            ].map(([sx, sz], k) => (
-              <mesh key={k} position={[(sx * w) / 2, T.h / 2 - 4, (sz * w) / 2]}>
-                <boxGeometry args={[0.25, T.h, 0.25]} />
-                <meshBasicMaterial color={col} toneMapped={false} />
-              </mesh>
-            ))}
-            <mesh position={[0, T.h - 4 + 1.5, 0]}>
-              <boxGeometry args={[w * 0.6, 3, w * 0.6]} />
-              <meshStandardMaterial color="#1a2230" emissive={col} emissiveIntensity={0.4} />
-            </mesh>
-            <mesh position={[0, T.h - 4 + 8, 0]}>
-              <cylinderGeometry args={[0.15, 0.3, 10, 6]} />
-              <meshStandardMaterial color="#555" />
-            </mesh>
-            <mesh position={[0, T.h - 4 + 13, 0]}>
-              <sphereGeometry args={[0.5, 8, 6]} />
-              <meshBasicMaterial color={[3, 0.3, 0.3]} toneMapped={false} />
-            </mesh>
-          </group>
-        );
-      })}
-      <RigidBody type="fixed" colliders={false}>
-        {RAID.towers.map((T, i) => (
-          <CylinderCollider key={i} args={[T.h / 2, T.r]} position={[T.x, T.h / 2 - 4, T.z]} />
-        ))}
-      </RigidBody>
-    </>
-  );
-}
-
-/** Viền thành phố chìm nửa thân quanh đấu trường: khối cao ốc cửa sổ sáng, vạch neon ở mép mái */
-function Skyline() {
-  const texs = useMemo(() => [11, 12, 13, 14].map(towerTex), []);
-  const blocks = useMemo(() => {
-    const out: { x: number; z: number; w: number; d: number; h: number; ry: number; t: number; c: string }[] = [];
-    for (let i = 0; i < 46; i++) {
-      const a = (i / 46) * Math.PI * 2 + Math.sin(i * 3.1) * 0.04;
-      const R = 108 + ((i * 37) % 4) * 14;
-      out.push({ x: Math.sin(a) * R, z: Math.cos(a) * R, w: 12 + ((i * 7) % 5) * 3, d: 12 + ((i * 11) % 4) * 3, h: 28 + ((i * 13) % 7) * 11, ry: -a, t: i % 4, c: ["#36e7ff", "#ff4fd8", "#ffd166", "#7dff9a"][i % 4] });
-    }
-    return out;
-  }, []);
-  return (
-    <>
-      {blocks.map((b, i) => (
-        <group key={i} position={[b.x, b.h / 2 - 6, b.z]} rotation-y={b.ry}>
-          <mesh>
-            <boxGeometry args={[b.w, b.h, b.d]} />
-            <meshStandardMaterial map={texs[b.t]} emissiveMap={texs[b.t]} emissive="#ffffff" emissiveIntensity={0.75} color="#2e3a4c" roughness={0.4} metalness={0.5} />
-          </mesh>
-          <mesh position={[0, b.h / 2, b.d / 2 + 0.05]}>
-            <boxGeometry args={[b.w, 0.3, 0.1]} />
-            <meshBasicMaterial color={b.c} toneMapped={false} />
-          </mesh>
-        </group>
-      ))}
-    </>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Mái nhà thấp: khối bê tông viền neon, có dốc lên, thùng nước / máy lạnh, chữ H
 
@@ -265,8 +170,8 @@ function Roofs() {
             ))}
             {!r.rod && (
               <mesh position={[r.x, r.h + 0.05, r.z]} rotation-x={-Math.PI / 2}>
-                <ringGeometry args={[r.half * 0.45, r.half * 0.55, 32]} />
-                <meshBasicMaterial color={col} toneMapped={false} transparent opacity={0.7} />
+                <ringGeometry args={[r.half * 0.5, r.half * 0.53, 40]} />
+                <meshBasicMaterial color={col} transparent opacity={0.28} />
               </mesh>
             )}
             {/* Thùng nước + khối máy lạnh */}
@@ -448,10 +353,13 @@ function Leviathan({ sim }: { sim: RaidSim }) {
   const N = RAID.segments;
   const tex = useMemo(scaleTextures, []);
   const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({ map: tex.t, emissiveMap: tex.te, emissive: new THREE.Color("#7ff6ff"), emissiveIntensity: 1.4, roughness: 0.45, metalness: 0.35 }), [tex]);
-  const bodyGeo = useMemo(() => new THREE.CylinderGeometry(1, 1, 1, 18, 1, true).rotateX(Math.PI / 2), []);
-  const spikeGeo = useMemo(() => new THREE.ConeGeometry(0.5, 2.2, 5).translate(0, 1.1, 0), []);
+  // Ống thân mịn (28 cạnh) + khớp cầu ở mỗi đốt: thân uốn cong không bao giờ hở khe / gãy góc
+  const bodyGeo = useMemo(() => new THREE.CylinderGeometry(1, 1, 1, 28, 2, true).rotateX(Math.PI / 2), []);
+  const jointGeo = useMemo(() => new THREE.SphereGeometry(1, 28, 18), []);
+  const spikeGeo = useMemo(() => new THREE.ConeGeometry(0.32, 2.1, 10).translate(0, 1.05, 0), []);
   const body = useRef<THREE.InstancedMesh>(null);
   const spikes = useRef<THREE.InstancedMesh>(null);
+  const joints = useRef<THREE.InstancedMesh>(null);
   const plates = useRef<THREE.Group>(null);
   const horns = useRef<THREE.Group>(null);
   const heart = useRef<THREE.Mesh>(null);
@@ -490,6 +398,11 @@ function Leviathan({ sim }: { sim: RaidSim }) {
         _v.set((prev.x + p.x) / 2, (prev.y + p.y) / 2, (prev.z + p.z) / 2);
         _m.compose(_v, _q, _s.set(r, r, len * 1.18));
         b.setMatrixAt(i, _m);
+        // Khớp cầu tại đốt (bán kính bằng ống) che mọi khe ở chỗ uốn
+        if (joints.current) {
+          _m.compose(_v.set(p.x, p.y, p.z), _q, _s.set(r, r, r));
+          joints.current.setMatrixAt(i, _m);
+        }
         // Gai lưng: hướng lên theo pháp tuyến phía trên ống
         const up = _up.clone().sub(_d.clone().multiplyScalar(_up.dot(_d))).normalize();
         const qs = new THREE.Quaternion().setFromUnitVectors(_up, up);
@@ -498,6 +411,7 @@ function Leviathan({ sim }: { sim: RaidSim }) {
         prev = p;
       }
       b.instanceMatrix.needsUpdate = true;
+      if (joints.current) joints.current.instanceMatrix.needsUpdate = true;
       sp.instanceMatrix.needsUpdate = true;
       bodyMat.emissiveIntensity = 1.2 + Math.sin(t * 4) * 0.4 + hurt * 2;
     }
@@ -556,6 +470,7 @@ function Leviathan({ sim }: { sim: RaidSim }) {
       </group>
       <group ref={tailG}>{tail && <primitive object={tail} scale={tailScale} position={[0, -1.5, 2]} />}</group>
       <instancedMesh ref={body} args={[bodyGeo, bodyMat, N]} frustumCulled={false} />
+      <instancedMesh ref={joints} args={[jointGeo, bodyMat, N]} frustumCulled={false} />
       <instancedMesh ref={spikes} args={[spikeGeo, undefined, N]} frustumCulled={false}>
         <meshStandardMaterial color="#0e3440" emissive="#1fb8d4" emissiveIntensity={0.7} roughness={0.35} metalness={0.4} />
       </instancedMesh>
@@ -623,18 +538,49 @@ function Eels({ sim }: { sim: RaidSim }) {
 const ROLE_MODEL = { tank: "samurai", dps: "racer", healer: "engineer", support: "hacker" } as const;
 
 function useMemberRig(cls: "samurai" | "racer" | "engineer" | "hacker" | "ninja") {
+  // Lưới nhân vật nằm trong file _walk; các file _run / _runshoot / _idle / _death chỉ chứa hoạt ảnh
+  const walk = use(extraModel(`mx_cls_${cls}_walk` as never)) as { scene: THREE.Object3D; animations: THREE.AnimationClip[] };
   const run = use(extraModel(`mx_cls_${cls}_run` as never)) as { scene: THREE.Object3D; animations: THREE.AnimationClip[] };
   const shoot = use(extraModel(`mx_cls_${cls}_runshoot` as never)) as { animations: THREE.AnimationClip[] };
   const idle = use(extraModel(`mx_cls_${cls}_idle` as never)) as { animations: THREE.AnimationClip[] };
   const death = use(extraModel(`mx_cls_${cls}_death` as never)) as { animations: THREE.AnimationClip[] };
   return useMemo(
     () => () => {
-      const rig = buildRig(run.scene, { run: run.animations[0], shoot: shoot.animations[0], idle: idle.animations[0], death: death.animations[0] }, 1.8, 0.4);
+      const rig = buildRig(walk.scene, { run: run.animations[0], shoot: shoot.animations[0], idle: idle.animations[0], death: death.animations[0] }, 1.8, 0.4);
       if (rig.actions.death) once(rig.actions.death);
       return rig;
     },
-    [run, shoot, idle, death],
+    [walk, run, shoot, idle, death],
   );
+}
+
+/** Bảng tên trên đầu đồng đội: biểu tượng vai trò + tên + nhãn NPC / người thật, thanh máu bên dưới */
+function nameTex(name: string, role: string, color: string, npc: boolean) {
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 64;
+  const g = c.getContext("2d")! as CanvasRenderingContext2D & { keepText?: boolean };
+  g.keepText = true;
+  g.fillStyle = "rgba(4,10,18,0.78)";
+  g.beginPath();
+  g.roundRect(4, 4, 248, 40, 8);
+  g.fill();
+  g.strokeStyle = color;
+  g.lineWidth = 2;
+  g.stroke();
+  g.font = "700 22px sans-serif";
+  g.textBaseline = "middle";
+  g.fillStyle = color;
+  g.fillText(role, 12, 25);
+  g.fillStyle = "#ffffff";
+  g.fillText(name.slice(0, 13), 42, 25);
+  g.fillStyle = npc ? "#ffd166" : "#7dffb0";
+  g.font = "700 14px sans-serif";
+  g.textAlign = "right";
+  g.fillText(npc ? "NPC" : "P", 244, 25);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 function MemberView({ sim, m, make }: { sim: RaidSim; m: Member; make: () => Rig }) {
@@ -661,9 +607,14 @@ function MemberView({ sim, m, make }: { sim: RaidSim; m: Member; make: () => Rig
     }
   });
   const c = ROLES[m.role].color;
+  const tag = useMemo(() => nameTex(m.name, ROLES[m.role].icon, c, m.kind === "elite"), [m, c]);
   return (
     <group ref={ref}>
       <primitive object={rig.scene} />
+      <sprite position={[0, 2.55, 0]} scale={[2.2, 0.55, 1]} renderOrder={15}>
+        <spriteMaterial map={tag} transparent depthWrite={false} toneMapped={false} />
+      </sprite>
+      <MemberBar m={m} color={c} />
       <mesh ref={mech} position={[0, 1.6, 0]} visible={false}>
         <octahedronGeometry args={[1.8, 0]} />
         <meshBasicMaterial color={c} wireframe toneMapped={false} />
@@ -671,6 +622,33 @@ function MemberView({ sim, m, make }: { sim: RaidSim; m: Member; make: () => Rig
       <mesh position={[0, 0.05, 0]} rotation-x={-Math.PI / 2}>
         <ringGeometry args={[0.55, 0.75, 24]} />
         <meshBasicMaterial color={c} toneMapped={false} transparent opacity={0.85} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Thanh máu nhỏ dưới bảng tên (luôn quay về camera) */
+function MemberBar({ m, color }: { m: Member; color: string }) {
+  const g = useRef<THREE.Group>(null);
+  const fill = useRef<THREE.Mesh>(null);
+  useFrame(({ camera }) => {
+    if (!g.current || !fill.current) return;
+    g.current.quaternion.copy(camera.quaternion);
+    if (g.current.parent) g.current.quaternion.premultiply(g.current.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    const k = Math.max(0.001, m.hp / m.maxHp);
+    fill.current.scale.x = k;
+    fill.current.position.x = -(1 - k) * 0.9;
+    g.current.visible = m.alive;
+  });
+  return (
+    <group ref={g} position={[0, 2.18, 0]}>
+      <mesh>
+        <planeGeometry args={[1.9, 0.14]} />
+        <meshBasicMaterial color="#05080e" transparent opacity={0.8} depthWrite={false} />
+      </mesh>
+      <mesh ref={fill} position={[0, 0, 0.01]}>
+        <planeGeometry args={[1.8, 0.08]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
       </mesh>
     </group>
   );
@@ -778,8 +756,8 @@ export function RaidWorld() {
         <Water sim={sim} />
         <Camp />
         <Roofs />
-        <Towers />
-        <Skyline />
+        <CityBlocks />
+        <Nature />
         <Suspense fallback={null}>
           <Rods sim={sim} />
           <Leviathan sim={sim} />
@@ -787,6 +765,12 @@ export function RaidWorld() {
         </Suspense>
         <Team sim={sim} />
         <RaidFx sim={sim} />
+        <LeviathanFx sim={sim} />
+        <HitSparks sim={sim} />
+        <BreathBeams sim={sim} />
+        <Lightning sim={sim} />
+        <StreetDressing sim={sim} />
+        <MaterialDrops sim={sim} />
       </group>
       <Rain />
     </>

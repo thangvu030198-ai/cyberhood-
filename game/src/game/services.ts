@@ -28,11 +28,11 @@ const G = MISSION_GATE;
 // chừa lòng đường cho người chơi đi thẳng tới cổng, tránh cột hologram (±9,4; −16), ô đỗ xe và vạch sang đường.
 
 export const SERVICES: Service[] = [
-  { id: "forge", npc: "Bác Thép", title: "Lò rèn · Đập đồ", model: "mx_civ_worker", clip: "idle", x: G.x - 11, z: G.z + 5.5, yaw: Math.PI / 2, color: "#ff6a2a", sign: "LÒ RÈN", greet: "Đưa đồ đây. Đập lên +10 thì cả Neon City phải nể, còn xui thì… tụt một cấp." },
-  { id: "spin", npc: "Lucky Mai", title: "Vòng quay may mắn", model: "mx_civ_dancer", clip: "dance", x: G.x - 11, z: G.z + 12.8, yaw: Math.PI / 2, color: "#ff2fd0", sign: "QUAY SỐ", greet: "Mỗi ngày một lượt miễn phí nha! Jackpot có cả đồ Huyền thoại đó." },
+  { id: "forge", npc: "Old Iron", title: "Lò rèn · Đập đồ", model: "mx_civ_worker", clip: "idle", x: G.x - 11, z: G.z + 5.5, yaw: Math.PI / 2, color: "#ff6a2a", sign: "LÒ RÈN", greet: "Đưa đồ đây. Đập lên +10 thì cả Neon City phải nể, còn xui thì… tụt một cấp." },
+  { id: "spin", npc: "Lucky May", title: "Vòng quay may mắn", model: "mx_civ_dancer", clip: "dance", x: G.x - 11, z: G.z + 12.8, yaw: Math.PI / 2, color: "#ff2fd0", sign: "QUAY SỐ", greet: "Mỗi ngày một lượt miễn phí nha! Jackpot có cả đồ Huyền thoại đó." },
   { id: "armory", npc: "Kho Vũ Khí Rook", title: "Cửa hàng trang bị", model: "mx_civ_courier", clip: "idle", x: G.x + 11, z: G.z + 6, yaw: -Math.PI / 2, color: "#ffe14a", sign: "VŨ KHÍ", greet: "Súng, mũ, găng, giày — đồ Hiếm trở xuống. Đồ xịn hơn thì tự đi mà nhặt." },
-  { id: "wardrobe", npc: "Stylist Linh", title: "Phòng thay đồ", model: "mx_civ_student", clip: "idle", x: G.x + 11, z: G.z + 13, yaw: -Math.PI / 2, color: "#00f0ff", sign: "TỦ ĐỒ", greet: "Sáu ô trang bị: vũ khí, giáp, mũ, găng, giày, chip. Mặc vào là thấy khác liền." },
-  { id: "story", npc: "Lão Kể Chuyện", title: "Biên niên sử Neon City", model: "mx_civ_elder", clip: "idle", x: G.x - 10.5, z: G.z - 1.5, yaw: Math.PI / 2, color: "#7dff5a", sign: "CỐT TRUYỆN", greet: "Ngồi xuống đây, Hunter. Ta kể cho nghe vì sao Neon City thành ra thế này." },
+  { id: "wardrobe", npc: "Stylist Lena", title: "Phòng thay đồ", model: "mx_civ_student", clip: "idle", x: G.x + 11, z: G.z + 13, yaw: -Math.PI / 2, color: "#00f0ff", sign: "TỦ ĐỒ", greet: "Sáu ô trang bị: vũ khí, giáp, mũ, găng, giày, chip. Mặc vào là thấy khác liền." },
+  { id: "story", npc: "Grandpa Gus", title: "Biên niên sử Neon City", model: "mx_civ_elder", clip: "idle", x: G.x - 10.5, z: G.z - 1.5, yaw: Math.PI / 2, color: "#7dff5a", sign: "CỐT TRUYỆN", greet: "Ngồi xuống đây, Hunter. Ta kể cho nghe vì sao Neon City thành ra thế này." },
 ];
 
 export const SERVICE_REACH = 3;

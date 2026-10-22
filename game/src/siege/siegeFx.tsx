@@ -11,7 +11,7 @@ import { playSfx } from "../game/assets";
 import { useFitted } from "../game/Showcase";
 import { mechActive } from "../game/Mech";
 import { SIEGE_ORIGIN } from "../game/config";
-import { SIEGE, type SiegeSim } from "./siegeSim";
+import type { SiegeSim } from "./siegeSim";
 import { useSiege } from "./siegeSession";
 
 const O = SIEGE_ORIGIN;
@@ -33,9 +33,9 @@ export function SiegeDriver({ sim }: { sim: SiegeSim }) {
     const hpBefore = sim.player.hp;
     if (!g.panelOpen) sim.update(Math.min(dt, 0.1));
     // Dạng Mech: giáp dày, chỉ nhận 1/4 sát thương
-    if (sim.player.inMech && sim.player.alive && sim.player.hp < hpBefore) sim.player.hp = hpBefore - (hpBefore - sim.player.hp) * 0.25;
+    if (sim.player.inMech && sim.player.stance !== "tank" && sim.player.alive && sim.player.hp < hpBefore) sim.player.hp = hpBefore - (hpBefore - sim.player.hp) * 0.25;
     // Máu người chơi hiển thị trên HUD Hub
-    const hp = Math.max(0, Math.round((sim.player.hp / SIEGE.player.hp) * g.maxHp));
+    const hp = Math.max(0, Math.round((sim.player.hp / sim.player.maxHp) * g.maxHp));
     if (hp !== g.hp) useGame.setState({ hp, lastDamageAt: hp < g.hp ? performance.now() / 1000 : g.lastDamageAt });
     if (!sim.player.alive && wasAlive.current) {
       useGame.setState({ flatlinedAt: performance.now() / 1000 });
@@ -62,6 +62,14 @@ export function SiegeDriver({ sim }: { sim: SiegeSim }) {
         if (d < 80) playSfx("enemyDestroy", Math.max(0.15, (e.big ? 1 : 0.6) * (1 - d / 80)));
       } else if (e.kind === "playerHit") playSfx("enemyAttack", 0.35);
       else if (e.kind === "callout") playSfx("pickup", 0.6);
+      else if (e.kind === "loot") {
+        useSiege.getState().grant(e.drop);
+        playSfx("pickup", e.drop.kind === "cred" ? 0.25 : 0.7);
+      } else if (e.kind === "kill" && e.byPlayer) useSiege.getState().pushFeed(`HẠ ${e.victim.toUpperCase()}`, "#ff5a7a");
+      else if (e.kind === "streak") {
+        useSiege.getState().pushFeed(`ĐA SÁT ×${e.n}`, "#ffd166");
+        if (e.n % 5 === 0) playSfx("pickup", 0.9);
+      }
     }
     // Danh sách sự kiện có thể bị cắt bớt phía đầu: bám theo độ dài hiện tại
     seen.current = sim.events.length;
@@ -98,11 +106,12 @@ function Tracers({ sim }: { sim: SiegeSim }) {
       const px = e.x0 + dx * u;
       const pz = e.z0 + dz * u;
       q.setFromUnitVectors(z, p.set(dx / len, 0, dz / len));
-      const thick = e.hero ? 0.09 : 0.05;
+      // Mờ dần bằng cách thu mảnh lại (màu giữ sáng, không tối thành vạch đen)
+      const k = 1 - age / 0.2;
+      const thick = (e.hero ? 0.09 : 0.05) * (0.4 + 0.6 * k);
       m.compose(p.set(px, 1.35, pz), q, s.set(thick, thick, Math.min(3, len)));
       o.setMatrixAt(n, m);
-      const k = 1 - age / 0.2;
-      o.setColorAt(n, e.side === 0 ? c.setRGB(0.6 * k * 3, 2.6 * k, 3.4 * k) : c.setRGB(3.4 * k, 0.6 * k, 2.6 * k));
+      o.setColorAt(n, e.side === 0 ? c.setRGB(1.8, 2.6, 3.4) : c.setRGB(3.4, 0.6, 2.6));
       n++;
     }
     o.count = n;
@@ -166,9 +175,16 @@ function Warns({ sim }: { sim: SiegeSim }) {
         edge.rotation.set(0, 0, 0);
         edge.scale.setScalar(w.r);
       }
-      fm.color.setRGB(live ? 3 : 2.4, live ? 1.4 : 0.25, live ? 0.4 : 0.3);
+      // Kỹ năng của người chơi: lựu đạn vàng cam, pháo quỹ đạo xanh lơ; của địch: đỏ
+      if (w.byPlayer) {
+        const orb = w.kind === "orbital";
+        fm.color.setRGB(live ? 3 : orb ? 0.4 : 2.6, live ? 2.6 : orb ? 2 : 1.6, live ? 2 : orb ? 3 : 0.3);
+        em.color.setRGB(orb ? 0.5 : 3, orb ? 2.4 : 2, orb ? 3.2 : 0.4);
+      } else {
+        fm.color.setRGB(live ? 3 : 2.4, live ? 1.4 : 0.25, live ? 0.4 : 0.3);
+        em.color.setRGB(3, 0.4, 0.4);
+      }
       fm.opacity = live ? Math.max(0, 1 - (sim.time - w.liveAt) * 2) : 0.25 + blink * 0.15;
-      em.color.setRGB(3, 0.4, 0.4);
       em.opacity = live ? 0 : 0.8;
     }
     for (; n < g.children.length; n++) g.children[n].visible = false;

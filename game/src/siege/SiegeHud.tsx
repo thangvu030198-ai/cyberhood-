@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "../game/store";
 import { GEAR, type GearId } from "../level/gear";
-import { SIEGE, type Order, type Phase } from "./siegeSim";
+import { SIEGE, type Order, type Phase, type Skill, type Stance } from "./siegeSim";
 import { SIEGE_REWARD, SIEGE_SIZES, useSiege, type SiegeSize } from "./siegeSession";
 
 const PHASES: { id: Phase; label: string }[] = [
@@ -289,11 +289,88 @@ export function SiegeHud() {
           ))}
         </div>
       )}
+      <CombatBar />
+      <Feed />
       {sim.phase === "end" && <Result />}
       <p className="sg-keys">
-        Chuột bắn · <kbd>T</kbd> biến hình Mech (húc cổng ×) · <kbd>1</kbd>–<kbd>4</kbd> lệnh tiểu đội · <kbd>Z</kbd> bánh xe lệnh · <kbd>I</kbd> tủ đồ
+        Chuột {sim.player.stance === "gunner" ? "bắn" : sim.player.stance === "melee" ? "chém" : "dậm đất"} · <kbd>Q</kbd>
+        <kbd>E</kbd>
+        <kbd>R</kbd>
+        <kbd>F</kbd> kỹ năng · <kbd>X</kbd> đổi thế · <kbd>T</kbd> Mech · <kbd>1</kbd>–<kbd>4</kbd> lệnh · <kbd>Z</kbd> bánh xe · <kbd>I</kbd> tủ đồ
         {result ? "" : ""}
       </p>
+    </div>
+  );
+}
+
+const SKILLS: Skill[] = ["grenade", "missiles", "orbital", "shockwave"];
+const SKILL_ICON: Record<Skill, string> = { grenade: "✹", missiles: "➶", orbital: "◎", shockwave: "◉" };
+const STANCES: Stance[] = ["gunner", "melee", "tank"];
+const STANCE_COLOR: Record<Stance, string> = { gunner: "#7ff3ff", melee: "#ff6a2a", tank: "#ffb000" };
+const STANCE_HINT: Record<Stance, string> = { gunner: "Bắn xa · máu thường", melee: "Chém quạt · máu ×2,2", tank: "Dậm quanh thân · máu ×4,5 · giáp" };
+
+/** Thanh kỹ năng (Q/E/R/F + hồi chiêu) và chỉ báo thế đánh (X), chuỗi hạ */
+function CombatBar() {
+  const sim = useSiege((s) => s.sim)!;
+  const P = sim.player;
+  const st = P.stance;
+  return (
+    <div className="sg-combat">
+      <div className="sg-stance">
+        {STANCES.map((k) => (
+          <span key={k} className={k === st ? "is-on" : ""} style={k === st ? { color: STANCE_COLOR[k], borderColor: STANCE_COLOR[k] } : undefined}>
+            {SIEGE.stances[k].label}
+          </span>
+        ))}
+        <small>
+          <kbd>X</kbd> {STANCE_HINT[st]} · Máu {Math.ceil(P.hp)}/{Math.round(P.maxHp)}
+        </small>
+      </div>
+      <div className="sg-skills">
+        {SKILLS.map((k) => {
+          const K = SIEGE.skills[k];
+          const left = Math.max(0, P.cds[k] - sim.time);
+          return (
+            <div key={k} className={`sg-skill${left > 0 ? " is-cd" : ""}`} title={K.label}>
+              <i>{SKILL_ICON[k]}</i>
+              <kbd>{K.key}</kbd>
+              {left > 0 && (
+                <>
+                  <span className="sg-skill__mask" style={{ height: `${(left / K.cd) * 100}%` }} />
+                  <b>{Math.ceil(left)}</b>
+                </>
+              )}
+              <small>{K.label}</small>
+            </div>
+          );
+        })}
+      </div>
+      {P.streak >= 2 && sim.time - P.streakAt < 4 && (
+        <div className="sg-streak" key={P.streak}>
+          ĐA SÁT <b>×{P.streak}</b>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Bảng tin nhanh bên phải: hạ địch, nhặt đồ hiếm, chuỗi hạ */
+function Feed() {
+  const feed = useSiege((s) => s.feed);
+  const loot = useSiege((s) => s.loot);
+  const now = performance.now() / 1000;
+  return (
+    <div className="sg-feed">
+      <div className="sg-feed__loot">
+        Nhặt: <b>{loot.cred}</b> CRED · {loot.stim} Stim · {loot.key} Chìa · {loot.gear.length} Trang bị
+      </div>
+      {feed
+        .filter((f) => now - f.at < 5)
+        .map((f) => (
+          <p key={f.id} style={{ color: f.color, opacity: Math.min(1, (5 - (now - f.at)) / 1) }}>
+            {f.text}
+          </p>
+        ))}
     </div>
   );
 }
@@ -321,6 +398,12 @@ function Result() {
         <li>+{r.cred} CRED {r.won ? "(×1,5 phe thắng)" : "(60% phe thua)"}</li>
         <li>+{r.points} Điểm Hunter</li>
         {r.gear && <li>Rương Công thành: {GEAR[r.gear as GearId]?.name ?? r.gear}</li>}
+        <li>
+          Đồ nhặt trên chiến trường: +{r.loot.cred} CRED · {r.loot.stim} Stim · {r.loot.key} Chìa rương
+        </li>
+        {r.loot.gear.map((g, i) => (
+          <li key={i}>Rơi: {GEAR[g as GearId]?.name ?? g}</li>
+        ))}
       </ul>
       <button className="sg-go" onClick={() => useSiege.getState().leave()}>
         Về khu an toàn <kbd>Esc</kbd>

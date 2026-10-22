@@ -12,7 +12,7 @@ import { uiBlocking, useGame } from "./store";
 import { rayBuildings, rayGround } from "./world";
 import { MECH_DAMAGE_MUL, mechActive } from "./Mech";
 import { isLocked, pointer, requestLock } from "./pointer";
-import { siegeShot } from "../siege/siegeSession";
+import { siegeShot, siegeSlash, useSiege } from "../siege/siegeSession";
 
 const RANGE = 90;
 const WEAPONS = {
@@ -193,6 +193,15 @@ export function PlayerCombat() {
         body.setAngvel({ x: 0, y: 0, z: 0 }, true);
         snapped = true;
       }
+    }
+
+    // Công thành ở thế Cận chiến / Tanker: chuột trái là chém / dậm đất thay vì bắn
+    if (s.location === "siege" && useSiege.getState().sim?.player.stance !== "gunner") {
+      if (siegeSlash(Math.atan2(_flat.x, _flat.z))) {
+        s.markHit();
+        playSfx("enemyAttack", 0.5);
+      }
+      return;
     }
 
     if (touchFire) {

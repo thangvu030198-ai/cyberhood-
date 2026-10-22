@@ -15,6 +15,8 @@ import { SIEGE, type SiegeSim } from "./siegeSim";
 import { useSiege } from "./siegeSession";
 import { Crowd } from "./crowd";
 import { SiegeDriver, SiegeFx } from "./siegeFx";
+import { Tanks } from "./tanks";
+import { SiegeCombat } from "./siegeCombat";
 
 const O = SIEGE_ORIGIN;
 
@@ -760,6 +762,8 @@ export function SiegeWorld() {
         <Dressing />
         <Crowd sim={sim} />
         <SiegeFx sim={sim} />
+        <Tanks sim={sim} />
+        <SiegeCombat sim={sim} />
       </group>
       <Snowfall />
     </>

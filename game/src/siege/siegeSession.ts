@@ -2,7 +2,7 @@
 // (cùng engine Hub: nhân vật, camera, súng, Mech), trao thưởng khi kết thúc (GDD 4I.6).
 
 import { create } from "zustand";
-import { SiegeSim, type Side } from "./siegeSim";
+import { SiegeSim, type Drop, type Side } from "./siegeSim";
 import { useGame } from "../game/store";
 import { handles } from "../game/refs";
 import { SIEGE_GATE, SIEGE_ORIGIN } from "../game/config";
@@ -20,7 +20,11 @@ export const SIEGE_SIZES: Record<SiegeSize, { perSide: number; label: string }> 
 /** Thưởng (GDD 4I.6): CRED gốc theo hạng, phe thắng ×1,5, phe thua 60%, Điểm Hunter 30–80 */
 export const SIEGE_REWARD = { cred: { S: 600, A: 420, B: 300, C: 200 } as Record<string, number>, winMul: 1.5, loseMul: 0.6, points: [30, 80] as [number, number], extraCoinPrice: 150 };
 
-export type SiegeResult = { won: boolean; rank: string; pts: number; cred: number; points: number; gear: string | null; kills: number };
+/** Đồ nhặt được trong trận (rơi từ quân địch / công trình) */
+export type SiegeLoot = { cred: number; stim: number; key: number; gear: string[] };
+export type SiegeResult = { won: boolean; rank: string; pts: number; cred: number; points: number; gear: string | null; kills: number; loot: SiegeLoot };
+/** Dòng thông báo nhanh trên HUD: hạ địch, nhặt đồ, chuỗi hạ */
+export type SiegeFeed = { id: number; text: string; color: string; at: number };
 
 type SiegeState = {
   sim: SiegeSim | null;
@@ -28,6 +32,8 @@ type SiegeState = {
   side: Side;
   size: SiegeSize;
   result: SiegeResult | null;
+  loot: SiegeLoot;
+  feed: SiegeFeed[];
   /** Bánh xe lệnh tiểu đội đang mở */
   wheel: boolean;
   setLobby: (v: boolean) => void;
@@ -37,7 +43,13 @@ type SiegeState = {
   leave: () => void;
   settle: () => void;
   setWheel: (v: boolean) => void;
+  grant: (d: Drop) => void;
+  pushFeed: (text: string, color: string) => void;
 };
+
+const emptyLoot = (): SiegeLoot => ({ cred: 0, stim: 0, key: 0, gear: [] });
+let feedId = 0;
+const lootRng = createRng(Date.now() & 0xffff);
 
 /** Toạ độ thế giới của một điểm trên bản đồ Công thành */
 export const toWorld = (x: number, z: number) => ({ x: SIEGE_ORIGIN.x + x, z: SIEGE_ORIGIN.z + z });
@@ -56,6 +68,8 @@ export const useSiege = create<SiegeState>((set, get) => ({
   side: 0,
   size: "standard",
   result: null,
+  loot: emptyLoot(),
+  feed: [],
   wheel: false,
   setLobby: (lobby) => {
     if (lobby) document.exitPointerLock?.();
@@ -71,7 +85,7 @@ export const useSiege = create<SiegeState>((set, get) => ({
     const coins = g.inventory.extraCoin ?? 0;
     const sim = new SiegeSim({ perSide: SIEGE_SIZES[size].perSide, playerSide: side, seed: (Date.now() & 0xffff) + 1, extraCoin: coins > 0 });
     useGame.setState({ panelOpen: false, hp: g.maxHp });
-    set({ sim, lobby: false, result: null });
+    set({ sim, lobby: false, result: null, loot: emptyLoot(), feed: [] });
     g.setLocation("siege");
     const w = toWorld(sim.player.x, sim.player.z);
     // Hunter nhìn về phía lâu đài (−z), IXO nhìn ra cánh đồng (+z)
@@ -114,8 +128,32 @@ export const useSiege = create<SiegeState>((set, get) => ({
       useGear.getState().add([id]);
       gear = id;
     }
-    set({ result: { won, rank, pts, cred, points, gear, kills: sim.player.kills } });
+    set({ result: { won, rank, pts, cred, points, gear, kills: sim.player.kills, loot: get().loot } });
   },
+  /** Nhặt một món rơi: cộng thẳng vào túi, ghi vào bảng đồ nhặt của trận */
+  grant: (d) => {
+    const g = useGame.getState();
+    const loot = { ...get().loot };
+    if (d.kind === "cred") {
+      g.addCred(d.amount);
+      loot.cred += d.amount;
+    } else if (d.kind === "stim") {
+      g.addItem("stim", d.amount);
+      loot.stim += d.amount;
+      get().pushFeed(`+${d.amount} STIM`, "#7dff9a");
+    } else if (d.kind === "key") {
+      g.addItem("chestKey", 1);
+      loot.key += 1;
+      get().pushFeed("+1 CHÌA RƯƠNG", "#ffd166");
+    } else {
+      const id = d.ice ? ICE_WAR_SET[Math.floor(lootRng() * ICE_WAR_SET.length)] : rollGear(lootRng, 2, "rare");
+      useGear.getState().add([id]);
+      loot.gear = [...loot.gear, id];
+      get().pushFeed(d.ice ? "TRANG BỊ BĂNG CHIẾN!" : "+1 TRANG BỊ", d.ice ? "#7fe8ff" : "#c38bff");
+    }
+    set({ loot });
+  },
+  pushFeed: (text, color) => set((s) => ({ feed: [...s.feed.slice(-5), { id: ++feedId, text, color, at: performance.now() / 1000 }] })),
 }));
 
 /**
@@ -130,4 +168,11 @@ export function siegeShot(ox: number, oy: number, oz: number, dx: number, dy: nu
   if (hit.unit) sim.damageUnit(hit.unit, damage, "player");
   else if (hit.obj) sim.damageObjective(hit.obj, damage * (hit.obj.kind === "gate" ? 1.5 : 1));
   return hit.t;
+}
+
+/** Đòn chém của người chơi khi đang ở thế Cận chiến / Tanker (gọi từ PlayerCombat thay cho bắn) */
+export function siegeSlash(yaw: number): boolean {
+  const sim = useSiege.getState().sim;
+  if (!sim || sim.phase === "end" || !sim.player.alive) return false;
+  return sim.playerSlash(yaw) !== false;
 }

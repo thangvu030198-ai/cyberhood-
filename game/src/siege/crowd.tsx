@@ -67,7 +67,7 @@ function bake(scene: THREE.Object3D, clips: { clip: THREE.AnimationClip; n: numb
   if (mat.map) {
     mat.emissiveMap = mat.map;
     mat.emissive = new THREE.Color("#ffffff");
-    mat.emissiveIntensity = 0.18;
+    mat.emissiveIntensity = 0.12;
   }
   return { frames, material: mat, walkLen: clips[0].clip.duration };
 }
@@ -110,7 +110,7 @@ export function variantOf(u: { side: Side; role: Role; id: number }) {
   return fit.length ? fit[u.id % fit.length][1] : u.id % list.length;
 }
 
-const TINT: Record<Side, string> = { 0: "#d6f8ff", 1: "#ffd6f2" };
+const TINT: Record<Side, string> = { 0: "#ffffff", 1: "#ffffff" };
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -131,7 +131,7 @@ function VariantCrowd({ sim, side, vi }: { sim: SiegeSim; side: Side; vi: number
     ]),
     [base, walk, act],
   );
-  const members = useMemo(() => sim.units.filter((u) => u.side === side && variantOf(u) === vi), [sim, side, vi]);
+  const members = useMemo(() => sim.units.filter((u) => u.side === side && u.role !== "tank" && variantOf(u) === vi), [sim, side, vi]);
   const cap = members.length + 1;
   const meshes = useMemo(
     () =>
@@ -173,8 +173,9 @@ function VariantCrowd({ sim, side, vi }: { sim: SiegeSim; side: Side; vi: number
       // Golem / Brute / Hiệp sĩ to con hơn; tay súng tinh nhuệ ("người thật") nhỉnh hơn
       const k = (u.role === "shield" ? 1.25 : u.role === "special" ? 1.12 : 1) * (u.hero ? 1.05 : 1);
       m.setMatrixAt(i, _m.compose(_p, _q, _s.set(k, k, k)));
-      const hurt = u.alive && u.hp < u.maxHp * 0.35 ? 0.7 : 1;
-      m.setColorAt(i, _c.copy(tint).multiplyScalar((u.hero ? 1.2 : 1) * hurt));
+      // Vừa trúng đòn: nháy sáng
+      const flashK = u.alive && sim.time - u.hurtAt < 0.12 ? 2.2 : 1;
+      m.setColorAt(i, _c.copy(tint).multiplyScalar((u.hero ? 1.1 : 1) * flashK));
     }
     meshes.forEach((m, f) => {
       m.count = counts[f];

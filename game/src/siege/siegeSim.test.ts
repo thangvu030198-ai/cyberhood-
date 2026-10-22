@@ -14,7 +14,8 @@ describe("công thành", () => {
     const att = sim.units.filter((u) => u.side === 0);
     expect(att.length).toBe(99);
     expect(sim.units.filter((u) => u.side === 1).length).toBe(100);
-    expect(att.filter((u) => u.hero).length).toBe(29);
+    // ~30% "người thật" (trừ suất của người chơi và suất Tanker)
+    expect(att.filter((u) => u.hero).length).toBeGreaterThanOrEqual(27);
     expect(sim.units.filter((u) => u.squad).length).toBe(2);
     expect(Math.max(...att.filter((u) => !u.hero).map((u) => u.power))).toBeLessThanOrEqual(0.65);
   });
@@ -73,5 +74,66 @@ describe("công thành", () => {
     expect(sim.phase).toBe("end");
     expect(seen.has("shield")).toBe(true);
     expect(ms).toBeLessThan(20000);
+  });
+});
+
+describe("công thành: người chơi, Tanker, rơi đồ", () => {
+  const nearEnemy = (sim: SiegeSim, dx = 2, dz = -2) => {
+    const u = sim.units.find((x) => x.side === 1 && x.role === "infantry")!;
+    u.x = sim.player.x + dx;
+    u.z = sim.player.z + dz;
+    return u;
+  };
+  it("mỗi phe có Tanker khổng lồ, nhiều máu", () => {
+    const sim = new SiegeSim();
+    const tanks = sim.units.filter((u) => u.role === "tank");
+    expect(tanks.filter((u) => u.side === 0).length).toBeGreaterThanOrEqual(3);
+    expect(tanks.filter((u) => u.side === 1).length).toBeGreaterThanOrEqual(3);
+    expect(tanks[0].maxHp).toBeGreaterThan(1000);
+  });
+  it("đổi thế Cận chiến / Tanker thì máu tối đa tăng, nhận ít sát thương hơn", () => {
+    const sim = new SiegeSim();
+    sim.time = 10;
+    expect(sim.setStance("tank")).toBe(true);
+    expect(sim.player.maxHp).toBeCloseTo(SIEGE.player.hp * 4.5, 5);
+    const hp = sim.player.hp;
+    sim.hurtPlayer(100);
+    expect(hp - sim.player.hp).toBeCloseTo(55, 5);
+  });
+  it("chém kiếm trúng quân trước mặt; hạ quân thì rơi đồ, đứng gần là nhặt", () => {
+    const sim = new SiegeSim({ seed: 11 });
+    sim.time = 10;
+    sim.setStance("melee");
+    const u = nearEnemy(sim, 0, 2);
+    u.hp = 10;
+    sim.playerSlash(0);
+    expect(u.alive).toBe(false);
+    expect(sim.player.kills).toBe(1);
+    // Hạ thêm vài quân cho chắc có đồ rơi, rồi đứng yên chờ hút đồ
+    for (let i = 0; i < 6; i++) {
+      const v = sim.units.filter((x) => x.side === 1 && x.alive)[i];
+      sim.damageUnit(v, 9999, "player");
+    }
+    expect(sim.drops.length).toBeGreaterThan(0);
+    for (const d of sim.drops) (d.x = sim.player.x + 1), (d.z = sim.player.z), (d.at = sim.time - 1);
+    for (let i = 0; i < 40; i++) {
+      sim.player.hp = sim.player.maxHp;
+      sim.step();
+    }
+    expect(sim.events.some((e) => e.kind === "loot")).toBe(true);
+  });
+  it("kỹ năng: lựu đạn nổ trúng cụm quân, có hồi chiêu", () => {
+    const sim = new SiegeSim({ seed: 5 });
+    const a = nearEnemy(sim, 10, 0);
+    a.hp = 100;
+    expect(sim.useSkill("grenade", a.x, a.z)).toBe(true);
+    expect(sim.useSkill("grenade", a.x, a.z)).toBe(false);
+    for (let i = 0; i < 30; i++) {
+      a.x = sim.player.x + 10;
+      a.z = sim.player.z;
+      sim.player.hp = sim.player.maxHp;
+      sim.step();
+    }
+    expect(a.alive).toBe(false);
   });
 });

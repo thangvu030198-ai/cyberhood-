@@ -2004,6 +2004,27 @@ canvas {
 .sg-result h2 { margin: 8px 0; font: 900 22px/1.2 var(--font-display, sans-serif); }
 .sg-result ul { list-style: none; padding: 0; margin: 10px 0 16px; font-size: 13px; line-height: 1.8; color: #cfe2f0; }
 .sg-rank b { font-size: 30px; margin: 0 4px; } .sg-rank .r-S { color: #ffd23d; } .sg-rank .r-A { color: #ff7ae0; } .sg-rank .r-B { color: #7ff3ff; } .sg-rank .r-C { color: #aab4c0; }
+.sg-combat { position: absolute; bottom: 58px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.sg-stance { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.sg-stance span { font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 3px 8px; border: 1px solid #ffffff33; border-radius: 3px; color: #8aa0b4; background: #08101ccc; }
+.sg-stance span.is-on { background: #0d1828ee; box-shadow: 0 0 12px currentColor; }
+.sg-stance small { font-size: 10px; color: #cfe3f5; margin-left: 6px; }
+.sg-skills { display: flex; gap: 8px; }
+.sg-skill { position: relative; width: 54px; height: 54px; border-radius: 8px; background: linear-gradient(160deg, #13304a, #0a1220); border: 2px solid #7ff3ff; box-shadow: 0 0 10px #7ff3ff66; overflow: hidden; display: grid; place-items: center; }
+.sg-skill i { font-style: normal; font-size: 24px; color: #e8fbff; text-shadow: 0 0 8px #7ff3ff; }
+.sg-skill kbd { position: absolute; top: 2px; left: 3px; font-size: 9px; padding: 0 3px; }
+.sg-skill small { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font-size: 7px; color: #bfe6ff; white-space: nowrap; overflow: hidden; }
+.sg-skill.is-cd { border-color: #3a4a5a; box-shadow: none; }
+.sg-skill.is-cd i { opacity: 0.35; }
+.sg-skill__mask { position: absolute; left: 0; right: 0; bottom: 0; background: #000a; }
+.sg-skill b { position: absolute; font-size: 18px; color: #fff; }
+.sg-streak { font-size: 22px; font-weight: 900; color: #ffd166; text-shadow: 0 0 16px #ff8a00, 0 2px 0 #000; letter-spacing: 2px; animation: sgPop 0.35s ease-out; }
+.sg-streak b { font-size: 30px; }
+@keyframes sgPop { from { transform: scale(1.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.sg-feed { position: absolute; right: 12px; top: 248px; width: 210px; text-align: right; pointer-events: none; }
+.sg-feed__loot { font-size: 10px; color: #ffe9a8; background: #08101ccc; padding: 4px 8px; border-radius: 4px; border-right: 3px solid #ffd166; margin-bottom: 4px; }
+.sg-feed p { margin: 2px 0; font-size: 12px; font-weight: 800; text-shadow: 0 1px 2px #000, 0 0 8px currentColor; }
+@media (max-width: 720px) { .sg-feed { top: 150px; width: 150px; } .sg-skill { width: 44px; height: 44px; } .sg-stance small { display: none; } }
 .sg-keys { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); margin: 0; font-size: 11px; color: #e0ecf5; background: #08101caa; padding: 4px 10px; border-radius: 4px; white-space: nowrap; }
 @media (max-width: 720px) { .sg-team { width: 130px; } .sg-obj { width: 200px; top: 100px; } .sg-map { width: 110px; height: 126px; } .sg-keys { display: none; } .sg-callout { font-size: 18px; } }
 

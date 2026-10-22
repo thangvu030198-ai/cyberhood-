@@ -313,7 +313,7 @@ function InteractionKeys() {
       const s = useGame.getState();
       if (s.profile === null) return;
       if (e.code === "KeyE" && !s.dialogue && !s.shopOpen && !s.inventoryOpen && !s.panelOpen && s.nearInteract) interact(s.nearInteract);
-      if (e.code === "KeyQ" && !s.useStim() && (s.inventory.stim ?? 0) > 0 && s.hp >= s.maxHp) s.showToast("Máu đang đầy");
+      if (e.code === "KeyQ" && s.location !== "siege" && !s.useStim() && (s.inventory.stim ?? 0) > 0 && s.hp >= s.maxHp) s.showToast("Máu đang đầy");
       if (e.code === "Tab" || e.code === "KeyI") {
         e.preventDefault();
         if (!s.dialogue && !s.shopOpen) {

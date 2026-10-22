@@ -9,7 +9,10 @@
 // phe thủ có Boss Mech và một Bom Nova).
 
 export type Side = 0 | 1; // 0 = Hunter (tấn công), 1 = IXO (thủ thành)
-export type Role = "infantry" | "shield" | "ranged" | "medic" | "special";
+export type Role = "infantry" | "shield" | "ranged" | "medic" | "special" | "tank";
+/** Thế đánh của người chơi: Xạ thủ (súng), Cận chiến (kiếm, máu ×2,2), Tanker (giáp Mech, máu ×4,5) */
+export type Stance = "gunner" | "melee" | "tank";
+export type Skill = "grenade" | "missiles" | "orbital" | "shockwave";
 export type Phase = "charge" | "shield" | "gate" | "courtyard" | "core" | "end";
 export type Order = "follow" | "hold" | "attack" | "regroup";
 
@@ -54,12 +57,42 @@ export const SIEGE = {
     ranged: { hp: 80, dmg: 14, range: 40, keep: 26, cd: 1.6, speed: 4.8 },
     medic: { hp: 90, dmg: 5, range: 20, keep: 16, cd: 1.3, speed: 5.0 },
     special: { hp: 120, dmg: 8, range: 22, keep: 10, cd: 1.1, speed: 5.0 },
+    /** Tanker khổng lồ (Hunter: robot chiến đấu, IXO: golem / quái hai đầu): vừa bắn pháo xa vừa đập cận chiến lan */
+    tank: { hp: 1300, dmg: 26, range: 34, keep: 3, cd: 1.7, speed: 3.1 },
   } as Record<Role, { hp: number; dmg: number; range: number; keep: number; cd: number; speed: number }>,
   /** Quân đánh mục tiêu (máy phát / cổng / pháo) mỗi giây; quân đặc biệt (phá khiên) mạnh gấp 3 */
   objDps: 5,
   repairDps: 3.5,
   healDps: 6,
-  player: { hp: 100 },
+  player: { hp: 100, dmgTaken: 0.28, focus: 0.5, regenDelay: 4, regen: 6 },
+  /** Ba thế của người chơi (phím X đổi): hệ số máu, hệ số sát thương nhận, tốc độ đổi thế */
+  stances: {
+    gunner: { hpMul: 1, taken: 1, label: "XẠ THỦ" },
+    melee: { hpMul: 2.2, taken: 0.8, label: "CẬN CHIẾN" },
+    tank: { hpMul: 4.5, taken: 0.55, label: "TANKER" },
+  } as Record<Stance, { hpMul: number; taken: number; label: string }>,
+  stanceCd: 1.5,
+  /** Kiếm cận chiến: tầm, góc chém (rad), sát thương, nghỉ; Tanker dậm đất xung quanh */
+  slash: { range: 4.8, arc: 2.2, dmg: 75, cd: 0.42, tankRange: 5.5, tankDmg: 95 },
+  /**
+   * Kỹ năng (Q / E / R / F): lựu đạn plasma, chùm tên lửa đuổi, pháo kích quỹ đạo, sóng xung kích quanh thân.
+   * Tanker: sóng xung kích to hơn và kéo quái địch về (khiêu khích)
+   */
+  skills: {
+    grenade: { cd: 6, r: 6.5, dmg: 150, fuse: 0.9, label: "Lựu đạn plasma", key: "Q" },
+    missiles: { cd: 12, n: 8, range: 45, dmg: 110, delay: 0.7, label: "Chùm tên lửa", key: "E" },
+    orbital: { cd: 30, r: 12, dmg: 520, warn: 2, label: "Pháo kích quỹ đạo", key: "R" },
+    shockwave: { cd: 9, r: 8.5, dmg: 95, push: 9, label: "Sóng xung kích", key: "F" },
+  } as Record<Skill, { cd: number; r?: number; dmg: number; fuse?: number; n?: number; range?: number; delay?: number; warn?: number; push?: number; label: string; key: string }>,
+  /** Cận chiến: quân áp sát thì đâm / chém, đánh bật lùi */
+  melee: { range: 2.4, cd: 0.9, dmg: 13, push: 4 },
+  /** Phe thủ mở cửa phụ xuất quân ra cánh đồng giáp lá cà (giai đoạn Xung phong / Phá khiên) */
+  sortie: { share: 0.45 },
+  /**
+   * Rơi đồ khi hạ quân (người chơi hạ, hoặc quân địch gục trong bán kính `near` quanh người chơi): xác suất mỗi loại,
+   * CRED [ít, nhiều]; tay súng tinh nhuệ rơi nhiều hơn; phá công trình mưa đồ; tầm hút đồ về người chơi
+   */
+  loot: { near: 26, cred: 0.85, credAmt: [4, 12] as [number, number], stim: 0.08, key: 0.03, gear: 0.025, heroMul: 2.5, iceShare: 0.25, shower: 14, magnet: 14, pick: 1.6, life: 40 },
 };
 
 export type Unit = {
@@ -87,11 +120,17 @@ export type Unit = {
   squad: boolean;
   shooting: number;
   kills: number;
+  /** Lần cuối ra đòn cận chiến / bị trúng (hoạt ảnh, nháy) */
+  meleeAt: number;
+  hurtAt: number;
 };
 
 export type Objective = { kind: "gen" | "gate" | "cannon" | "boss"; i: number; x: number; z: number; hp: number; maxHp: number; alive: boolean };
 
-export type Warn = { kind: "cannon" | "stomp" | "laser" | "nova"; x0: number; z0: number; x1: number; z1: number; r: number; warnAt: number; liveAt: number; dmg: number; done: boolean };
+export type Warn = { kind: "cannon" | "stomp" | "laser" | "nova" | "grenade" | "orbital"; x0: number; z0: number; x1: number; z1: number; r: number; warnAt: number; liveAt: number; dmg: number; done: boolean; byPlayer?: boolean };
+
+/** Đồ rơi trên tuyết: CRED, Stim, Chìa rương, trang bị (độ hiếm quyết định khi nhặt) */
+export type Drop = { id: number; kind: "cred" | "stim" | "key" | "gear"; amount: number; x: number; z: number; vx: number; vz: number; y: number; vy: number; at: number; taken: boolean; ice?: boolean };
 
 export type SiegeEvent =
   | { kind: "tracer"; x0: number; z0: number; x1: number; z1: number; side: Side; hero: boolean; at: number }
@@ -99,7 +138,12 @@ export type SiegeEvent =
   | { kind: "death"; id: number; x: number; z: number; side: Side; at: number }
   | { kind: "callout"; text: string; color: string; at: number }
   | { kind: "playerHit"; dmg: number; at: number }
-  | { kind: "objDown"; obj: Objective["kind"]; i: number; at: number };
+  | { kind: "objDown"; obj: Objective["kind"]; i: number; at: number }
+  | { kind: "melee"; x: number; z: number; side: Side; at: number }
+  | { kind: "hit"; x: number; z: number; dmg: number; side: Side; byPlayer: boolean; crit: boolean; at: number }
+  | { kind: "kill"; killer: string; victim: string; side: Side; byPlayer: boolean; at: number }
+  | { kind: "loot"; drop: Drop; at: number }
+  | { kind: "streak"; n: number; at: number };
 
 export type SiegeOpts = { perSide?: number; playerSide?: Side; seed?: number; extraCoin?: boolean };
 
@@ -122,7 +166,11 @@ export class SiegeSim {
   novaUsed = false;
   novaAt = -9;
   /** Người chơi: vị trí do engine Hub đưa vào mỗi khung; máu và trạng thái quản lý ở đây */
-  player = { x: 0, z: 0, alive: true, hp: SIEGE.player.hp, extraCoin: false, kills: 0, objDmg: 0, captures: 0, deaths: 0, inMech: false, invulnUntil: -9 };
+  player = { x: 0, z: 0, alive: true, hp: SIEGE.player.hp, extraCoin: false, kills: 0, objDmg: 0, captures: 0, deaths: 0, inMech: false, invulnUntil: -9, hurtAt: -9, streak: 0, streakAt: -9, bestStreak: 0, stance: "gunner" as Stance, stanceAt: -9, slashAt: -9, maxHp: SIEGE.player.hp, cds: { grenade: 0, missiles: 0, orbital: 0, shockwave: 0 } as Record<Skill, number> };
+  /** Tên lửa đang bay (hiển thị): từ người chơi tới mục tiêu */
+  missiles: { x0: number; z0: number; id: number; at: number; hitAt: number }[] = [];
+  drops: Drop[] = [];
+  private dropId = 0;
   order: Order = "attack";
   holdAt = { x: 0, z: 0 };
   private acc = 0;
@@ -152,8 +200,9 @@ export class SiegeSim {
       let squad = 0;
       for (let i = 0; i < n; i++) {
         const r = this.rng();
-        const role: Role = r < 0.55 ? "infantry" : r < 0.7 ? "shield" : r < 0.85 ? "ranged" : r < 0.93 ? "medic" : "special";
-        const hero = i < heroes;
+        // Mỗi 25 quân có một Tanker khổng lồ (không phải "người thật")
+        const role: Role = i % 25 === 12 ? "tank" : r < 0.5 ? "infantry" : r < 0.66 ? "shield" : r < 0.83 ? "ranged" : r < 0.91 ? "medic" : "special";
+        const hero = i < heroes && i % 25 !== 12;
         const R = SIEGE.roles[role];
         const power = hero ? 1 : SIEGE.npcPower[0] + this.rng() * (SIEGE.npcPower[1] - SIEGE.npcPower[0]);
         const u: Unit = {
@@ -180,6 +229,8 @@ export class SiegeSim {
           squad: side === this.playerSide && !hero && squad < 2 && (squad++, true),
           shooting: -9,
           kills: 0,
+          meleeAt: -9,
+          hurtAt: -9,
         };
         this.spawnAt(u, true);
         this.units.push(u);
@@ -253,6 +304,11 @@ export class SiegeSim {
     for (const u of this.units) if (u.alive) this.updateUnit(u, dt);
     this.updateObjectives(dt);
     this.updateWarns();
+    this.updateDrops(dt);
+    this.updateMissiles();
+    // Người chơi tự hồi máu khi tạm rời giao tranh
+    const P = this.player;
+    if (P.alive && this.time - P.hurtAt > SIEGE.player.regenDelay) P.hp = Math.min(P.maxHp, P.hp + SIEGE.player.regen * (P.maxHp / SIEGE.player.hp) * dt);
     this.updatePhase(dt);
     if (this.time >= this.nextWave) {
       this.nextWave += SIEGE.respawnWave;
@@ -271,7 +327,7 @@ export class SiegeSim {
     const sp = this.spawnPoint(this.playerSide, 3);
     this.player.x = sp.x;
     this.player.z = sp.z;
-    this.player.hp = SIEGE.player.hp;
+    this.player.hp = this.player.maxHp;
     this.player.alive = true;
     this.player.invulnUntil = this.time + 3;
   }
@@ -311,7 +367,7 @@ export class SiegeSim {
     if (this.player.alive && u.side !== this.playerSide) {
       const d = (this.player.x - u.x) ** 2 + (this.player.z - u.z) ** 2;
       // Người chơi nổi bật: quân địch ưu tiên nhắm người chơi hơn một chút
-      if (d * 0.8 < bd) best = -2;
+      if (d * 0.8 < bd && (u.id % 100) / 100 < SIEGE.player.focus) best = -2;
     }
     return best;
   }
@@ -329,6 +385,13 @@ export class SiegeSim {
       const g = this.obj("gen", u.lane);
       if (g?.alive) return { x: g.x + Math.sin(u.id * 1.3) * 7, z: g.z - 4 + Math.cos(u.id) * 4 };
       return { x: (u.id % 5) * 3 - 6, z: SIEGE.gate.z - 6 };
+    }
+    // Xuất quân: phe thủ ra cánh đồng chặn quân Hunter (đánh giáp lá cà quanh người chơi / máy phát)
+    if (!this.gateOpen && (this.phase === "charge" || this.phase === "shield") && (u.id % 100) / 100 < SIEGE.sortie.share && u.role !== "ranged") {
+      const g = this.obj("gen", u.lane);
+      const px = this.playerSide === 0 && this.player.alive && this.player.z > SIEGE.moat.z1 ? this.player.x : g?.x ?? 0;
+      const pz = this.playerSide === 0 && this.player.alive && this.player.z > SIEGE.moat.z1 ? this.player.z : (g?.z ?? 90) + 14;
+      return { x: px + Math.sin(u.id * 1.7) * 9, z: Math.min(pz, 175) + Math.cos(u.id * 0.9) * 7 - 4 };
     }
     if (k < 7) {
       // Trên tường thành, cung phía trước
@@ -397,7 +460,8 @@ export class SiegeSim {
         engaged = true;
         const d = Math.hypot(tx - u.x, tz - u.z);
         // Giữ cự li theo vai trò: lính khiên áp sát, xạ thủ đứng xa
-        if (d > R.keep) {
+        const keep = u.role === "shield" || u.role === "special" || u.role === "tank" ? 1.5 : u.role === "infantry" && u.id % 3 === 0 ? 1.8 : R.keep;
+        if (d > keep) {
           gx = tx;
           gz = tz;
         } else {
@@ -405,7 +469,27 @@ export class SiegeSim {
           gz = u.z;
         }
         u.yaw = Math.atan2(tx - u.x, tz - u.z);
-        if (u.cd <= 0 && d < R.range) {
+        // Áp sát: đâm / chém (lính khiên, đặc biệt, bộ binh lao vào khi địch quá gần)
+        if (d < SIEGE.melee.range && u.cd <= 0) {
+          u.cd = SIEGE.melee.cd;
+          u.shooting = this.time;
+          u.meleeAt = this.time;
+          const dmg = SIEGE.melee.dmg * u.power * (u.role === "tank" ? 3.5 : u.role === "shield" || u.role === "special" ? 1.4 : 1);
+          // Tanker đập lan: trúng mọi quân địch quanh chỗ đập
+          if (u.role === "tank") {
+            for (const o of this.units) if (o.alive && o.side !== u.side && o.id !== u.target && Math.hypot(o.x - tx, o.z - tz) < 3.5) this.damageUnit(o, dmg * 0.6, u);
+            this.events.push({ kind: "boom", x: tx, z: tz, big: false, at: this.time });
+          }
+          this.events.push({ kind: "melee", x: (u.x + tx) / 2, z: (u.z + tz) / 2, side: u.side, at: this.time });
+          if (u.target === -2) this.hurtPlayer(dmg * SIEGE.player.dmgTaken * 1.2);
+          else {
+            const t = this.units[u.target];
+            this.damageUnit(t, dmg, u);
+            const k = SIEGE.melee.push / (d || 1);
+            t.x += (t.x - u.x) * k * 0.15;
+            t.z += (t.z - u.z) * k * 0.15;
+          }
+        } else if (u.cd <= 0 && d < R.range) {
           u.cd = R.cd * (0.85 + this.rng() * 0.3);
           this.shoot(u, tx, tz, d, u.target);
         }
@@ -465,12 +549,12 @@ export class SiegeSim {
   private shoot(u: Unit, tx: number, tz: number, d: number, target: number) {
     const R = SIEGE.roles[u.role];
     u.shooting = this.time;
-    const p = Math.max(0.15, Math.min(0.8, 0.82 - d / 70)) * (u.hero ? 1.15 : 1);
+    const p = Math.max(0.15, Math.min(0.8, 0.82 - d / 70)) * (u.hero ? 1.15 : 1) * (u.role === "tank" ? 1.2 : 1);
     const hit = this.rng() < p;
     const dmg = R.dmg * u.power * (u.hero ? 1.2 : 1);
     this.events.push({ kind: "tracer", x0: u.x, z0: u.z, x1: tx + (hit ? 0 : (this.rng() - 0.5) * 3), z1: tz + (hit ? 0 : (this.rng() - 0.5) * 3), side: u.side, hero: u.hero, at: this.time });
     if (!hit) return;
-    if (target === -2) this.hurtPlayer(dmg * 0.45);
+    if (target === -2) this.hurtPlayer(dmg * SIEGE.player.dmgTaken);
     else {
       const t = this.units[target];
       // Lính khiên đỡ đạn trực diện
@@ -478,21 +562,82 @@ export class SiegeSim {
     }
   }
 
-  damageUnit(t: Unit, dmg: number, by: Unit | "player" | null) {
+  damageUnit(t: Unit, dmg: number, by: Unit | "player" | null, crit = false) {
     if (!t.alive) return;
     t.hp -= dmg;
+    t.hurtAt = this.time;
+    const byPlayer = by === "player";
+    const nearP = Math.hypot(t.x - this.player.x, t.z - this.player.z) < 40;
+    if (byPlayer || nearP) this.events.push({ kind: "hit", x: t.x, z: t.z, dmg: Math.round(dmg), side: t.side, byPlayer, crit, at: this.time });
     if (t.hp <= 0) {
       t.alive = false;
       t.diedAt = this.time;
       this.events.push({ kind: "death", id: t.id, x: t.x, z: t.z, side: t.side, at: this.time });
-      if (by === "player") this.player.kills++;
-      else if (by) by.kills++;
+      const killer = byPlayer ? "BẠN" : by ? by.name || (by.side === 0 ? "Hunter" : "IXO") : t.side === 0 ? "Pháo IXO" : "Hunter";
+      if (byPlayer || t.hero || (by && by.hero) || nearP) this.events.push({ kind: "kill", killer, victim: t.name || (t.side === 0 ? "lính Hunter" : "quái IXO"), side: t.side, byPlayer, at: this.time });
+      if (byPlayer) {
+        this.player.kills++;
+        // Chuỗi hạ gục: hạ liên tiếp trong 4 giây
+        this.player.streak = this.time - this.player.streakAt < 4 ? this.player.streak + 1 : 1;
+        this.player.streakAt = this.time;
+        this.player.bestStreak = Math.max(this.player.bestStreak, this.player.streak);
+        if (this.player.streak >= 2) this.events.push({ kind: "streak", n: this.player.streak, at: this.time });
+      } else if (by) by.kills++;
+      // Quân phe địch của người chơi gục gần người chơi / do người chơi hạ: rơi đồ
+      if (t.side !== this.playerSide && (byPlayer || nearP)) this.dropLoot(t.x, t.z, t.hero ? SIEGE.loot.heroMul : 1, byPlayer ? 1 : 0.5);
     }
+  }
+
+  /** Rơi đồ tại (x, z): `mul` nhân xác suất, `chance` hệ số chung (quân đồng đội hạ thì ít hơn) */
+  dropLoot(x: number, z: number, mul = 1, chance = 1) {
+    const L = SIEGE.loot;
+    const push = (kind: Drop["kind"], amount: number) => {
+      const a = this.rng() * Math.PI * 2;
+      const sp = 1.5 + this.rng() * 3;
+      this.drops.push({ id: this.dropId++, kind, amount, x, z, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, y: 1.2, vy: 5 + this.rng() * 3, at: this.time, taken: false, ice: kind === "gear" && this.rng() < L.iceShare });
+    };
+    if (this.rng() < L.cred * chance) {
+      const n = 1 + Math.floor(this.rng() * 2 * mul);
+      for (let i = 0; i < n; i++) push("cred", Math.round(L.credAmt[0] + this.rng() * (L.credAmt[1] - L.credAmt[0])));
+    }
+    if (this.rng() < L.stim * mul * chance) push("stim", 1);
+    if (this.rng() < L.key * mul * chance) push("key", 1);
+    if (this.rng() < L.gear * mul * chance) push("gear", 1);
+  }
+
+  /** Đồ rơi: nảy lên rồi nằm trên tuyết, lại gần thì bay về người chơi và được nhặt */
+  private updateDrops(dt: number) {
+    const L = SIEGE.loot;
+    const p = this.player;
+    for (const d of this.drops) {
+      if (d.taken) continue;
+      if (d.y > 0 || d.vy > 0) {
+        d.vy -= 22 * dt;
+        d.y = Math.max(0, d.y + d.vy * dt);
+        d.x += d.vx * dt;
+        d.z += d.vz * dt;
+        if (d.y === 0) (d.vy = d.vy < -3 ? -d.vy * 0.35 : 0), (d.vx *= 0.5), (d.vz *= 0.5);
+      }
+      if (!p.alive || this.time - d.at < 0.5) continue;
+      const dist = Math.hypot(p.x - d.x, p.z - d.z);
+      if (dist < L.magnet) {
+        const k = Math.min(1, (14 * dt) / Math.max(dist, 0.01));
+        d.x += (p.x - d.x) * k;
+        d.z += (p.z - d.z) * k;
+      }
+      if (dist < L.pick) {
+        d.taken = true;
+        this.events.push({ kind: "loot", drop: d, at: this.time });
+      }
+    }
+    this.drops = this.drops.filter((d) => !d.taken && this.time - d.at < L.life);
   }
 
   hurtPlayer(dmg: number) {
     if (!this.player.alive || this.time < this.player.invulnUntil) return;
+    dmg *= SIEGE.stances[this.player.stance].taken;
     this.player.hp -= dmg;
+    this.player.hurtAt = this.time;
     this.events.push({ kind: "playerHit", dmg, at: this.time });
     if (this.player.hp <= 0) {
       this.player.alive = false;
@@ -504,7 +649,7 @@ export class SiegeSim {
   private healAround(u: Unit) {
     for (const o of this.units)
       if (o.alive && o.side === u.side && o.hp < o.maxHp && Math.abs(o.x - u.x) < 8 && Math.abs(o.z - u.z) < 8) o.hp = Math.min(o.maxHp, o.hp + SIEGE.healDps);
-    if (u.side === this.playerSide && this.player.alive && Math.hypot(this.player.x - u.x, this.player.z - u.z) < 8) this.player.hp = Math.min(SIEGE.player.hp, this.player.hp + SIEGE.healDps * 0.5);
+    if (u.side === this.playerSide && this.player.alive && Math.hypot(this.player.x - u.x, this.player.z - u.z) < 8) this.player.hp = Math.min(this.player.maxHp, this.player.hp + SIEGE.healDps * 0.5);
   }
 
   /** Quân rảnh tay: phe công phá máy phát / cổng / pháo / Boss gần đó; phe thủ (kỹ sư) sửa chữa */
@@ -516,7 +661,7 @@ export class SiegeSim {
       if (d > reach) continue;
       if (u.side === 0) {
         if (o.kind === "gate" && this.shieldUp) continue;
-        const mul = u.role === "special" ? 3 : u.role === "ranged" && o.kind === "cannon" ? 2 : 1;
+        const mul = u.role === "tank" ? 5 : u.role === "special" ? 3 : u.role === "ranged" && o.kind === "cannon" ? 2 : 1;
         o.hp -= SIEGE.objDps * u.power * mul * dt;
         if (this.time - u.shooting > 0.5) {
           u.shooting = this.time;
@@ -546,6 +691,8 @@ export class SiegeSim {
   private destroy(o: Objective) {
     o.alive = false;
     o.hp = 0;
+    // Phá công trình (máy phát, cổng, pháo, Boss): mưa đồ
+    if (this.playerSide === 0) for (let i = 0; i < (o.kind === "cannon" ? 5 : SIEGE.loot.shower); i++) this.dropLoot(o.x + (this.rng() - 0.5) * 4, o.z + 3 + (this.rng() - 0.5) * 4, o.kind === "boss" ? 4 : 2, 1);
     this.events.push({ kind: "boom", x: o.x, z: o.z, big: true, at: this.time });
     this.events.push({ kind: "objDown", obj: o.kind, i: o.i, at: this.time });
     if (o.kind === "gen") {
@@ -579,8 +726,8 @@ export class SiegeSim {
     if (boss && boss.alive) this.updateBoss(boss, dt);
   }
 
-  private warn(kind: Warn["kind"], x0: number, z0: number, x1: number, z1: number, r: number, warn: number, dmg: number) {
-    this.warns.push({ kind, x0, z0, x1, z1, r, warnAt: this.time, liveAt: this.time + warn, dmg, done: false });
+  private warn(kind: Warn["kind"], x0: number, z0: number, x1: number, z1: number, r: number, warn: number, dmg: number, byPlayer = false) {
+    this.warns.push({ kind, x0, z0, x1, z1, r, warnAt: this.time, liveAt: this.time + warn, dmg, done: false, byPlayer });
   }
 
   private inWarn(w: Warn, x: number, z: number) {
@@ -599,6 +746,12 @@ export class SiegeSim {
       if (w.done || this.time < w.liveAt) continue;
       w.done = true;
       this.events.push({ kind: "boom", x: w.x1, z: w.z1, big: w.kind !== "cannon", at: this.time });
+      if (w.byPlayer) {
+        // Kỹ năng của người chơi: trúng quân phe địch + công trình địch trong vùng
+        for (const u of this.units) if (u.alive && u.side !== this.playerSide && this.inWarn(w, u.x, u.z)) this.damageUnit(u, w.dmg * (u.role === "tank" ? 0.6 : 1), "player", true);
+        if (this.playerSide === 0) for (const o of this.objectives) if (o.alive && this.inWarn(w, o.x, o.z)) this.damageObjective(o, w.dmg * (o.kind === "boss" ? 1 : 0.8));
+        continue;
+      }
       // Pháo / Boss của phe IXO chỉ trúng quân tấn công; Bom Nova xoá sổ mọi quân Hunter trong vùng
       for (const u of this.units) if (u.alive && u.side === 0 && this.inWarn(w, u.x, u.z)) this.damageUnit(u, w.kind === "nova" ? 9999 : w.dmg, null);
       if (this.playerSide === 0 && this.player.alive && this.inWarn(w, this.player.x, this.player.z)) {
@@ -717,6 +870,103 @@ export class SiegeSim {
 
   callout(text: string, color: string) {
     this.events.push({ kind: "callout", text, color, at: this.time });
+  }
+
+  // ------------------------------------------------------------------ người chơi: thế đánh & kỹ năng
+
+  /** Đổi thế (Xạ thủ → Cận chiến → Tanker): máu tối đa đổi theo, giữ nguyên tỉ lệ máu hiện có */
+  setStance(st: Stance) {
+    const P = this.player;
+    if (st === P.stance || this.time - P.stanceAt < SIEGE.stanceCd) return false;
+    const frac = P.hp / P.maxHp;
+    P.stance = st;
+    P.stanceAt = this.time;
+    P.maxHp = SIEGE.player.hp * SIEGE.stances[st].hpMul;
+    P.hp = Math.max(1, frac * P.maxHp);
+    this.callout(`Thế ${SIEGE.stances[st].label}`, st === "tank" ? "#ffb000" : st === "melee" ? "#ff6a2a" : "#7ff3ff");
+    return true;
+  }
+
+  /** Chém kiếm (Cận chiến, quạt trước mặt) / dậm đất (Tanker, quanh thân) */
+  playerSlash(yaw: number) {
+    const P = this.player;
+    const S = SIEGE.slash;
+    if (!P.alive || this.time - P.slashAt < S.cd || P.stance === "gunner") return false;
+    P.slashAt = this.time;
+    const tank = P.stance === "tank";
+    const range = tank ? S.tankRange : S.range;
+    const dmg = tank ? S.tankDmg : S.dmg;
+    let hits = 0;
+    for (const u of this.units) {
+      if (!u.alive || u.side === this.playerSide) continue;
+      const dx = u.x - P.x;
+      const dz = u.z - P.z;
+      const d = Math.hypot(dx, dz);
+      if (d > range + (u.role === "tank" ? 2 : 0)) continue;
+      if (!tank) {
+        const a = Math.atan2(dx, dz) - yaw;
+        if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) > S.arc / 2) continue;
+      }
+      const crit = this.rng() < 0.2;
+      this.damageUnit(u, dmg * (crit ? 1.8 : 1), "player", crit);
+      // Đánh bật lùi
+      const k = (tank ? 3 : 1.6) / (d || 1);
+      u.x += dx * k;
+      u.z += dz * k;
+      hits++;
+    }
+    if (this.playerSide === 0)
+      for (const o of this.objectives) if (o.alive && Math.hypot(o.x - P.x, o.z - P.z) < range + (o.kind === "boss" ? 4 : o.kind === "gate" ? 6 : 3)) this.damageObjective(o, dmg * 1.5);
+    this.events.push({ kind: "melee", x: P.x + Math.sin(yaw) * 2, z: P.z + Math.cos(yaw) * 2, side: this.playerSide, at: this.time });
+    return hits;
+  }
+
+  /** Dùng kỹ năng nhắm vào (ax, az): trả về true nếu dùng được (hết hồi chiêu) */
+  useSkill(sk: Skill, ax: number, az: number) {
+    const P = this.player;
+    const K = SIEGE.skills[sk];
+    if (!P.alive || P.cds[sk] > this.time) return false;
+    P.cds[sk] = this.time + K.cd;
+    if (sk === "grenade") this.warn("grenade", ax, az, ax, az, K.r!, K.fuse!, K.dmg, true);
+    else if (sk === "orbital") this.warn("orbital", ax, az, ax, az, K.r!, K.warn!, K.dmg, true);
+    else if (sk === "missiles") {
+      const targets = this.units
+        .filter((u) => u.alive && u.side !== this.playerSide && Math.hypot(u.x - P.x, u.z - P.z) < K.range!)
+        .sort((a, b) => (b.role === "tank" ? 1 : 0) - (a.role === "tank" ? 1 : 0) || Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))
+        .slice(0, K.n!);
+      targets.forEach((u, i) => this.missiles.push({ x0: P.x, z0: P.z, id: u.id, at: this.time + i * 0.06, hitAt: this.time + K.delay! + i * 0.06 }));
+    } else if (sk === "shockwave") {
+      const tank = P.stance === "tank";
+      const r = K.r! * (tank ? 1.3 : 1);
+      for (const u of this.units) {
+        if (!u.alive || u.side === this.playerSide) continue;
+        const dx = u.x - P.x;
+        const dz = u.z - P.z;
+        const d = Math.hypot(dx, dz);
+        if (d > r) continue;
+        this.damageUnit(u, K.dmg * (tank ? 1.7 : 1), "player", true);
+        const k = K.push! / (d || 1);
+        u.x += dx * k * 0.3;
+        u.z += dz * k * 0.3;
+        // Tanker khiêu khích: quái quanh đó dồn đánh người chơi (đồng đội rảnh tay)
+        if (tank) u.target = -2;
+      }
+      this.events.push({ kind: "boom", x: P.x, z: P.z, big: true, at: this.time });
+    }
+    return true;
+  }
+
+  private updateMissiles() {
+    for (const m of this.missiles) {
+      if (this.time < m.hitAt) continue;
+      const u = this.units[m.id];
+      if (u.alive) {
+        this.damageUnit(u, SIEGE.skills.missiles.dmg * (u.role === "tank" ? 1.5 : 1), "player", true);
+        this.events.push({ kind: "boom", x: u.x, z: u.z, big: false, at: this.time });
+      }
+      m.hitAt = Infinity;
+    }
+    this.missiles = this.missiles.filter((m) => m.hitAt !== Infinity || this.time - m.at < 0.1);
   }
 
   /** Mục tiêu hiện tại để HUD / mũi tên chỉ hướng */

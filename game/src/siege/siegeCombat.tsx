@@ -10,6 +10,7 @@ import { useHunter } from "../game/hunter";
 import { playSfx } from "../game/assets";
 import { SIEGE_ORIGIN } from "../game/config";
 import { SIEGE, type SiegeSim, type Skill, type Stance } from "./siegeSim";
+import { SiegeVfx } from "./siegeVfx";
 
 const O = SIEGE_ORIGIN;
 
@@ -188,10 +189,11 @@ function Missiles({ sim }: { sim: SiegeSim }) {
       const u = sim.units[ms.id];
       const k = Math.min(1, (sim.time - ms.at) / Math.max(0.05, ms.hitAt - ms.at));
       // Mỗi quả kéo 5 đốm sáng làm vệt khói
-      for (let j = 0; j < 5 && n < 200; j++) {
+      // Đầu đạn là model tên lửa (siegeVfx.tsx); ở đây chỉ vẽ vệt khói phía sau
+      for (let j = 1; j < 6 && n < 200; j++) {
         const kk = Math.max(0, k - j * 0.04);
         v.set(ms.x0 + (u.x - ms.x0) * kk, 2.2 + Math.sin(kk * Math.PI) * 9, ms.z0 + (u.z - ms.z0) * kk);
-        m.compose(v, q, s.setScalar(j === 0 ? 0.35 : 0.25 - j * 0.04));
+        m.compose(v, q, s.setScalar(0.3 - j * 0.04));
         o.setMatrixAt(n++, m);
       }
     }
@@ -330,6 +332,7 @@ export function SiegeCombat({ sim }: { sim: SiegeSim }) {
       <HitFx sim={sim} />
       <Missiles sim={sim} />
       <Drops sim={sim} />
+      <SiegeVfx sim={sim} />
     </>
   );
 }

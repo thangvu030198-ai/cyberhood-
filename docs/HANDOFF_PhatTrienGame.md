@@ -625,6 +625,28 @@ GĐ5 – LÕI THÀNH & BOSS
 | Thời lượng | Bản chơi đơn rút gọn 12 phút (trận 25 phút giữ cho bản mạng có người thật) |
 | Mã nguồn | `game/src/siege/` (siegeSim.ts có test, SiegeWorld, crowd, siegeFx, SiegeHud, SiegeGatePortal) |
 
+#### 4I.9 Giao tranh nâng cấp (v46–v47)
+| Hạng mục | Đã làm |
+|---|---|
+| Model quân | Làm lại 18 model quân giữ nguyên UV/texture (8–18k tam giác/model) – hết lỗi vỡ texture |
+| Tanker khổng lồ | Mỗi phe 4 tank (1/25 quân): **robot chiến đấu đỏ cao 7,5 m** (phe Hunter) và **Golem đá / Quái hai đầu cao 8 m** (phe IXO); máu 1.300, đòn chém lan 3,5 m, phá công trình ×5 |
+| Cận chiến + bắn xa | Mọi quân đều đánh tay đôi khi < 2,4 m (đẩy lùi), bắn khi xa; nhóm quân thủ xuất kích ra đồng tuyết đánh giáp lá cà |
+| Thế đánh của nhân vật (phím **X**) | **Xạ thủ** (máu ×1) · **Cận chiến** (máu ×2,2, nhận 80% sát thương, chuột trái chém quạt 75) · **Tanker** (máu ×4,5, nhận 55% sát thương, khoác giáp Mech, dậm quanh thân 95, sóng xung kích khiêu khích quái) |
+| Kỹ năng | **Q** Lựu đạn plasma (150, hồi 6 s) · **E** Chùm 8 tên lửa đuổi (110/quả, ưu tiên tank, hồi 12 s) · **R** Pháo kích quỹ đạo (520, vùng 12 m, hồi 30 s) · **F** Sóng xung kích (95 + đẩy lùi, hồi 9 s) |
+| Cảm giác đánh | Tia lửa, **số sát thương bay lên** (vàng khi chí mạng), vệt chém, chớp trắng khi trúng, chuỗi hạ "ĐA SÁT ×n", bảng tin hạ địch |
+| Đồ rơi | Quân địch bị bạn hạ (hoặc chết trong 40 m quanh bạn) rơi CRED (85%), Stim (8%), Chìa rương (3%), trang bị Hiếm (2,5%, 25% là đồ Băng Chiến); tướng có tên ×2,5; phá công trình nổ mưa đồ; đồ tự hút về trong 14 m; tổng kết đồ nhặt ở bảng kết quả |
+
+#### 4I.10 Hiệu ứng chiêu thức bằng model 3D (Meshy)
+9 model hiệu ứng tạo bằng Meshy, gộp một file `mx_vfx_all.glb` (~5 MB), vẽ instanced, texture dùng làm ánh sáng tự phát + vỏ sáng cộng màu:
+
+| Chủ thể | Chiêu → model |
+|---|---|
+| Nhân vật chính (màn đánh quái) | Bắn nạp nửa → **tên lửa**; nạp đầy → **chưởng rồng băng xanh** tự đuổi; kiếm nạp → **sóng kiếm trăng khuyết**; dậm đất → **vòng chấn động** |
+| Nhân vật chính (Công thành) | Q → **lựu đạn plasma** bay vòng cung; E → **tên lửa** (8 quả, vệt khói); R → **thiên thạch** rơi chéo xuống vùng nổ; F → **vòng sóng xung kích** |
+| Trùm (mọi màn) | Cầu lệ / xoắn ốc / đạn lớn → **cầu đầu lâu lửa tím**; mảnh vỡ / loạt đạn nhỏ → **mảnh tinh thể máu**; tên lửa trùm → **tên lửa**; vùng nổ tròn → **cụm gai băng trồi lên**; đập / tiếp đất → **vòng chấn động** |
+| Boss Mech & pháo thành (Công thành) | Dậm đất → **gai băng + vòng chấn động**; pháo tường thành → **thiên thạch băng** rơi xuống vùng đỏ |
+| Quái thường | Giữ hiệu ứng quả cầu sáng cũ (nhẹ, dễ đọc) |
+
 ### 4J. CƯỜNG HOÁ +1→+10 & PHÂN RÃ ĐỒ RÁC
 
 **Cường hoá (Lò rèn – NPC "Bác Thép" ở sảnh):** mỗi món trang bị đập từ +0 lên tối đa **+10**.

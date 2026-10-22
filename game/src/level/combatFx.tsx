@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import type { FxEvent, Hazard, HazardKind, PlatformerSim, Shot } from "./platformer";
 import { LEVEL_TUNING as T } from "./levelTuning";
+import { shotVfx } from "./skillFx";
 
 const DEPTH = 4;
 
@@ -328,7 +329,8 @@ function Hazards({ sim }: { sim: PlatformerSim }) {
           place(core, h.x0, h.y0, z + 0.01, h.r * u, h.r * u, 0, warnCol, 0.3);
           place(ring, h.x0, h.y0, z + 0.02, h.r, h.r, 0, [3, 0.6, 0.5], 0.6 + blink * 0.4);
         } else {
-          const k = live ? 1 : fadeOut;
+          // Vùng của trùm có gai băng (model) trồi lên: đĩa sáng mờ bớt để thấy gai
+          const k = (live ? 1 : fadeOut) * (h.boss ? 0.18 : 1);
           const s = h.r * (1 + (live ? 0.08 * Math.sin(t * 30) : 0.2 * (1 - fadeOut)));
           place(base, h.x0, h.y0, z, s, s, 0, kc, 0.75 * k);
           place(core, h.x0, h.y0, z + 0.01, s * 0.6, s * 0.6, 0, [3.2, 3.2, 3], 0.6 * k);
@@ -427,7 +429,7 @@ function SpecialShots({ sim }: { sim: PlatformerSim }) {
     let n = 0;
     for (const sh of sim.shots) {
       const spec = sh.kind && SPECIAL[sh.kind];
-      if (!spec || n >= SPECIAL_POOL) continue;
+      if (!spec || n >= SPECIAL_POOL || shotVfx(sh)) continue;
       const ang = Math.atan2(sh.vy, sh.vx || 0.0001);
       q.setFromAxisAngle(zAxis, sh.kind === "grenade" || sh.kind === "bomb" ? t * 8 : ang);
       const r = sh.r * 2 * spec.scale;

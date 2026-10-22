@@ -127,7 +127,7 @@ export type Unit = {
 
 export type Objective = { kind: "gen" | "gate" | "cannon" | "boss"; i: number; x: number; z: number; hp: number; maxHp: number; alive: boolean };
 
-export type Warn = { kind: "cannon" | "stomp" | "laser" | "nova" | "grenade" | "orbital"; x0: number; z0: number; x1: number; z1: number; r: number; warnAt: number; liveAt: number; dmg: number; done: boolean; byPlayer?: boolean };
+export type Warn = { kind: "cannon" | "stomp" | "laser" | "nova" | "grenade" | "orbital"; x0: number; z0: number; x1: number; z1: number; r: number; warnAt: number; liveAt: number; dmg: number; done: boolean; byPlayer?: boolean; fromX?: number; fromZ?: number };
 
 /** Đồ rơi trên tuyết: CRED, Stim, Chìa rương, trang bị (độ hiếm quyết định khi nhặt) */
 export type Drop = { id: number; kind: "cred" | "stim" | "key" | "gear"; amount: number; x: number; z: number; vx: number; vz: number; y: number; vy: number; at: number; taken: boolean; ice?: boolean };
@@ -927,7 +927,12 @@ export class SiegeSim {
     const K = SIEGE.skills[sk];
     if (!P.alive || P.cds[sk] > this.time) return false;
     P.cds[sk] = this.time + K.cd;
-    if (sk === "grenade") this.warn("grenade", ax, az, ax, az, K.r!, K.fuse!, K.dmg, true);
+    if (sk === "grenade") {
+      this.warn("grenade", ax, az, ax, az, K.r!, K.fuse!, K.dmg, true);
+      const w = this.warns[this.warns.length - 1];
+      w.fromX = P.x;
+      w.fromZ = P.z;
+    }
     else if (sk === "orbital") this.warn("orbital", ax, az, ax, az, K.r!, K.warn!, K.dmg, true);
     else if (sk === "missiles") {
       const targets = this.units

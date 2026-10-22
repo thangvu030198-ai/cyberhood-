@@ -1,3 +1,4 @@
+import { vfxDebug } from "./fx/skillVfx";
 import * as THREE from "three";
 import { Component, Suspense, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -110,7 +111,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege },
+      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug },
     });
   }
   return null;

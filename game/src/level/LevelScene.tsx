@@ -38,6 +38,7 @@ import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } 
 import { GearDrops, HeroArms, WeaponShots, WornArmor } from "./gearView";
 import { FIGHT_CLIPS, fightAnim } from "./fightClips";
 import { WornGear } from "./wornGear";
+import { SkillFx, shotVfx } from "./skillFx";
 import { CombatFx } from "./combatFx";
 import { SideSkin, TopSkin, asphaltTexture, graveyardTexture, skinSkips } from "./terrainSkin";
 import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
@@ -153,6 +154,7 @@ export function LevelCanvas() {
         {sim.mode === "climb" && <GhostFog sim={sim} />}
         <Fx sim={sim} />
         <CombatFx sim={sim} />
+        <SkillFx sim={sim} />
         {!top && !matte && (
           <Suspense fallback={null}>
             <Backdrop
@@ -1079,6 +1081,8 @@ function Shots({ sim }: { sim: PlatformerSim }) {
     for (const s of sim.shots) {
       if (i >= SHOT_POOL) break;
       if (s.kind && s.kind !== "bullet" && s.kind !== "pellet") continue;
+      // Chiêu có model Meshy riêng (skillFx.tsx)
+      if (shotVfx(s)) continue;
       // Đạn kéo dài theo hướng bay
       const stretch = s.enemy ? 1 : 1.8;
       mat

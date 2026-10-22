@@ -51,6 +51,8 @@ export type Hazard = {
   dmg: number;
   /** Đã trúng người chơi (mỗi vùng chỉ trúng một lần) */
   hit: boolean;
+  /** Vùng do trùm tạo ra (vẽ thêm gai băng / vòng chấn động bằng model) */
+  boss?: boolean;
   /** Vùng do người chơi gây ra (lựu đạn tự nổ của quái thì làm hại cả quái khác) */
   hurtsEnemies?: boolean;
 };
@@ -152,6 +154,8 @@ export type Shot = {
   maxLife?: number;
   /** Tên lửa trùm: bắn hạ được, đuổi theo người chơi */
   missile?: boolean;
+  /** Đạn do trùm bắn ra (vẽ bằng model hiệu ứng riêng thay vì quả cầu sáng) */
+  boss?: boolean;
   /** Nhát cận chiến: thứ tự trong chuỗi combo (0, 1, 2 = nhát kết liễu) */
   melee?: 0 | 1 | 2;
   /** Lực đánh bật địch khi trúng */
@@ -948,8 +952,10 @@ export class PlatformerSim {
           shoot(E.drone.shotSpeed, E.drone.shotDamage);
         }
       } else if (e.kind === "boss" && this.def.bossStyle && this.def.bossStyle !== "brute") {
-        this.bossTop(e, dt, dx, dy, d, shoot);
-        if (e.alive) this.bossSpecials(e);
+        this.asBoss(() => {
+          this.bossTop(e, dt, dx, dy, d, shoot);
+          if (e.alive) this.bossSpecials(e);
+        });
       } else if (e.kind === "boss") {
         const B = E.boss;
         const rage = e.hp < e.maxHp / 2 ? B.rageSpeedup : 1;
@@ -959,13 +965,24 @@ export class PlatformerSim {
         if (e.timer <= 0) {
           e.firedAt = this.time;
           // Xen kẽ: loạt 3 viên hình quạt, rồi vòng 10 viên toả đều
-          if (Math.floor(this.time / 3) % 2 === 0) for (const sp of [-0.25, 0, 0.25]) shoot(B.shotSpeed, B.shotDamage, sp, 0.3, 1);
-          else for (let k = 0; k < 10; k++) shoot(B.waveSpeed * 0.8, B.waveDamage, (k / 10) * Math.PI * 2, 0.3, 2);
+          this.asBoss(() => {
+            if (Math.floor(this.time / 3) % 2 === 0) for (const sp of [-0.25, 0, 0.25]) shoot(B.shotSpeed, B.shotDamage, sp, 0.3, 1);
+            else for (let k = 0; k < 10; k++) shoot(B.waveSpeed * 0.8, B.waveDamage, (k / 10) * Math.PI * 2, 0.3, 2);
+          });
           e.timer = 1.6 / rage;
         }
       }
       if (overlap(p, e)) this.hurt(e.kind === "boss" ? E.boss.contactDamage : E.contactDamage, p.x < e.x ? -1 : 1);
     }
+  }
+
+  /** Chạy đoạn ra đòn của trùm: đánh dấu mọi đạn / vùng nguy hiểm sinh ra trong đó là của trùm */
+  private asBoss(f: () => void) {
+    const s0 = this.shots.length;
+    const h0 = this.hazards.length;
+    f();
+    for (let i = s0; i < this.shots.length; i++) if (this.shots[i].enemy) this.shots[i].boss = true;
+    for (let i = h0; i < this.hazards.length; i++) this.hazards[i].boss = true;
   }
 
   private touchesSpike(x: number, y: number, w: number) {
@@ -1335,8 +1352,10 @@ export class PlatformerSim {
           this.shots.push({ x: e.x, y: e.y + 0.4, vx: (dx / len) * E.drone.shotSpeed, vy: (ty / len) * E.drone.shotSpeed, r: 0.2, dmg: E.drone.shotDamage, pierce: false, life: 4, enemy: true, level: 0 });
         }
       } else if (e.kind === "boss") {
-        this.bossByStyle(e, dt);
-        if (e.alive) this.bossSpecials(e);
+        this.asBoss(() => {
+          this.bossByStyle(e, dt);
+          if (e.alive) this.bossSpecials(e);
+        });
       }
       // Chạm thân địch. Trùm đang choáng thì vô hại: nó đổ sập lên chỗ mình đứng (vd. lao vào tường) thì đẩy mình ra
       if (overlap(p, e)) {

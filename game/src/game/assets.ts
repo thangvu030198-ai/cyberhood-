@@ -493,6 +493,7 @@ const EXTRA_SIZES = {
   mx_veh_tank: 547_944,
   mx_velocity_car: 609_248,
   mx_vending_kiosk: 495_724,
+  mx_vfx_all: 4_946_468,
   mx_w_ice_blade: 335_208,
   mx_w_katana: 234_776,
   mx_w_pistol: 462_848,

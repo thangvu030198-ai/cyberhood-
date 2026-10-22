@@ -202,7 +202,7 @@ function DamageFlash() {
 function Flatline() {
   const flatlinedAt = useGame((s) => s.flatlinedAt);
   // Công thành có màn hồi sinh theo đợt riêng (SiegeHud)
-  const siege = useGame((s) => s.location === "siege");
+  const siege = useGame((s) => s.location === "siege" || s.location === "raid");
   if (flatlinedAt === null || siege) return null;
   return (
     <div className="flatline" role="alert">
@@ -408,11 +408,14 @@ export function Hud() {
         <ObjectiveCompass />
         <TrafficDebugPanel />
         <div className="hud__right">
-          <div className="loc">
-            <span className="loc__label">DISTRICT</span>
-            <span className="loc__value">{location === "vault" ? "Server Vault" : districtAt(x, z)}</span>
-            <span className="loc__grid">{location === "vault" ? "B-0" : gridRef(x, z)}</span>
-          </div>
+          {/* Công thành / raid có bản đồ riêng: ẩn khung khu phố của Hub */}
+          {location !== "siege" && location !== "raid" && (
+            <div className="loc">
+              <span className="loc__label">DISTRICT</span>
+              <span className="loc__value">{location === "vault" ? "Server Vault" : districtAt(x, z)}</span>
+              <span className="loc__grid">{location === "vault" ? "B-0" : gridRef(x, z)}</span>
+            </div>
+          )}
           {location === "city" && <Minimap size={touch ? 104 : 148} />}
         </div>
       </header>

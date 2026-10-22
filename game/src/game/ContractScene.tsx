@@ -23,13 +23,13 @@ function boardTexture() {
   ctx.fillStyle = "#ffb000";
   ctx.font = "700 64px 'Chakra Petch', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("HỢP ĐỒNG", 256, 120);
+  ctx.fillText("CONTRACT · 契約", 256, 120);
   ctx.fillStyle = "#05d9e8";
   ctx.font = "700 34px 'JetBrains Mono', monospace";
   ctx.fillText("NEXUS · NEON CITY", 256, 185);
   ctx.fillStyle = "#e9e6ff";
   ctx.font = "28px 'JetBrains Mono', monospace";
-  ctx.fillText("Nhấn E để nhận", 256, 250);
+  ctx.fillText("PRESS E · 受注", 256, 250);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;

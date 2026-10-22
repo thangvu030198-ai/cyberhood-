@@ -146,6 +146,11 @@ function finish() {
   trackMission("clear");
   trackMission("boss");
   grantLoot(sim.collected, sim.chestKeys);
+  // Ấn Triệu Hồi (vé Cổng Sinh Vật Cổ Đại): Hẻm Pha Lê (Warzone) chắc chắn rơi, các map khác 30%
+  if (st.levelId === "warzone" || Math.random() < 0.3) {
+    g.addItem("summonSeal", 1);
+    g.showToast("+1 Ấn Triệu Hồi");
+  }
   if (!st.cleared.includes(st.levelId)) {
     const cleared = [...st.cleared, st.levelId];
     saveCleared(cleared);

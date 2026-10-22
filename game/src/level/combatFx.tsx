@@ -9,6 +9,7 @@ import { useFrame } from "@react-three/fiber";
 import type { FxEvent, Hazard, HazardKind, PlatformerSim, Shot } from "./platformer";
 import { LEVEL_TUNING as T } from "./levelTuning";
 import { shotVfx } from "./skillFx";
+import { tr } from "../i18n/i18n";
 
 const DEPTH = 4;
 
@@ -167,11 +168,14 @@ const TEXT_POOL = 28;
 const textCache = new Map<string, { tex: THREE.CanvasTexture; aspect: number }>();
 
 function textTexture(text: string, color: string) {
+  // Chữ bay lên trong màn theo ngôn ngữ giao diện (không ép tiếng Anh như biển hiệu)
+  text = tr(text);
   const key = `${text}|${color}`;
   const hit = textCache.get(key);
   if (hit) return hit;
   const c = document.createElement("canvas");
-  const g = c.getContext("2d")!;
+  const g = c.getContext("2d")! as CanvasRenderingContext2D & { keepText?: boolean };
+  g.keepText = true;
   const font = "900 54px 'Bai Jamjuree', 'Segoe UI', sans-serif";
   g.font = font;
   const w = Math.ceil(g.measureText(text).width) + 40;

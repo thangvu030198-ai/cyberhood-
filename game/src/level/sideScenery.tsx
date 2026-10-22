@@ -8,7 +8,7 @@ import { canvasPair } from "./cityBlocks";
 import type { PlatformerSim } from "./platformer";
 
 const NEON = ["#ff2fd0", "#00f0ff", "#ffe14a", "#7dff5a", "#ff6a2a", "#b46bff"];
-const SHOP = ["PHỞ", "NET", "CÀ PHÊ", "SỬA ĐT", "KARAOKE", "THUỐC", "CẦM ĐỒ", "BAR", "ラーメン", "24H", "CHIP"];
+const SHOP = ["PHO", "NET", "COFFEE", "REPAIR", "KARAOKE", "PHARMACY", "PAWN", "BAR", "ラーメン", "24H", "CHIP", "薬局", "電脳"];
 
 function rng(seed: number) {
   let s = seed >>> 0 || 1;

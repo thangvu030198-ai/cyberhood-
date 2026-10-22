@@ -83,7 +83,7 @@ function Label({ text }: { text: string }) {
     g.shadowBlur = 14;
     g.fillStyle = "#9ff3ff";
     g.font = "700 30px monospace";
-    g.fillText("SA BÀN MÙA S1", 256, 46);
+    g.fillText("SEASON S1 MAP · 作戦盤", 256, 46);
     g.font = "700 36px monospace";
     g.fillStyle = "#ffffff";
     g.fillText(text, 256, 100);

@@ -40,7 +40,7 @@ function Thing({ item, position, rotY = 0, scale = 1 }: { item: Small; position:
   );
 }
 
-const SIGNS = ["PHỞ-NET", "MẠCH ĐIỆN TỬ", "CÀ PHÊ 24H", "CẦM ĐỒ", "SỬA CHIP", "BÚN BÒ", "SHOP", "CYBERHOOD", "NEON", "24H", "BAR", "ラーメン", "HOTEL", "クリニック", "PHỞ 24/7", "KARAOKE", "電脳", "ARCADE", "CLINIC", "合成肉", "LEGION", "SALE -70%", "カフェ", "CHIP SHOP", "VR ROOM"];
+const SIGNS = ["PHO-NET", "CIRCUITS", "COFFEE 24H", "PAWN SHOP", "CHIP REPAIR", "NOODLES", "SHOP", "CYBERHOOD", "NEON", "24H", "BAR", "ラーメン", "HOTEL", "クリニック", "PHO 24/7", "KARAOKE", "電脳", "ARCADE", "CLINIC", "合成肉", "LEGION", "SALE -70%", "カフェ", "CHIP SHOP", "VR ROOM", "居酒屋", "質屋", "義体"];
 const NEON = ["#ff2fd0", "#00f0ff", "#ffe14a", "#7dff5a", "#ff6a2a", "#b46bff"];
 
 function rng(seed: number) {

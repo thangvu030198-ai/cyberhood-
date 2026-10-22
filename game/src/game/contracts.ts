@@ -180,6 +180,11 @@ function rewardMission(markerId: number) {
   gainMeter(h.transform, "mission");
   showLoot(reward.drop);
   toast(`Hoàn thành nhiệm vụ +${reward.score}${reward.shard ? " · nhặt được Mảnh Chìa" : ""}`);
+  // Lệnh săn tiền thưởng: 20% rơi Ấn Triệu Hồi (vé Cổng Sinh Vật Cổ Đại)
+  if (Math.random() < 0.2) {
+    useGame.getState().addItem("summonSeal", 1);
+    toast("+1 Ấn Triệu Hồi");
+  }
   useHunter.setState({ contract: c, transform: { ...h.transform } });
 }
 

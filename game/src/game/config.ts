@@ -78,6 +78,9 @@ export const MISSION_GATE = { x: 0, z: -26, reach: 4.5 };
 export const SIEGE_GATE = { x: 0, z: 34, reach: 5 };
 /** Bản đồ Thành Băng IXO đặt xa thành phố (cùng một thế giới vật lý, sương mù che hết thành phố) */
 export const SIEGE_ORIGIN = { x: 0, z: 1600 };
+/** Cổng Sinh Vật Cổ Đại ở khu an toàn (đại lộ phía đông, quay về phía tây) và gốc toạ độ đấu trường raid */
+export const RAID_GATE = { x: 34, z: 0, reach: 5 };
+export const RAID_ORIGIN = { x: -1600, z: 0 };
 /** Vùng cách ly phía tây ngoài thành phố: tàn tích sau đợt bùng phát, zombie cyber lang thang */
 export const QUARANTINE = { x: -CITY_HALF - 58, z: 48, r: 48 };
 export const inQuarantine = (x: number, z: number, pad = 0) => Math.hypot(x - QUARANTINE.x, z - QUARANTINE.z) < QUARANTINE.r + pad;

@@ -16,7 +16,7 @@ export function GameRules() {
     const s = useGame.getState();
     const t = performance.now() / 1000;
     // Công thành tự quản lý máu / hồi sinh theo đợt (src/siege)
-    if (s.location === "siege") return;
+    if (s.location === "siege" || s.location === "raid") return;
 
     if (s.flatlinedAt !== null) {
       if (t - s.flatlinedAt > FLATLINE_TIME) {

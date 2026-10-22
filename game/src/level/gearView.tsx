@@ -28,6 +28,7 @@ const HOLD: Record<Exclude<WeaponId, "buster">, { len: number; tip: [number, num
   cosmic: { len: 1.35, tip: [0, 1, 0], grip: 0.9 },
   scythe: { len: 1.5, tip: [0, 1, 0], grip: 0.85 },
   iceblade: { len: 1.4, tip: [0, 0, 1], grip: 0.86 },
+  thunderspear: { len: 1.9, tip: [-1, 0, 0], grip: 0.62 },
 };
 
 type Hold = { len: number; tip: [number, number, number]; grip: number; side?: boolean };
@@ -253,6 +254,7 @@ const BLADE_RGB: Partial<Record<WeaponId, [number, number, number]>> = {
   scythe: [1.6, 0.9, 3.2],
   cosmic: [0.6, 3, 3.2],
   iceblade: [1.2, 2.8, 3.4],
+  thunderspear: [0.6, 2.8, 3.4],
 };
 
 export function WeaponShots({ sim, z }: { sim: PlatformerSim; z: number }) {
@@ -332,6 +334,7 @@ const ARMOR_FIT: Record<string, { height: number; drop: number; depth: number }>
   darkset: { height: 1.05, drop: 0.32, depth: 0.02 },
   void: { height: 1.15, drop: 0.36, depth: -0.02 },
   icewar: { height: 1.0, drop: 0.3, depth: 0 },
+  levscale: { height: 1.05, drop: 0.32, depth: 0 },
 };
 
 function WornArmorInner({ rig, armor }: { rig: THREE.Object3D; armor: Exclude<ArmorId, "none"> }) {

@@ -1,6 +1,7 @@
 // Bảng LED ở sảnh (Vùng An toàn): logo CYBERHOOD dạng LED chấm có dải chữ chạy, và bảng LED nhiệm vụ
 // hiện tiến độ ngày / tuần / tháng theo thời gian thực. Texture vẽ bằng canvas, không cần file ảnh.
 
+import { sign } from "../i18n/i18n";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
@@ -194,19 +195,19 @@ function MissionBoard() {
     glowText(g, `ĐIỂM HUNTER TUẦN  ${state.hunterPoints.points}`, 36, 128, "#ffd75a", 10);
     let y = 190;
     const sections: ["daily" | "weekly" | "monthly", string][] = [
-      ["daily", "HÔM NAY"],
-      ["weekly", "TUẦN NÀY"],
-      ["monthly", "THÁNG NÀY"],
+      ["daily", "TODAY · 本日"],
+      ["weekly", "THIS WEEK · 今週"],
+      ["monthly", "THIS MONTH · 今月"],
     ];
     for (const [p, label] of sections) {
       const ms = periodEnds(p, new Date()).getTime() - Date.now();
-      const left = ms > 48 * 3.6e6 ? `${Math.floor(ms / 8.64e7)} NGÀY` : `${Math.floor(ms / 3.6e6)}G ${Math.floor((ms % 3.6e6) / 6e4)}P`;
+      const left = ms > 48 * 3.6e6 ? `${Math.floor(ms / 8.64e7)} DAYS` : `${Math.floor(ms / 3.6e6)}H ${Math.floor((ms % 3.6e6) / 6e4)}M`;
       g.font = "700 34px 'Chakra Petch', Arial, sans-serif";
       glowText(g, label, 36, y, "#ff2a8a", 12);
       g.font = "500 24px 'JetBrains Mono', monospace";
       g.fillStyle = "#8f86ad";
       g.textAlign = "right";
-      g.fillText(`LÀM MỚI SAU ${left}`, w - 36, y);
+      g.fillText(`RESET IN ${left}`, w - 36, y);
       g.textAlign = "left";
       y += 48;
       for (const m of MISSIONS.filter((x) => x.period === p)) {
@@ -215,7 +216,7 @@ function MissionBoard() {
         const claimed = isClaimed(state, m);
         g.font = "600 26px 'Chakra Petch', Arial, sans-serif";
         g.fillStyle = claimed ? "#5d5875" : done ? "#7dffb0" : "#e9e6f5";
-        g.fillText(`${claimed ? "✓" : done ? "!" : "·"} ${m.title}`, 36, y);
+        g.fillText(`${claimed ? "✓" : done ? "!" : "·"} ${sign(m.title)}`, 36, y);
         g.textAlign = "right";
         g.fillText(`${prog}/${m.goal}`, w - 36, y);
         g.textAlign = "left";

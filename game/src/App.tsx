@@ -1,4 +1,5 @@
 import { vfxDebug } from "./fx/skillVfx";
+import { useLang } from "./i18n/i18n";
 import * as THREE from "three";
 import { Component, Suspense, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -20,6 +21,10 @@ import { SiegeWorld } from "./siege/SiegeWorld";
 import { SiegeHud, SiegeLobby } from "./siege/SiegeHud";
 import { SiegeGatePortal } from "./siege/SiegeGatePortal";
 import { useSiege } from "./siege/siegeSession";
+import { RaidWorld } from "./raid/RaidWorld";
+import { RaidHud, RaidLobby } from "./raid/RaidHud";
+import { RaidGatePortal } from "./raid/RaidGatePortal";
+import { useRaid } from "./raid/raidSession";
 import { Shop } from "./game/Shop";
 import { GameRules } from "./game/GameRules";
 import { Npcs } from "./game/Npcs";
@@ -111,7 +116,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug },
+      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid },
     });
   }
   return null;
@@ -124,7 +129,9 @@ export default function App() {
   const inDuel = useDuel((s) => s.sim !== null);
   const inKart = useKart((s) => s.sim !== null);
   // Công thành: dùng chung engine Hub, chỉ thay bản đồ (thành phố ẩn đi, bản đồ tuyết hiện ra)
-  const inSiege = useGame((s) => s.location === "siege");
+  // Raid Sinh Vật Cổ Đại cũng dùng chung engine Hub như Công thành
+  const inSiege = useGame((s) => s.location === "siege" || s.location === "raid");
+  const inRaid = useGame((s) => s.location === "raid");
   return (
     <Crash>
       <KeyboardControls map={KEYMAP}>
@@ -153,9 +160,11 @@ export default function App() {
                 <MeshyStatic />
                 <KitDressing />
                 <SiegeGatePortal />
+                <RaidGatePortal />
               </group>
               <Player />
-              {inSiege && <SiegeWorld />}
+              {inSiege && !inRaid && <SiegeWorld />}
+              {inRaid && <RaidWorld />}
             </Physics>
             <group visible={!inSiege}>
               <VaultDoor />
@@ -214,6 +223,8 @@ export default function App() {
             <Hud />
             <SiegeHud />
             <SiegeLobby />
+            <RaidHud />
+            <RaidLobby />
           </>
         )}
       </KeyboardControls>

@@ -35,11 +35,11 @@ function signTexture() {
   g.fillStyle = "#e8fbff";
   g.font = "900 108px sans-serif";
   g.textAlign = "center";
-  g.fillText("CÔNG THÀNH", 512, 128);
+  g.fillText("SIEGE · 攻城戦", 512, 128);
   g.shadowBlur = 0;
   g.fillStyle = "#ff7ae0";
   g.font = "700 46px sans-serif";
-  g.fillText("ĐẠI CHIẾN THÀNH BĂNG IXO · 100 vs 100", 512, 200);
+  g.fillText("IXO ICE CITADEL · 氷城IXO · 100 vs 100", 512, 200);
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;

@@ -85,11 +85,12 @@ export const NPCS: Record<NpcId, Npc> = {
 // ---------------------------------------------------------------------------
 // Vật phẩm
 
-export type ItemId = "stim" | "shard" | "ghostKey" | "chestKey" | "extraCoin";
+export type ItemId = "stim" | "shard" | "ghostKey" | "chestKey" | "extraCoin" | "summonSeal";
 
 export const ITEMS: Record<ItemId, { name: string; desc: string; usable: boolean; quest?: boolean }> = {
   stim: { name: "Stim Pack", desc: "Hồi 60 máu. Nhấn Q để dùng nhanh.", usable: true },
   extraCoin: { name: "Extra Coin", desc: "Đồng xu may mắn: sống sót qua Bom Nova của phe IXO trong Công thành (dùng một lần).", usable: false },
+  summonSeal: { name: "Ấn Triệu Hồi", desc: "Trưởng nhóm dùng 1 Ấn để mở Cổng Sinh Vật Cổ Đại. Rơi khi qua Cổng nhiệm vụ (Hẻm Pha Lê chắc chắn rơi) và khi hoàn thành hợp đồng săn tiền thưởng.", usable: false },
   chestKey: { name: "Chìa rương", desc: "Mở rương giấu trong các màn sau cổng nhiệm vụ. Rơi từ địch, chỉ kiếm được bằng chơi.", usable: false },
   shard: { name: "Data Shard", desc: "Mảnh dữ liệu mã hoá, phát tín hiệu lạ.", usable: false, quest: true },
   ghostKey: {

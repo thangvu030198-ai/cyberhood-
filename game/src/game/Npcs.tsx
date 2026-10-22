@@ -6,7 +6,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { extraModel, models, type ExtraModel } from "./assets";
 import { inPlace } from "./meshyAnim";
 import { fitCharacter } from "./Player";
-import { MISSION_GATE, PALETTE, SIEGE_GATE } from "./config";
+import { MISSION_GATE, PALETTE, RAID_GATE, SIEGE_GATE } from "./config";
 import { MISSION_BOARD } from "./LedBoards";
 import { SERVICES, SERVICE_REACH } from "./services";
 import { fx } from "./Effects";
@@ -280,7 +280,7 @@ function InteractionScanner() {
         best = target;
       }
     };
-    if (s.location === "siege") {
+    if (s.location === "siege" || s.location === "raid") {
       // Trong trận Công thành không có điểm tương tác của sảnh
     } else if (s.location === "city") {
       for (const npc of Object.values(NPCS)) {
@@ -290,6 +290,7 @@ function InteractionScanner() {
       consider({ kind: "board" }, BOARD_POS.x, BOARD_POS.z, DOOR_REACH);
       consider({ kind: "gate" }, MISSION_GATE.x, MISSION_GATE.z, MISSION_GATE.reach);
       consider({ kind: "siege" }, SIEGE_GATE.x, SIEGE_GATE.z, SIEGE_GATE.reach);
+      consider({ kind: "raid" }, RAID_GATE.x, RAID_GATE.z, RAID_GATE.reach);
       consider({ kind: "missions" }, MISSION_BOARD.x - 1, MISSION_BOARD.z, MISSION_BOARD.reach);
       for (const sv of SERVICES) consider({ kind: "service", id: sv.id }, sv.x, sv.z, SERVICE_REACH);
     } else {
@@ -313,7 +314,7 @@ function InteractionKeys() {
       const s = useGame.getState();
       if (s.profile === null) return;
       if (e.code === "KeyE" && !s.dialogue && !s.shopOpen && !s.inventoryOpen && !s.panelOpen && s.nearInteract) interact(s.nearInteract);
-      if (e.code === "KeyQ" && s.location !== "siege" && !s.useStim() && (s.inventory.stim ?? 0) > 0 && s.hp >= s.maxHp) s.showToast("Máu đang đầy");
+      if (e.code === "KeyQ" && s.location !== "siege" && s.location !== "raid" && !s.useStim() && (s.inventory.stim ?? 0) > 0 && s.hp >= s.maxHp) s.showToast("Máu đang đầy");
       if (e.code === "Tab" || e.code === "KeyI") {
         e.preventDefault();
         if (!s.dialogue && !s.shopOpen) {

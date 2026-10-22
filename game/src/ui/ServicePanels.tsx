@@ -1,6 +1,7 @@
 // Bảng dịch vụ của NPC ở sảnh: lò rèn (đập đồ +1…+10), vòng quay may mắn, kho vũ khí, biên niên sử.
 // Phòng thay đồ mở thẳng Túi đồ (6 ô trang bị).
 
+import { gearIcon } from "../level/gearIcon";
 import { useEffect, useRef, useState } from "react";
 import { GEAR, GEAR_IDS, FORGE, MAX_ENHANCE, type GearId } from "../level/gear";
 import { SHOP_GEAR, SPIN_COST, SPIN_PRIZES, useGear } from "../game/gearStore";
@@ -45,7 +46,7 @@ function Forge() {
         {ids.map((id) => (
           <li key={id}>
             <button className={pick === id ? "is-on" : ""} onClick={() => setPick(id)} style={{ borderColor: RARITY_HEX[GEAR[id].rarity] }}>
-              <img src={`icons/gear/${id}.webp`} alt="" />
+              <img src={gearIcon(id)} alt="" />
               <span>
                 {GEAR[id].name} <b>+{enh[id] ?? 0}</b>
               </span>
@@ -55,7 +56,7 @@ function Forge() {
       </ul>
       {pick && (
         <div className={`svc__forge ${hammer ? "is-hit" : ""}`} key={hammer}>
-          <img src={`icons/gear/${pick}.webp`} alt="" />
+          <img src={gearIcon(pick)} alt="" />
           <h3 style={{ color: RARITY_HEX[GEAR[pick].rarity] }}>
             {GEAR[pick].name} +{lvl}
           </h3>
@@ -152,7 +153,7 @@ function Armory() {
       <ul className="svc__shop">
         {SHOP_GEAR.map(({ id, price }) => (
           <li key={id} style={{ borderColor: RARITY_HEX[GEAR[id].rarity] }}>
-            <img src={`icons/gear/${id}.webp`} alt="" />
+            <img src={gearIcon(id)} alt="" />
             <div>
               <b>{GEAR[id].name}</b> <small style={{ color: RARITY_HEX[GEAR[id].rarity] }}>{RARITY_LABEL[GEAR[id].rarity]}</small>
               <p>{GEAR[id].blurb}</p>

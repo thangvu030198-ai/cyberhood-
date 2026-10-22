@@ -6,6 +6,7 @@ import { chooseDialogue, currentStep } from "../game/quests";
 import { useGame } from "../game/store";
 import type { HunterSkin } from "../game/skins";
 import { SkinPicker } from "./SkinPicker";
+import { LanguagePicker } from "./LanguagePicker";
 import { ITEMS, NPCS, questById, type ItemId } from "../game/story";
 
 // Các bảng giao diện của giai đoạn 3: tạo nhân vật, theo dõi nhiệm vụ, hội thoại, túi đồ, thông báo.
@@ -60,6 +61,7 @@ export function CharacterCreator() {
         if (valid) setProfile({ handle: clean, body, glow, hunter });
       }}
     >
+      <LanguagePicker compact />
       <p className="creator__eyebrow">CYBERHOOD · ĐĂNG KÝ CƯ DÂN</p>
       <h2 className="creator__title">Tạo Netrunner ID</h2>
       <label className="creator__field" htmlFor="handle">
@@ -106,7 +108,9 @@ export function CharacterCreator() {
       <button type="submit" className="creator__go" disabled={!valid}>
         Jack in
       </button>
-      <p className="creator__credits">{CREDITS.join(" · ")}</p>
+      <p className="creator__credits">{CREDITS.map((c, i) => (
+          <span key={i}>{(i ? " · " : "") + c}</span>
+        ))}</p>
     </form>
   );
 }
@@ -230,6 +234,10 @@ export function InventoryPanel() {
           ))}
         </ul>
       )}
+      <h3 className="bag__section">
+        <span aria-hidden>🌐 </span>Ngôn ngữ
+      </h3>
+      <LanguagePicker />
       <h3 className="bag__section">Cấy ghép</h3>
       <p className="bag__empty">{owned.length ? owned.join(" · ") : "Chưa có. Ghé chợ đen Neon Bazaar."}</p>
       <footer className="bag__foot">
@@ -244,7 +252,9 @@ export function InventoryPanel() {
           Đóng (Tab)
         </button>
       </footer>
-      <p className="bag__credits">{CREDITS.join(" · ")}</p>
+      <p className="bag__credits">{CREDITS.map((c, i) => (
+          <span key={i}>{(i ? " · " : "") + c}</span>
+        ))}</p>
     </div>
   );
 }
@@ -274,6 +284,7 @@ const INTERACT_LABEL = {
   gate: "Qua cổng nhiệm vụ: chọn map",
   missions: "Xem nhiệm vụ ngày · tuần · tháng",
   siege: "Qua Cổng Công Thành: Đại chiến Thành Băng",
+  raid: "Cổng Sinh Vật Cổ Đại: raid 4–10 người",
 } as const;
 
 export function interactLabel(i: NonNullable<ReturnType<typeof useGame.getState>["nearInteract"]>) {

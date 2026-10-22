@@ -1,6 +1,7 @@
 // Túi đồ dạng lưới ô (kiểu Stardew Valley, màu neon cyberpunk): hai ô trang bị (vũ khí, giáp) và lưới ô vật phẩm. Bấm một ô để xem, bấm "Trang bị" để mặc.
 // Trang bị dùng cho màn 2D sau cổng nhiệm vụ.
 
+import { gearIcon } from "../level/gearIcon";
 import { GearPreview } from "../level/wornGear";
 import { useEffect, useState } from "react";
 import { GEAR, GEAR_IDS, WEAPONS, ARMORS, SLOTS, loadoutStats, type GearId, type Slot, salvageValue } from "../level/gear";
@@ -29,7 +30,7 @@ type Cell =
   | { kind: "parts"; rarity: Rarity; count: number };
 
 function icon(c: Cell) {
-  if (c.kind === "gear") return <img src={`icons/gear/${c.id}.webp`} alt="" draggable={false} />;
+  if (c.kind === "gear") return <img src={gearIcon(c.id)} alt="" draggable={false} />;
   if (c.kind === "chestKey") return <span className="gbag__glyph" style={{ color: "#7dffb0" }}>⚿</span>;
   if (c.kind === "stim") return <span className="gbag__glyph" style={{ color: "#7dff9a" }}>✚</span>;
   return <span className="gbag__glyph" style={{ color: RARITY_HEX[c.rarity] }}>◆</span>;
@@ -121,7 +122,7 @@ export function GearBag() {
           const id = worn[sl.id];
           return (
             <button type="button" key={sl.id} className={`gbag__slot gbag__slot--eq gbag__slot--${sl.id}`} title={id ? `${GEAR[id].name}${plus(id)} · bấm để tháo` : sl.label} onClick={() => id && unequip(sl.id)}>
-              {id ? <img src={`icons/gear/${id}.webp`} alt="" /> : <span className="gbag__glyph">{sl.id === "weapon" ? "✦" : "▢"}</span>}
+              {id ? <img src={gearIcon(id)} alt="" /> : <span className="gbag__glyph">{sl.id === "weapon" ? "✦" : "▢"}</span>}
               <small>{id ? `${GEAR[id].name}${plus(id)}` : sl.id === "weapon" ? "X-Buster" : sl.label}</small>
             </button>
           );

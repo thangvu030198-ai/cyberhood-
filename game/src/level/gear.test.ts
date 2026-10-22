@@ -144,7 +144,7 @@ describe("trang bị: rơi đồ", () => {
     }
     expect(boss).toBeGreaterThan(100);
     for (let i = 0; i < 3000; i++) for (const d of rollEnemyDrops("zombie", ctx)) if (d.kind === "gear") seen.add(d.gear);
-    expect([...seen].sort()).toEqual(GEAR_IDS.filter((g) => !GEAR[g].siegeOnly).sort());
+    expect([...seen].sort()).toEqual(GEAR_IDS.filter((g) => !GEAR[g].siegeOnly && !GEAR[g].divine).sort());
   });
 });
 

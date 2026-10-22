@@ -13,7 +13,7 @@ import { topSkinned } from "./terrainSkin";
 
 const FLOOR = -2;
 const NEON = ["#ff2fd0", "#00f0ff", "#ffe14a", "#7dff5a", "#ff6a2a", "#b46bff"];
-const VN_SIGNS = ["MẠCH ĐIỆN TỬ", "PHỞ-NET", "CÀ PHÊ 24H", "KARAOKE", "CẦM ĐỒ", "BÚN BÒ", "SỬA CHIP", "NHÀ NGHỈ", "THUỐC", "NET 5K", "CYBERHOOD", "ラーメン", "電脳"];
+const VN_SIGNS = ["CIRCUITS", "PHO-NET", "COFFEE 24H", "KARAOKE", "PAWN SHOP", "NOODLES", "CHIP REPAIR", "CAPSULE INN", "PHARMACY", "NET CAFE", "CYBERHOOD", "ラーメン", "電脳", "居酒屋", "質屋"];
 
 function rng(seed: number) {
   let s = seed >>> 0 || 1;

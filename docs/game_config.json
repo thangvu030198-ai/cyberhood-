@@ -1087,5 +1087,127 @@
       "targetFpsMobile": 30
     },
     "afkKickMin": 3
+  },
+  "mythicRaid": {
+    "view": "3d_gta_reuse_hub_engine",
+    "party": [
+      4,
+      10
+    ],
+    "timeMin": [
+      15,
+      25
+    ],
+    "enrageTimer": true,
+    "entry": {
+      "item": "summon_seal",
+      "consumedBy": "leader",
+      "sources": [
+        "crystal_portal",
+        "elite_bounty",
+        "craft"
+      ]
+    },
+    "difficulties": [
+      "normal",
+      "nightmare",
+      "legendary"
+    ],
+    "weeklyChestPerCreature": 1,
+    "weeklyReset": "mon",
+    "creatures": {
+      "neon_city": "electric_leviathan",
+      "hollow_hotel": "thousand_face_wraith",
+      "warzone": "sand_titan",
+      "citadel": "ancient_frost_dragon"
+    },
+    "phases": [
+      {
+        "name": "awaken",
+        "hp": [
+          1.0,
+          0.7
+        ]
+      },
+      {
+        "name": "rampage",
+        "hp": [
+          0.7,
+          0.3
+        ]
+      },
+      {
+        "name": "despair",
+        "hp": [
+          0.3,
+          0.0
+        ]
+      }
+    ],
+    "breakableParts": true,
+    "staggerBySyncTransformMin": 3,
+    "staggerSec": 10,
+    "hpScaling": "base*(1+0.35*(n-4))",
+    "recruit": {
+      "board": true,
+      "roleSlots": true,
+      "quickMatch": true,
+      "personalLoot": true,
+      "partMaterialsShared": true,
+      "leaderBonus": 0.05,
+      "reputation": true,
+      "leavePenaltyMin": 30
+    },
+    "npcHunters": {
+      "powerPct": [
+        0.7,
+        0.85
+      ],
+      "fee": {
+        "normal": "coin",
+        "nightmare": "coin+token",
+        "legendary": "coin+token"
+      },
+      "feeSplit": {
+        "playerPool": 0.5,
+        "burn": 0.5
+      },
+      "heroCardsAllowed": true,
+      "replaceableByHuman": true,
+      "minHumans": {
+        "normal": 1,
+        "nightmare": 2,
+        "legendary": 4
+      },
+      "maxNpc": {
+        "normal": 9,
+        "nightmare": 6,
+        "legendary": 4
+      }
+    },
+    "rewards": {
+      "legendaryChance": {
+        "normal": 0.1,
+        "nightmare": 0.2,
+        "legendary": 0.35
+      },
+      "mythicChance": {
+        "normal": 0.01,
+        "nightmare": 0.02,
+        "legendary": 0.04
+      },
+      "craftSet": "divine_arms",
+      "serverFirstKill": "unique_nft_trophy",
+      "petDrop": "very_rare",
+      "hunterPoints": [
+        60,
+        150
+      ]
+    },
+    "tech": {
+      "tickHz": 20,
+      "multiHitbox": true,
+      "ai": "behavior_tree"
+    }
   }
 }

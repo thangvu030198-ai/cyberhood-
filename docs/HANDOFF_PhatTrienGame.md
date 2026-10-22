@@ -30,6 +30,7 @@
 15. **Logo chính thức:** hướng 'Mũi tên xuyên chữ H' (Orbitron Black), có bản 3D nổi khối – thư mục `CYBERHOOD_Brand/logo_v2/` và `logo_3d/`.
 16. **Săn tiền thưởng qua Cổng + Lính đánh thuê NPC + Vùng Săn map rộng** (mục 4F–4H): 5 loại Cổng (Đồng/Ngọc Bích/Pha Lê/Đỏ-PvP/Vàng-toàn server), truy vết 3 manh mối, tiêu diệt hoặc bắt sống ×1.5, Hạng Thợ săn F→S, NPC lấp chỗ trống trong đội 4 + 1 Drone/xe, NPC yếu hơn người thật (55–80%).
 17. **Cổng Công Thành 3D** (mục 4I): dùng lại engine Hub góc GTA, bản đồ tuyết Thành Băng IXO, 100 vs 100 (mỗi phe 70% NPC + 30% người thật), 5 giai đoạn (xung phong → phá 3 máy phát khiên → phá cổng → sân trong → giữ Lõi Thành 60s), phe thủ có Boss Mech + 1 Bom Nova; dùng cho Đại chiến hằng ngày và chiến tranh lãnh thổ cuối tuần.
+18. **Cổng Sinh vật Cổ đại** (mục 4J): raid đấu trường 3D, đội 4–10 thành viên, mỗi khu 1 sinh vật khổng lồ (Leviathan Điện, Bóng Ma Vạn Mặt, Titan Cát, Rồng Băng); 2 cách lập đội: Bảng Tuyển quân (người thật) hoặc thuê NPC Thợ Săn Quái (70–85% sức mạnh), trộn được; người thật tối thiểu 1/2/4 theo độ khó; rương 1 lần/tuần/sinh vật; nguyên liệu chế Thần binh (VIP NFT).
 
 ## C. HƯỚNG DẪN CHO AI LÀM GAME
 - Đọc **GDD (phần D)** để hiểu logic; dùng **config JSON (phần E)** làm nguồn số liệu duy nhất – không hardcode con số trong code.
@@ -82,12 +83,12 @@ OFF-CHAIN (server game)                 ON-CHAIN (Robinhood Chain)
 5. Thanh khoản CyberhoodToken: tạo pool trên **Uniswap** của Robinhood Chain; khoá LP.
 6. Pháp lý: launchpad bán token cho người dùng có thể bị coi là chào bán chứng khoán tuỳ quốc gia → **tham vấn luật sư**, chặn khu vực cấm, KYC.
 
-## D. TÀI LIỆU THIẾT KẾ GAME (GDD v1.7)
+## D. TÀI LIỆU THIẾT KẾ GAME (GDD v1.8)
 
 ## GAME DESIGN DOCUMENT – BẢN HOÀN CHỈNH
 **Thể loại:** Web game **hành động 2D màn ngang** (side-scrolling, chạy – nhảy – dash – bắn, phong cách action-platformer cổ điển) + **Khu phố trung tâm 3D góc nhìn kiểu GTA** · GameFi · Token Launchpad trên **Robinhood Chain**
 **Cảm hứng:** Ready Player One (săn chìa → mở cổng → tìm Easter Egg, biến hình Mech)
-**Phiên bản:** 1.7 · 22/10/2026 (thêm Cổng Công Thành 3D – mục 4I: 70% NPC + 30% người thật mỗi phe, góc nhìn GTA dùng lại engine Hub)
+**Phiên bản:** 1.8 · 22/10/2026 (thêm Cổng Sinh Vật Cổ Đại – mục 4J: raid đội 4–10 người, Tuyển quân hoặc thuê NPC tinh anh; Công thành 3D – mục 4I)
 
 > ⚠️ **Tên gọi & bản quyền:** **Tên chính thức của game và token: CYBERHOOD** (ký hiệu token: **$CYBERHOOD**). Các tên khác (IXO Corp, Legion, Titan Frame…) là tên tự đặt. KHÔNG dùng tên/hình ảnh có bản quyền (OASIS, Sixers, Gundam, Iron Giant, DeLorean, Atari…). Phong cách 2D lấy cảm hứng từ dòng action-platformer cổ điển (kiểu Mega Man X) **nhưng KHÔNG dùng sprite, nhân vật, HUD, âm thanh, logo hay màn chơi gốc của Capcom** – toàn bộ art & âm thanh phải tự vẽ / tự làm. Dữ liệu gốc của phim để tham khảo nằm ở `ReadyPlayerOne_GameData.md`.
 > Toàn bộ thông số cấu hình nằm ở `game_config.json` (khớp với tài liệu này).
@@ -103,7 +104,7 @@ OFF-CHAIN (server game)                 ON-CHAIN (Robinhood Chain)
 | **Vòng chơi chính** | Hub 3D → nhận hợp đồng ở Cổng → vào màn 2D 7 phút (một mình hoặc tổ đội) → chạy/nhảy/bắn qua các đoạn màn → hoàn thành mục tiêu → tích thanh biến hình → nhặt linh kiện + mảnh chìa → tới Cổng thoát cuối màn → về Hub nhận thưởng → nâng cấp/bán đồ → chơi lại |
 | **Vòng chơi dài hạn** | Ngày (nhiệm vụ, chuỗi đăng nhập) → Tuần (mở khu màn mới, gom chìa) → Mùa 4 tuần (Boss Raid, Easter Egg, suất Launchpad) |
 | **Xã hội** | **Tổ đội 2–4 người** (co-op 2D) · **Bang phái** tới 100 người · **Công thành 3D 100 vs 100** (hằng ngày + chiến tranh lãnh thổ cuối tuần) · World Boss 2D |
-| **Chế độ** | Hợp đồng PvE (Solo / Tổ đội) · **Săn tiền thưởng qua Cổng trên map rộng, thuê NPC đi cùng** · Solo Thử thách (xếp hạng) · Màn Tranh chấp PvP · Đấu trường · Công thành · Raid / World Boss |
+| **Chế độ** | Hợp đồng PvE (Solo / Tổ đội) · **Săn tiền thưởng qua Cổng trên map rộng, thuê NPC đi cùng** · **Cổng Sinh vật Cổ đại (raid 4–10 người)** · Solo Thử thách (xếp hạng) · Màn Tranh chấp PvP · Đấu trường · Công thành · Raid / World Boss |
 | **Điểm nhấn** | Điều khiển 2D mượt (dash, leo tường, bắn nạp lực) · Biến hình 3 dạng Mech · Chip vũ khí từ boss · Đồ rơi ngẫu nhiên 5 độ hiếm + 1 món độc nhất/mùa |
 | **Thưởng người chơi** | **40% doanh thu nền tảng** chia hằng tuần cho người chơi theo hoạt động · 30% suất Launchpad + airdrop từ dự án · Mech miễn phí · cho thuê Mech · nghề nghiệp (mục 9B) |
 | **Kinh tế** | Game **rơi ĐỒ, không rơi token**. Người chơi kiếm token bằng cách **bán đồ cho người chơi khác**. Token bị tiêu qua: sửa Mech, ghép đồ, phí chợ, đúc NFT, vé Raid. |
@@ -255,6 +256,7 @@ Thêm năng lượng: nhiệm vụ ngày (+2), mời bạn (+1/bạn, tối đa 
 | **Đấu trường** | Arena 2D | 1v1 / 2v2 / 4v4 | 0 | Hạng mùa, danh hiệu, top nhận token | ✅ (nén chênh lệch) |
 | **Citadel Raid** (tuần 4) | Màn 2D boss rush | 1–4 | 1 + vé Raid | Tỉ lệ rơi ×2, Chìa → Cổng cuối | ✅ (yêu cầu Sức mạnh Mech ≥ 300) |
 | **World Boss** | Arena 2D lớn | 4–12 | 1 + vé Raid | Rơi ×2, điểm bang | ✅ |
+| **Sinh vật Cổ đại** (raid) | **Đấu trường 3D** góc GTA | Đội 4–10 (người thật và/hoặc NPC tinh anh) | Ấn Triệu Hồi (trưởng nhóm) | Nguyên liệu Thần binh, rương tuần, Cúp NFT hạ đầu tiên | ✅ |
 | **Săn tiền thưởng** | Vùng Săn 2D map rộng | 1–4 (+NPC), Cổng Đỏ 2 đội, Cổng Vàng 8–20 | 1 (Cổng Vàng 0) | Thưởng lệnh × hệ số Cổng, Điểm Truy nã, Thẻ lính đánh thuê | ✅ |
 | **Công thành 3D** (hằng ngày + cuối tuần) | **3D góc GTA** – bản đồ tuyết | 100 vs 100 (mỗi phe 30 người + 70 NPC) | 1 / Vé công thành | Đồ Băng Chiến, Điểm Hunter; cuối tuần: lãnh thổ ở Hub | ✅ |
 
@@ -647,7 +649,122 @@ GĐ5 – LÕI THÀNH & BOSS
 | Boss Mech & pháo thành (Công thành) | Dậm đất → **gai băng + vòng chấn động**; pháo tường thành → **thiên thạch băng** rơi xuống vùng đỏ |
 | Quái thường | Giữ hiệu ứng quả cầu sáng cũ (nhẹ, dễ đọc) |
 
-### 4J. CƯỜNG HOÁ +1→+10 & PHÂN RÃ ĐỒ RÁC
+---
+
+### 4J. CỔNG SINH VẬT CỔ ĐẠI (RAID ĐỘI 4–10 NGƯỜI)
+
+**Ý tưởng:** mỗi khu có **một sinh vật huyền bí cổ đại khổng lồ** ngủ sâu dưới thành phố. Sinh vật quá mạnh để đánh một mình: **bắt buộc đi theo đội 4–10 thành viên** (người chơi thật và/hoặc NPC tinh anh). Đây là nội dung đỉnh cao, rơi ra nguyên liệu làm **"Thần binh"** – trang bị VIP đắt nhất để bán NFT.
+
+#### 4J.1 Tóm tắt
+| Thuộc tính | Chi tiết |
+|---|---|
+| Không gian | **Đấu trường 3D góc nhìn GTA** (dùng lại engine Hub như Công thành) – đủ rộng cho 10 người vây quanh sinh vật khổng lồ |
+| Đội | **4–10 thành viên**, ghép bằng **Tuyển quân** (người thật) hoặc **Thuê NPC tinh anh**, hoặc trộn cả hai |
+| Thời lượng | 15–25 phút, có **giới hạn cuồng nộ** (hết giờ sinh vật cuồng nộ → gần như diệt đội) |
+| Vé vào | **Ấn Triệu Hồi**: trưởng nhóm dùng 1 Ấn (rơi từ Cổng Pha Lê, Lệnh Tinh anh, chế tạo từ nguyên liệu săn tiền thưởng); thành viên vào miễn phí |
+| Độ khó | **Thường · Ác mộng · Huyền thoại** |
+| Rương tuần | Mỗi tài khoản nhận **rương chính 1 lần/tuần/sinh vật** (reset thứ Hai); đánh thêm vẫn nhận nguyên liệu → chống bot farm, giữ đồ khan hiếm |
+
+#### 4J.2 Sinh vật của từng khu (Mùa 1)
+| Khu | Sinh vật | Hình dạng | Cơ chế đặc trưng |
+|---|---|---|---|
+| **Neon City** | **Leviathan Điện** | Rắn biển điện khổng lồ quấn quanh các cao ốc ngập nước | Phóng điện theo dải nước – đứng trên mái nhà để tránh; phá **4 cột thu lôi** để làm nó tê liệt |
+| **Hollow Hotel** | **Bóng Ma Vạn Mặt** | Thực thể ma quái nhiều khuôn mặt, nuốt ánh sáng | Đèn tắt theo chu kỳ – đội phải **thắp 3 ngọn hải đăng neon** cùng lúc; mặt thật chỉ lộ khi có ánh sáng |
+| **Warzone** | **Titan Cát** | Khổng lồ bằng cát và xác tàu vũ trụ, cao bằng toà nhà 20 tầng | **Leo lên người** nó để phá 3 lõi năng lượng trên lưng; bão cát làm mất tầm nhìn |
+| **Citadel / Thành Băng** | **Rồng Băng Cổ Đại** | Rồng băng cánh pha lê | Đóng băng mặt đất – phải liên tục di chuyển; phá **giáp vảy băng** bằng sát thương lửa từ Chip vũ khí |
+
+Mỗi mùa có thể đổi bối cảnh/biến thể (VD: Leviathan Điện "Cuồng Bão") và **thêm 1 sinh vật mùa mới**.
+
+#### 4J.3 Cách đánh (3 giai đoạn)
+```
+GĐ1 – THỨC TỈNH (100% → 70% máu)
+  Sinh vật dùng đòn cơ bản; đội học mô hình tấn công.
+  Bộ phận PHÁ ĐƯỢC: sừng/đuôi/vảy/lõi – phá xong rơi nguyên liệu riêng + sinh vật yếu đi.
+
+GĐ2 – CUỒNG HOẢ (70% → 30%)
+  Gọi tay sai, đổi địa hình (nước dâng, đèn tắt, bão cát, băng phủ).
+  CƠ CHẾ ĐỒNG ĐỘI bắt buộc: VD 4 người đứng 4 công tắc cùng lúc,
+  1 người kéo sinh vật (Vệ binh), 2 người phá điểm yếu, Kỹ sư hồi máu.
+
+GĐ3 – TUYỆT VỌNG (30% → 0%)
+  Đòn diện rộng chí mạng có báo trước (vòng đỏ dưới đất).
+  Thanh "CHOÁNG": cả đội dồn sát thương + ĐỒNG BỘ BIẾN HÌNH (≥ 3 Mech cùng lúc)
+  → sinh vật ngã quỵ 10 giây, lộ lõi tim → cửa sổ sát thương lớn nhất.
+```
+
+**Vai trò trong đội**
+| Vai trò | Việc chính | Đội 4 người | Đội 10 người |
+|---|---|---|---|
+| Vệ binh (Tank) | Giữ sinh vật quay lưng về phía đội | 1 | 2 |
+| Xung kích (DPS) | Gây sát thương, phá bộ phận | 2 | 4–5 |
+| Kỹ sư y tế (Healer) | Hồi máu, hồi sinh, sửa Mech | 1 | 2 |
+| Phá giáp / Hỗ trợ | Phá điểm yếu, kích hoạt cơ chế, buff | – | 1–2 |
+
+**Cân bằng theo số người:** Máu sinh vật = Máu gốc × (1 + 0,35 × (số thành viên − 4)). Đội đông thì số điểm yếu và tay sai cũng tăng → đội 4 và đội 10 đều phải phối hợp.
+
+#### 4J.4 Chế độ 1 – Tuyển quân (lập nhóm người thật)
+| Tính năng | Chi tiết |
+|---|---|
+| **Bảng Tuyển quân** | Trưởng nhóm tạo phòng: chọn sinh vật, độ khó, **số chỗ theo vai trò** (VD: 2 Tank · 5 DPS · 2 Healer · 1 Hỗ trợ), yêu cầu Sức mạnh tối thiểu, ngôn ngữ, có/không voice |
+| Vào nhanh | Người chơi bấm "Tìm đội" → hệ thống ghép theo vai trò & Sức mạnh |
+| Đăng ở đâu | Bảng Tuyển quân trong Hub 3D, kênh chat Bang, và nút "Tuyển quân" ngay tại Cổng |
+| Chia đồ | **Mỗi người tự nhận đồ riêng** (không tranh); nguyên liệu bộ phận bị phá rơi cho **cả đội** |
+| Thưởng trưởng nhóm | +5% nguyên liệu nếu hạ thành công (khuyến khích người đứng ra lập nhóm) |
+| **Uy tín** | Sau trận, thành viên chấm 👍/👎 cho nhau → điểm Uy tín; uy tín thấp bị hạn chế vào phòng khó |
+| Phạt bỏ ngang | Rời trận giữa chừng → khoá Cổng Sinh vật 30 phút, lặp lại tăng dần |
+
+#### 4J.5 Chế độ 2 – Thuê NPC tinh anh
+- **NPC Thợ Săn Quái** – loại NPC riêng, **giỏi hơn lính đánh thuê thường**: biết né đòn báo trước, tự đứng công tắc, tự dồn sát thương khi sinh vật choáng.
+- Sức mạnh **70–85%** người chơi cùng cấp (lính thường chỉ 55–65%).
+- **Phí thuê:** Coin cho độ khó Thường; **Coin + token** cho Ác mộng/Huyền thoại (một phần phí vào Quỹ Thưởng Người Chơi, một phần đốt).
+- Có thể dùng **Thẻ lính Anh hùng** (mục 4G.4) – NPC Anh hùng cấp cao chơi như NPC Thợ Săn Quái.
+- **Trộn được:** đội 3 người thật + 3 NPC; người thật vào giữa chừng có thể **thay chỗ NPC**.
+
+| Độ khó | Tối thiểu người thật | NPC tối đa | Ghi chú |
+|---|---|---|---|
+| Thường | 1 | 9 | Một người + NPC vẫn đánh được – để ai cũng trải nghiệm |
+| Ác mộng | 2 | 6 | |
+| Huyền thoại | 4 | 4 | Nội dung đỉnh cao cần người thật phối hợp |
+
+#### 4J.6 Phần thưởng – nguồn "Thần binh" VIP
+| Thưởng | Chi tiết |
+|---|---|
+| **Nguyên liệu cổ đại** | Vảy, sừng, lõi tim, linh hồn của từng sinh vật – **riêng mỗi sinh vật**, dùng chế tạo **bộ Thần binh** (vũ khí, giáp, linh kiện Mech) – chỉ số cao nhất game + hiệu ứng sinh vật (điện, bóng tối, cát, băng) |
+| Rương tuần | Đồ Sử thi+ chắc chắn; Huyền thoại 10% (Thường) · 20% (Ác mộng) · 35% (Huyền thoại); Thần thoại 1% / 2% / 4% |
+| Phá bộ phận | Mỗi bộ phận phá được → +1 nguyên liệu hiếm cho cả đội |
+| **Hạ đầu tiên toàn server** | Cả đội nhận **Cúp NFT độc nhất** + danh hiệu "Kẻ Diệt [Tên sinh vật]" + tượng trong Hub |
+| Thú cưng / thú cưỡi | Tỉ lệ rất thấp: bản thu nhỏ của sinh vật làm thú cưng đi theo trong Hub (giao dịch được) |
+| Điểm Hunter | 60–150 điểm/trận cho Quỹ Thưởng Người Chơi (mục 9B) |
+
+Đồ Thần binh và Cúp NFT **đúc NFT và bán/đấu giá** như vật phẩm khác – đây là hàng VIP giá trị nhất trên chợ.
+
+#### 4J.7 Ghi chú kỹ thuật
+- Dùng engine 3D của Hub/Công thành; đấu trường riêng mỗi sinh vật (instance cho 1 đội).
+- Sinh vật là **mô hình 3D lớn có nhiều hitbox** (mỗi bộ phận một hitbox, máu riêng), AI theo **cây hành vi** + bảng đòn theo giai đoạn.
+- Mọi sát thương, máu, rơi đồ tính ở server; tick 20 Hz; 10 người + tay sai ≈ 40 đơn vị → nhẹ hơn Công thành.
+
+---
+
+
+#### 4J.8 Bản dựng trong game (v48 – bản chơi đơn, chạy offline)
+| Hạng mục | Đã làm |
+|---|---|
+| Lối vào | **Cổng Sinh Vật Cổ Đại** ở đại lộ phía đông khu an toàn: hai trụ đá cổ gân điện, mặt cổng xoáy nước bão, đầu Leviathan nổi trên đỉnh, bảng "ANCIENT BEAST GATE · 古代獣ゲート". Nhấn **E** → sảnh raid |
+| Sảnh | 4 thẻ sinh vật (Mùa 1 mở **Leviathan Điện**; 3 con còn lại khoá "mở ở mùa sau"), chọn độ khó (Thường / Ác mộng / Huyền thoại, hiện luật người thật tối thiểu · NPC tối đa), chọn vai trò của bạn (Vệ binh / Xung kích / Kỹ sư y tế / Phá giáp). 4 thẻ: **Tuyển quân** (chỉnh số chỗ từng vai trò + sức mạnh tối thiểu → người chơi xin vào dần), **Tìm đội** (ghép vào phòng có sẵn, không tốn Ấn, không phải trưởng nhóm), **Thuê NPC Thợ Săn Quái** (70–85% sức mạnh, 120 / 300 / 550 CRED theo độ khó; bản mạng: Coin / Coin + token), **Lò rèn Thần binh**. Danh sách đội có nhãn Người thật / NPC tinh anh, sức mạnh, nút loại; kiểm tra luật đội trước khi vào |
+| Vé vào | Trưởng nhóm dùng 1 **Ấn Triệu Hồi** (quà 1 Ấn lần đầu tới cổng; rơi 30% khi qua Cổng nhiệm vụ, chắc chắn ở Hẻm Pha Lê; 20% khi xong nhiệm vụ hợp đồng) |
+| Đấu trường | Neon City ngập nước lúc bão đêm (dùng chung engine Hub): mặt nước gợn có ánh neon, 3 cao ốc ngập giữa phố, viền 46 cao ốc chìm nửa thân, **11 mái nhà thấp có dốc lên** (chỗ tránh phóng điện), **4 cột thu lôi** trên mái, bãi tập kết của đội, mưa + chớp |
+| Leviathan Điện | Đầu (model Meshy, sừng pha lê), 36 đốt thân ống vảy có gai lưng bơi số 8 quấn quanh các cao ốc, đuôi vây (Meshy). Đòn: **ngóc lên rồi lao cắn** (hình quạt báo trước), **quất đuôi** (vòng), **hơi thở sét** (dải), **phóng điện mặt nước** (cả mặt nước loé đỏ báo 4,6 s → ai dưới nước trúng; đứng trên mái an toàn), Cuồng hoả: **lươn máy** + phóng điện dày hơn + cột hồi lại; Tuyệt vọng: **mưa vòng đỏ** + **Hồng Thuỷ Sấm Sét** (chỉ mái có cột thu lôi còn đứng mới an toàn). Hết giờ (12 / 11 / 10 phút) → cuồng nộ ×4 sát thương |
+| Phối hợp | Bộ phận phá được: 2 sừng, 3 mảng vảy lưng, lõi đuôi (mỗi cái +1 nguyên liệu cho cả đội, sinh vật yếu đi). **Phá đủ 4 cột → tê liệt 8 s**. Thanh CHOÁNG đầy hoặc **≥ 3 người cùng biến hình Mech → ngã quỵ 10 s**, lộ **lõi tim** (sát thương ×2,5). Máu = 100.000 × (1 + 0,35 × (n − 4)) × độ khó (1 / 1,6 / 2,4) |
+| Đồng đội AI | NPC tinh anh né vòng báo trước (85%), người thật mô phỏng (92%), tự lên mái khi sắp phóng điện, Phá giáp / Xung kích tự đứng phá cột, Vệ binh giữ đầu rắn, Kỹ sư y tế hồi máu + hồi sinh, cả đội tự biến Mech đồng bộ khi thanh choáng gần đầy ở Tuyệt vọng |
+| Người chơi | Bắn chuột; **Q** lựu đạn plasma · **E** 8 tên lửa (ưu tiên bộ phận) · **R** pháo kích quỹ đạo · **F** kỹ năng vai trò (Vệ binh: Khiêu khích + giảm 50% sát thương; Xung kích: Bùng nổ ×1,6; Y tế: Trường hồi máu 35% + hồi sinh; Phá giáp: Xung EMP phá cột + choáng); **T** Mech. Gục: chờ Y tế cứu hoặc về bãi tập kết sau 12 s. **Esc** bỏ trận → khoá cổng 30 phút (lặp lại gấp đôi), −10 Uy tín |
+| Thưởng | Nguyên liệu cổ đại (Vảy Leviathan, Sừng Sấm, Lõi Tim Điện, Linh Hồn Biển Sâu) – trưởng nhóm +5%; **Rương tuần** 1 lần/tuần/sinh vật (Sử thi+; Huyền thoại 10/20/35%, Thần thoại 1/2/4%); CRED; 60–150 Điểm Hunter; **hạ đầu tiên** → Cúp NFT + danh hiệu "Kẻ Diệt Leviathan" + **tượng ở khu an toàn**; **thú cưng Leviathan con** (1,2 / 3 / 6%) bay theo người chơi ở Hub; chấm 👍/👎 Uy tín đồng đội (Uy tín < 60 không vào được Huyền thoại) |
+| Thần binh | Chế ở Lò rèn Thần binh: **Lôi Thần Kích** (Thần thoại, thương sét bắn tia xuyên), **Giáp Vảy Leviathan** (Thần thoại, +26 máu, −30% sát thương), **Chip Tim Sấm** (Huyền thoại, +tấn công / nạp / may mắn) – model Meshy riêng, không rơi, không bán |
+| Mã nguồn | `game/src/raid/` (raidSim.ts có test, raidSession, RaidWorld, raidFx, RaidHud, RaidGatePortal) |
+
+#### Đa ngôn ngữ (v48)
+Mặc định **English**; mục Language có English (US), English (UK), 日本語, 한국어, 中文, Español; **"Ngôn ngữ khác" → Tiếng Việt**. Mã nguồn viết chữ tiếng Việt, từ điển `src/i18n/dict.ts` ánh xạ sang [en, ja, ko, zh, es] (en-GB tự đổi chính tả), giao diện HTML được dịch tự động. Biển hiệu / bảng trong thế giới 3D luôn tiếng Anh, kèm tiếng Nhật trên các biển neon. Chọn ngôn ngữ ở màn tạo nhân vật và trong Túi đồ (Tab).
+
+### 4K. CƯỜNG HOÁ +1→+10 & PHÂN RÃ ĐỒ RÁC
 
 **Cường hoá (Lò rèn – NPC "Bác Thép" ở sảnh):** mỗi món trang bị đập từ +0 lên tối đa **+10**.
 | Cấp đang có | +0 | +1 | +2 | +3 | +4 | +5 | +6 | +7 | +8 | +9 |
@@ -664,6 +781,7 @@ GĐ5 – LÕI THÀNH & BOSS
 - Món đã cường hoá: +10% mỗi cấp (một món +6 Sử thi → 192 CRED).
 - Không phân rã được món đang mặc nếu chỉ còn một cái; có nhiều bản trùng thì phân rã bản trùng trước (không mất cấp cường hoá của bản đang dùng).
 - Mục đích: đồ rơi trùng / đồ thấp không đầy túi, tạo nguồn CRED cho lò rèn (vòng lặp nhặt → phân rã → đập đồ).
+
 
 ### 5. HỆ THỐNG BIẾN HÌNH (MECH)
 
@@ -993,7 +1111,7 @@ Nhiều người chơi → dự án muốn lên Launchpad + nhãn hàng muốn q
 | **Beta – Xã hội** | Co-op 2D tổ đội 2–4 + ghép đội tại Cổng, đồng bộ biến hình, bang phái (lập bang, chức vụ, kho, chat, nhiệm vụ bang), World Boss | ⭐⭐ |
 | **Beta – Kinh tế** | Kết nối ví, Coin/Token, chợ, ghép/nung chảy, sửa Mech | ⭐⭐ |
 | **Launch** | Màn Tranh chấp + Đấu trường + luật PvP, đấu giá, đúc NFT, Easter Egg, Launchpad tier + quỹ vé bang, KYC, dashboard KPI | ⭐⭐ |
-| **Giai đoạn 2** | Cổng Đỏ (PvP), Cổng Vàng toàn server, lệnh truy nã của người chơi (ký quỹ), Thẻ lính đánh thuê giao dịch, Cổng Công Thành 3D (bản đồ tuyết, 100 vs 100, 70% NPC) + Lãnh thổ quận Hub, cây kỹ năng bang, sảnh bang, 2 dạng Mech còn lại | ⭐ |
+| **Giai đoạn 2** | Cổng Sinh vật Cổ đại (Leviathan Điện trước, 3 sinh vật còn lại theo mùa), Bảng Tuyển quân, NPC Thợ Săn Quái, Cổng Đỏ (PvP), Cổng Vàng toàn server, lệnh truy nã của người chơi (ký quỹ), Thẻ lính đánh thuê giao dịch, Cổng Công Thành 3D (bản đồ tuyết, 100 vs 100, 70% NPC) + Lãnh thổ quận Hub, cây kỹ năng bang, sảnh bang, 2 dạng Mech còn lại | ⭐ |
 | **Giai đoạn 3** | Hợp thể 4 người, liên minh bang, voice chat | ⭐ |
 
 ---
@@ -2111,6 +2229,128 @@ Nhiều người chơi → dự án muốn lên Launchpad + nhãn hàng muốn q
       "targetFpsMobile": 30
     },
     "afkKickMin": 3
+  },
+  "mythicRaid": {
+    "view": "3d_gta_reuse_hub_engine",
+    "party": [
+      4,
+      10
+    ],
+    "timeMin": [
+      15,
+      25
+    ],
+    "enrageTimer": true,
+    "entry": {
+      "item": "summon_seal",
+      "consumedBy": "leader",
+      "sources": [
+        "crystal_portal",
+        "elite_bounty",
+        "craft"
+      ]
+    },
+    "difficulties": [
+      "normal",
+      "nightmare",
+      "legendary"
+    ],
+    "weeklyChestPerCreature": 1,
+    "weeklyReset": "mon",
+    "creatures": {
+      "neon_city": "electric_leviathan",
+      "hollow_hotel": "thousand_face_wraith",
+      "warzone": "sand_titan",
+      "citadel": "ancient_frost_dragon"
+    },
+    "phases": [
+      {
+        "name": "awaken",
+        "hp": [
+          1.0,
+          0.7
+        ]
+      },
+      {
+        "name": "rampage",
+        "hp": [
+          0.7,
+          0.3
+        ]
+      },
+      {
+        "name": "despair",
+        "hp": [
+          0.3,
+          0.0
+        ]
+      }
+    ],
+    "breakableParts": true,
+    "staggerBySyncTransformMin": 3,
+    "staggerSec": 10,
+    "hpScaling": "base*(1+0.35*(n-4))",
+    "recruit": {
+      "board": true,
+      "roleSlots": true,
+      "quickMatch": true,
+      "personalLoot": true,
+      "partMaterialsShared": true,
+      "leaderBonus": 0.05,
+      "reputation": true,
+      "leavePenaltyMin": 30
+    },
+    "npcHunters": {
+      "powerPct": [
+        0.7,
+        0.85
+      ],
+      "fee": {
+        "normal": "coin",
+        "nightmare": "coin+token",
+        "legendary": "coin+token"
+      },
+      "feeSplit": {
+        "playerPool": 0.5,
+        "burn": 0.5
+      },
+      "heroCardsAllowed": true,
+      "replaceableByHuman": true,
+      "minHumans": {
+        "normal": 1,
+        "nightmare": 2,
+        "legendary": 4
+      },
+      "maxNpc": {
+        "normal": 9,
+        "nightmare": 6,
+        "legendary": 4
+      }
+    },
+    "rewards": {
+      "legendaryChance": {
+        "normal": 0.1,
+        "nightmare": 0.2,
+        "legendary": 0.35
+      },
+      "mythicChance": {
+        "normal": 0.01,
+        "nightmare": 0.02,
+        "legendary": 0.04
+      },
+      "craftSet": "divine_arms",
+      "serverFirstKill": "unique_nft_trophy",
+      "petDrop": "very_rare",
+      "hunterPoints": [
+        60,
+        150
+      ]
+    },
+    "tech": {
+      "tickHz": 20,
+      "multiHitbox": true,
+      "ai": "behavior_tree"
+    }
   }
 }
 ```

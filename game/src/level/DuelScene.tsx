@@ -227,7 +227,7 @@ function Arena() {
     g.fillStyle = "#00f0ff";
     g.shadowColor = "#00f0ff";
     g.font = "700 30px sans-serif";
-    g.fillText("CYBERHOOD · VÕ ĐÀI NGẦM", 256, 180);
+    g.fillText("UNDERGROUND ARENA · 地下闘技場", 256, 180);
     const t = new THREE.CanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;

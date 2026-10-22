@@ -11,7 +11,9 @@ import { NFT_ATLAS } from "./nftAtlas";
 import { NFT_CELL, NFT_COLS, NFT_ITEMS, RARITY_COLOR, type NftItem } from "./nftAlbum";
 
 /** Góc ngoài của toà tháp (mép đông + mép bắc) và kích thước hai mặt bảng */
-const CORNER = { x: -13.15, z: 13.55 };
+export const CORNER = { x: -13.15, z: 13.55 };
+/** Tâm toà tháp mang bảng (để biển quảng cáo khác tránh) */
+export const NFT_TOWER = { x: -20.1, z: 20 };
 const EAST_W = 12.05; // mặt đông, quay ra đại lộ
 const NORTH_W = 13.05; // mặt bắc, quay về điểm xuất phát
 const BOTTOM = 12;
@@ -27,14 +29,14 @@ const GRID = 6;
 const FONT = "'Chakra Petch', 'Arial Black', sans-serif";
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
-const atlas = new Image();
-const atlasReady = new Promise<void>((res) => {
+export const atlas = new Image();
+export const atlasReady = new Promise<void>((res) => {
   atlas.onload = () => res();
   atlas.src = NFT_ATLAS;
 });
 
 /** Chủ sở hữu và lượt thích giả lập, cố định theo số token */
-function owner(i: number) {
+export function owner(i: number) {
   let h = Math.imul(i + 7, 2654435761);
   let s = "0x";
   for (let k = 0; k < 4; k++) {
@@ -43,22 +45,22 @@ function owner(i: number) {
   }
   return `${s}…${((i * 7919) & 0xffff).toString(16).padStart(4, "0")}`;
 }
-const likes = (i: number) => 120 + ((i * 3779) % 2400);
-const tokenId = (i: number) => `#${String(i + 1).padStart(4, "0")}`;
+export const likes = (i: number) => 120 + ((i * 3779) % 2400);
+export const tokenId = (i: number) => `#${String(i + 1).padStart(4, "0")}`;
 const usd = (eth: number) => `$${Math.round(eth * 3100).toLocaleString("en-US")}`;
 
-function sprite(g: CanvasRenderingContext2D, i: number, x: number, y: number, size: number) {
+export function sprite(g: CanvasRenderingContext2D, i: number, x: number, y: number, size: number) {
   g.imageSmoothingEnabled = false;
   g.drawImage(atlas, (i % NFT_COLS) * NFT_CELL, Math.floor(i / NFT_COLS) * NFT_CELL, NFT_CELL, NFT_CELL, x, y, size, size);
 }
 
-function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+export function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   g.beginPath();
   g.roundRect(x, y, w, h, r);
 }
 
 /** Nền ô ảnh: chuyển màu theo độ hiếm + lưới pixel + mặt trời neon kiểu synthwave */
-function artBg(g: CanvasRenderingContext2D, it: NftItem, x: number, y: number, w: number, h: number) {
+export function artBg(g: CanvasRenderingContext2D, it: NftItem, x: number, y: number, w: number, h: number) {
   const c = RARITY_COLOR[it.rarity];
   const bg = g.createLinearGradient(x, y, x, y + h);
   bg.addColorStop(0, "#12052b");
@@ -106,7 +108,7 @@ function artBg(g: CanvasRenderingContext2D, it: NftItem, x: number, y: number, w
   g.globalAlpha = 1;
 }
 
-function verified(g: CanvasRenderingContext2D, x: number, y: number, r: number) {
+export function verified(g: CanvasRenderingContext2D, x: number, y: number, r: number) {
   g.fillStyle = "#2081e2";
   g.beginPath();
   g.arc(x, y, r, 0, Math.PI * 2);
@@ -120,7 +122,7 @@ function verified(g: CanvasRenderingContext2D, x: number, y: number, r: number) 
   g.stroke();
 }
 
-function eth(g: CanvasRenderingContext2D, x: number, y: number, s: number, color: string) {
+export function eth(g: CanvasRenderingContext2D, x: number, y: number, s: number, color: string) {
   // Biểu tượng ETH: hai tam giác chồng lên nhau
   g.fillStyle = color;
   g.beginPath();
@@ -395,10 +397,11 @@ uniform float time;
 uniform vec2 cells;
 uniform float scroll;
 uniform float gain;
+/** Mức mipmap ứng với một chấm LED: lấy trung bình các texel trong chấm để chữ mảnh không nhấp nháy */
+uniform float lod;
 varying vec2 vUv;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void main() {
-  vec2 uv = vec2(fract(vUv.x + scroll), vUv.y);
   vec2 cell = vUv * cells;
   vec2 id = floor(cell);
   // Chuyển trang: từng điểm LED đổi sang ảnh mới theo thứ tự ngẫu nhiên, quét từ trên xuống
@@ -406,14 +409,14 @@ void main() {
   float useNew = step(order, mixT * 1.15);
   vec2 su = (id + 0.5) / cells;
   su.x = fract(su.x + scroll);
-  vec3 col = mix(texture2D(prev, su).rgb, texture2D(map, su).rgb, useNew);
+  vec3 col = mix(textureLod(prev, su, lod).rgb, textureLod(map, su, lod).rgb, useNew);
   // Viền chuyển trang sáng lên
-  float edge = smoothstep(0.06, 0.0, abs(order - mixT * 1.15)) * step(mixT, 0.999);
+  float edge = (1.0 - smoothstep(0.0, 0.06, abs(order - mixT * 1.15))) * step(mixT, 0.999);
   col += edge * vec3(0.3, 0.9, 1.0);
   // Chấm LED: tròn, mờ dần thành mảng phẳng khi nhìn xa để tránh vân moiré
   vec2 f = fract(cell) - 0.5;
   float d = length(f);
-  float dotMask = smoothstep(0.5, 0.32, d);
+  float dotMask = 1.0 - smoothstep(0.32, 0.5, d);
   float far = clamp(max(fwidth(cell.x), fwidth(cell.y)) * 1.4, 0.0, 1.0);
   float mask = mix(dotMask * 1.25, 0.78, far);
   // Quét dòng chạy và nhấp nháy nhẹ
@@ -423,7 +426,7 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
-function ledMaterial(map: THREE.Texture, cells: [number, number], gain = 1.6) {
+export function ledMaterial(map: THREE.Texture, cells: [number, number], gain = 1.6) {
   return new THREE.ShaderMaterial({
     uniforms: {
       map: { value: map },
@@ -433,6 +436,7 @@ function ledMaterial(map: THREE.Texture, cells: [number, number], gain = 1.6) {
       cells: { value: new THREE.Vector2(...cells) },
       scroll: { value: 0 },
       gain: { value: gain },
+      lod: { value: Math.max(0, Math.log2((map.image as { width: number }).width / cells[0])) },
     },
     vertexShader: vert,
     fragmentShader: frag,
@@ -463,7 +467,7 @@ export function NftBoard() {
     // Mỗi chấm LED ~6cm
     const mat = ledMaterial(pages[0].t, [Math.round(TOTAL_W / 0.055), Math.round(HEIGHT / 0.055)]);
     const tick = tickerTexture();
-    const tickMat = ledMaterial(tick, [Math.round(TOTAL_W / 0.05) * 2, 22], 1.8);
+    const tickMat = ledMaterial(tick, [Math.round(TOTAL_W / 0.05), 22], 1.8);
     tickMat.uniforms.prev.value = tick;
     return {
       pages,
@@ -476,7 +480,7 @@ export function NftBoard() {
       tickN: facePlane(NORTH_W, 1.1, SPLIT, 1),
     };
   }, []);
-  const st = useRef({ page: 0, at: 0, cur: 0 });
+  const st = useRef({ page: 0, at: -1, cur: 0, drawn: false, sent: false });
   useEffect(() => {
     let alive = true;
     atlasReady.then(() => {
@@ -487,20 +491,31 @@ export function NftBoard() {
     return () => {
       alive = false;
       tick.dispose();
+      pages.forEach((p) => p.t.dispose());
+      mat.dispose();
+      tickMat.dispose();
+      [geoE, geoN, tickE, tickN].forEach((g) => g.dispose());
     };
-  }, [pages, tick]);
+  }, [pages, tick, mat, tickMat, geoE, geoN, tickE, tickN]);
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime;
-    mat.uniforms.time.value = t;
-    tickMat.uniforms.time.value = t;
+    mat.uniforms.time.value = t % 1000;
+    tickMat.uniforms.time.value = t % 1000;
     tickMat.uniforms.scroll.value = (tickMat.uniforms.scroll.value + dt * 0.035) % 1;
     const s = st.current;
-    if (t - s.at > PAGE_SECONDS && atlas.complete) {
+    if (s.at < 0) s.at = t;
+    const next = 1 - s.cur;
+    // Đổi trang chia ba khung hình khác nhau để không giật: vẽ canvas trước 1 giây, tải lên GPU trước 0.5 giây, rồi mới chuyển
+    if (!s.drawn && t - s.at > PAGE_SECONDS - 1 && atlas.complete) {
+      s.drawn = true;
+      drawPage(pages[next].c.getContext("2d")!, s.page + 1);
+    } else if (s.drawn && !s.sent && t - s.at > PAGE_SECONDS - 0.5) {
+      s.sent = true;
+      pages[next].t.needsUpdate = true;
+    } else if (s.sent && t - s.at > PAGE_SECONDS) {
       s.at = t;
       s.page++;
-      const next = 1 - s.cur;
-      drawPage(pages[next].c.getContext("2d")!, s.page);
-      pages[next].t.needsUpdate = true;
+      s.drawn = s.sent = false;
       mat.uniforms.prev.value = pages[s.cur].t;
       mat.uniforms.map.value = pages[next].t;
       mat.uniforms.mixT.value = 0;
@@ -519,8 +534,8 @@ export function NftBoard() {
       <group position={[CORNER.x, 0, CORNER.z + EAST_W / 2]} rotation={[0, Math.PI / 2, 0]}>
         <mesh geometry={geoE} material={mat} position={[0, cy, 0]} />
         <mesh geometry={tickE} material={tickMat} position={[0, y0 - 1.05, 0]} />
-        <mesh position={[0, cy, -0.25]}>
-          <boxGeometry args={[EAST_W + 0.3, HEIGHT + 3.2, 0.4]} />
+        <mesh position={[-0.15, cy, -0.25]}>
+          <boxGeometry args={[EAST_W, HEIGHT + 3.2, 0.4]} />
           {frame}
         </mesh>
         <mesh position={[0, y0 + HEIGHT + 0.12, 0.1]}>
@@ -536,8 +551,8 @@ export function NftBoard() {
       <group position={[CORNER.x - NORTH_W / 2, 0, CORNER.z]} rotation={[0, Math.PI, 0]}>
         <mesh geometry={geoN} material={mat} position={[0, cy, 0]} />
         <mesh geometry={tickN} material={tickMat} position={[0, y0 - 1.05, 0]} />
-        <mesh position={[0, cy, -0.25]}>
-          <boxGeometry args={[NORTH_W + 0.3, HEIGHT + 3.2, 0.4]} />
+        <mesh position={[0.15, cy, -0.25]}>
+          <boxGeometry args={[NORTH_W, HEIGHT + 3.2, 0.4]} />
           {frame}
         </mesh>
         <mesh position={[0, y0 + HEIGHT + 0.12, 0.1]}>

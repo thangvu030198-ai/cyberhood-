@@ -2,7 +2,14 @@
 // nhớ chữ gốc tiếng Việt của từng nút, thay bằng bản dịch. Đổi ngôn ngữ thì dịch lại toàn bộ từ chữ gốc.
 // React chỉ so sánh với props cũ (không đọc DOM) nên việc thay nodeValue không làm hỏng việc cập nhật.
 
-import { sign, tr, useLang } from "./i18n";
+import { VI_CHARS, sign, tr, useLang } from "./i18n";
+
+/** ?debug: ghi lại mọi câu dịch xong vẫn còn tiếng Việt (để rà soát tự động) */
+const MISS: Set<string> | null = typeof location !== "undefined" && location.search.includes("debug") ? new Set() : null;
+if (MISS) (window as unknown as { __viMiss: Set<string> }).__viMiss = MISS;
+const note = (out: string, where: string) => {
+  if (MISS && useLang.getState().lang !== "vi" && VI_CHARS.test(out)) MISS.add(`${where}: ${out.trim().slice(0, 160)}`);
+};
 
 const ATTRS = ["title", "placeholder", "aria-label"];
 /** Chữ gốc (tiếng Việt) của từng nút và chữ mình vừa ghi vào (để phân biệt với cập nhật mới của React) */
@@ -19,6 +26,7 @@ function doText(n: Text) {
   if (wrote.get(n) !== cur) orig.set(n, cur);
   const src = orig.get(n) ?? cur;
   const out = tr(src);
+  note(out, "text");
   wrote.set(n, out);
   if (out !== cur) n.nodeValue = out;
 }
@@ -32,6 +40,7 @@ function doAttrs(el: Element) {
     const w = attrWrote.get(el) ?? {};
     if (w[a] !== cur) o[a] = cur;
     const out = tr(o[a] ?? cur);
+    note(out, a);
     w[a] = out;
     attrOrig.set(el, o);
     attrWrote.set(el, w);
@@ -84,6 +93,7 @@ export function patchCanvasText() {
     const orig = P[k];
     P[k] = function (this: CanvasRenderingContext2D & { keepText?: boolean }, text: string, x: number, y: number, maxWidth?: number) {
       const t = this.keepText ? text : sign(String(text));
+      note(String(t), "canvas");
       return maxWidth === undefined ? orig.call(this, t, x, y) : orig.call(this, t, x, y, maxWidth);
     } as typeof orig;
   }

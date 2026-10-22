@@ -97,6 +97,8 @@ for (const [vi, out] of Object.entries(DICT)) {
 pats.sort((a, b) => b.re.source.replace(/\(\.\+\?\)/g, "").length - a.re.source.replace(/\(\.\+\?\)/g, "").length);
 
 const cache = new Map<Lang, Map<string, string>>();
+/** Chữ cái có dấu của tiếng Việt (câu gốc luôn là tiếng Việt): còn sót trong chỗ trống nghĩa là mẫu chọn sai */
+export const VI_CHARS = /[ăâđêôơưàáạảãầấậẩẫằắặẳẵèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i;
 const HAS_WORD = /[A-Za-zÀ-ỹ぀-ヿ一-鿿]/;
 
 /** Dịch một chuỗi tiếng Việt sang ngôn ngữ `lang` (mặc định: ngôn ngữ đang chọn). Không có trong từ điển thì giữ nguyên. */
@@ -126,14 +128,20 @@ function translate(text: string, lang: Exclude<Lang, "vi">, depth: number): stri
   const up = k === k.toUpperCase() ? upper.get(k) : undefined;
   if (up) return wrap((up[li] || up[0]).toUpperCase());
   if (depth > 3) return text;
+  // Nhiều mẫu có thể khớp ("Trúng: {0}" và "{0} Chìa rương"): chọn mẫu đầu tiên mà mọi chỗ trống đều dịch được
+  let fallback: string | null = null;
   for (const p of pats) {
     const m = p.re.exec(k);
     if (!m) continue;
     let s = p.out[li] || p.out[0];
+    let clean = true;
     p.idx.forEach((n, i) => {
-      s = s.split(`{${n}}`).join(translate(m[i + 1], lang, depth + 1));
+      const part = translate(m[i + 1], lang, depth + 1);
+      if (VI_CHARS.test(part)) clean = false;
+      s = s.split(`{${n}}`).join(part);
     });
-    return wrap(s);
+    if (clean) return wrap(s);
+    fallback ??= s;
   }
   // Mảnh chữ có dấu chấm giữa ở đầu/cuối: "bay ·", "· giữ", "· Phố, biển neon: … · CC0"
   const dot = /^(·\s*)?(.+?)(\s*·)?$/.exec(k);
@@ -141,8 +149,17 @@ function translate(text: string, lang: Exclude<Lang, "vi">, depth: number): stri
     const mid = translate(dot[2], lang, depth + 1);
     if (mid !== dot[2]) return wrap((dot[1] ?? "") + mid.trim() + (dot[3] ?? ""));
   }
+  // "Mô tả (chỉ số)": dịch phần ngoài và phần trong ngoặc riêng
+  const par = /^(.*\S)\s*\(([^()]+)\)$/.exec(k);
+  if (par) {
+    const a = translate(par[1], lang, depth + 1).trim();
+    const b = translate(par[2], lang, depth + 1).trim();
+    if (a !== par[1] || b !== par[2]) return wrap(`${a} (${b})`);
+  }
   // Chuỗi ghép bằng dấu " · " hoặc xuống dòng: dịch từng phần
   if (k.includes(" · ")) return wrap(k.split(" · ").map((p) => translate(p, lang, depth + 1)).join(" · "));
+  // Mẫu khớp nhưng chỗ trống còn chữ Việt: vẫn hơn để nguyên
+  if (fallback !== null) return wrap(fallback);
   return text;
 }
 

@@ -1,4 +1,9 @@
 import { useService } from "./game/services";
+import { talkTo as talkToDbg, chooseDialogue as chooseDbg } from "./game/quests";
+import { QUESTS as QUESTS_DBG, NPCS as NPCS_DBG, ITEMS as ITEMS_DBG } from "./game/story";
+import { LEVELS as LEVELS_DBG } from "./level/registry";
+import { useGear as useGearDbg } from "./game/gearStore";
+import { GEAR as GEAR_DBG } from "./level/gear";
 import { useMissions as useMissionsDbg } from "./game/missionStore";
 import { vfxDebug } from "./fx/skillVfx";
 import { useLang } from "./i18n/i18n";
@@ -48,6 +53,7 @@ import { HUB_PEACEFUL } from "./game/config";
 import { LedBoards } from "./game/LedBoards";
 import { HubHolo } from "./game/HubHolo";
 import { NftBoard } from "./game/NftBoard";
+import { CityAds } from "./game/CityAds";
 import { HubServices } from "./game/HubServices";
 import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
@@ -104,6 +110,7 @@ function PhysicsStepper() {
 const params = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
 const NO_CARS = params.has("nocars");
 const NO_FX = params.has("nofx");
+const NO_ADS = params.has("noads");
 
 function DebugHook() {
   const state = useThree();
@@ -119,7 +126,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useService, useMissions: useMissionsDbg, useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid },
+      __level: { dbg: { talkTo: talkToDbg, chooseDialogue: chooseDbg, QUESTS: QUESTS_DBG, NPCS: NPCS_DBG, LEVELS: LEVELS_DBG, useGear: useGearDbg, GEAR: GEAR_DBG, ITEMS: ITEMS_DBG }, useService, useMissions: useMissionsDbg, useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid },
     });
   }
   return null;
@@ -188,7 +195,8 @@ export default function App() {
               <MeshyDynamic />
               <LedBoards />
               <HubHolo />
-              <NftBoard />
+              {!NO_ADS && <NftBoard />}
+              {!NO_ADS && <CityAds />}
               <HubServices />
             </group>
             {!inSiege && <ObjectiveArrow />}

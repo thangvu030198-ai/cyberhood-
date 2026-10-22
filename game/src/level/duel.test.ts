@@ -20,7 +20,7 @@ describe("đối kháng 1v1", () => {
     sim.player.x = -0.6;
     sim.foe.x = 0.6;
     fight(sim, 30, (f) => ({ punch: f === 0 }));
-    expect(sim.foe.hp).toBe(DUEL.maxHp - DUEL.moves.punch.damage);
+    expect(sim.foe.hp).toBe(DUEL.maxHp - DUEL.moves.jabL.damage);
     sim.player.x = -5;
     sim.foe.x = 5;
     const hp = sim.foe.hp;
@@ -34,7 +34,7 @@ describe("đối kháng 1v1", () => {
     sim.foe.x = 0.6;
     (sim as unknown as { think: () => { now: DuelInput; prev: DuelInput } }).think = () => ({ now: { ...NO_DUEL, block: true }, prev: { ...NO_DUEL, block: true } });
     fight(sim, 40, (f) => ({ kick: f === 0 }));
-    expect(sim.foe.hp).toBeCloseTo(DUEL.maxHp - DUEL.moves.kick.damage * DUEL.blockChip, 5);
+    expect(sim.foe.hp).toBeCloseTo(DUEL.maxHp - DUEL.moves.knee.damage * DUEL.blockChip, 5);
   });
 
   it("combo 3 đòn liên tiếp: đòn thứ 3 mạnh gấp rưỡi", () => {
@@ -46,8 +46,9 @@ describe("đối kháng 1v1", () => {
       sim.foe.x = sim.player.x + 1.1; // giữ đối thủ trong tầm dù bị đẩy lùi
       return { punch: presses.has(f) };
     });
-    const d = DUEL.moves.punch.damage;
-    expect(sim.foe.hp).toBeCloseTo(DUEL.maxHp - d * 2 - d * DUEL.comboBonus, 5);
+    // Chuỗi J: jab trái → jab phải → móc trái (đòn thứ 3 nhân thưởng combo)
+    const M = DUEL.moves;
+    expect(sim.foe.hp).toBeCloseTo(DUEL.maxHp - M.jabL.damage - M.jabR.damage - M.hookL.damage * DUEL.comboBonus, 5);
   });
 
   it("hết máu thì thắng; hết giờ thì ai nhiều máu hơn thắng", () => {
@@ -61,6 +62,44 @@ describe("đối kháng 1v1", () => {
     s2.player.hp = 50;
     fight(s2, Math.ceil(DUEL.roundTime / DUEL.step) + 10, {});
     expect(s2.status).toBe("lost");
+  });
+
+  it("đòn thứ 4 chuỗi đấm (móc ngửa) đánh ngã; nằm sàn và lúc đứng dậy thì không trúng đòn", () => {
+    const sim = ready();
+    sim.player.x = -0.6;
+    sim.foe.x = 0.6;
+    const presses = new Set([0, 21, 42, 66]);
+    fight(sim, 100, (f) => {
+      if (f < 90) sim.foe.x = sim.player.x + 1.1;
+      return { punch: presses.has(f) };
+    });
+    expect(sim.events.some((e) => e.kind === "knock" && e.move === "upperR")).toBe(true);
+    expect(sim.lying(sim.foe)).toBe(true);
+    const hp = sim.foe.hp;
+    sim.foe.x = sim.player.x + 1;
+    fight(sim, 20, (f) => ({ punch: f === 0 }));
+    expect(sim.foe.hp).toBe(hp);
+  });
+
+  it("quét trụ (giữ S + K) xuyên thế đỡ nhiều hơn và đánh ngã", () => {
+    const sim = ready();
+    sim.player.x = -0.6;
+    sim.foe.x = 0.6;
+    (sim as unknown as { think: () => { now: DuelInput; prev: DuelInput } }).think = () => ({ now: { ...NO_DUEL, block: true }, prev: { ...NO_DUEL, block: true } });
+    fight(sim, 40, (f) => ({ block: true, kick: f === 0 }));
+    expect(sim.foe.hp).toBeCloseTo(DUEL.maxHp - DUEL.moves.sweep.damage * DUEL.lowChip, 5);
+    expect(sim.foe.downUntil).toBeGreaterThan(0);
+  });
+
+  it("né (L) lùi ra sau và tránh được đòn", () => {
+    const sim = ready();
+    sim.player.x = -0.6;
+    sim.foe.x = 0.6;
+    sim.foe.move = "jabL";
+    sim.foe.moveAt = sim.time;
+    fight(sim, 20, (f) => ({ dodge: f === 0 }));
+    expect(sim.player.hp).toBe(DUEL.maxHp);
+    expect(sim.player.x).toBeLessThan(-0.6);
   });
 
   it("AI tiến lại gần và đánh người chơi đứng yên", () => {
@@ -80,8 +119,8 @@ describe("thang đấu trường", () => {
       sim.status = "fight";
       sim.foe.x = sim.player.x + 1;
       sim.foe.facing = -1;
-      sim.foe.move = "punch";
-      sim.foe.moveAt = sim.time - DUEL.moves.punch.startup;
+      sim.foe.move = "jabL";
+      sim.foe.moveAt = sim.time - DUEL.moves.jabL.startup;
     }
     weak.step({ left: false, right: false, jump: false, block: false, punch: false, kick: false });
     champ.step({ left: false, right: false, jump: false, block: false, punch: false, kick: false });

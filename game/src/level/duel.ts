@@ -1,8 +1,27 @@
 // Đối kháng 1 chọi 1 trên sàn đấu (học từ Bloody Roar 2 / Tekken PS1): nhìn ngang, hai thanh máu, đồng hồ đếm,
 // đấm nhanh, đá mạnh, đỡ đòn, nhảy, combo 3 đòn. Thuần TypeScript, bước cố định 1/60 giây, có test.
 
-export type DuelInput = { left: boolean; right: boolean; jump: boolean; block: boolean; punch: boolean; kick: boolean };
-export const NO_DUEL: DuelInput = { left: false, right: false, jump: false, block: false, punch: false, kick: false };
+export type DuelInput = { left: boolean; right: boolean; jump: boolean; block: boolean; punch: boolean; kick: boolean; dodge?: boolean };
+export const NO_DUEL: DuelInput = { left: false, right: false, jump: false, block: false, punch: false, kick: false, dodge: false };
+
+/**
+ * Một đòn võ: clip Meshy để diễn, khung ra đòn (startup → active → recover), tầm, sát thương, lực đẩy.
+ * `knock`: trúng là ngã sàn; `lunge`: lao tới khi ra đòn; `low`: đòn thấp (đỡ đứng không chặn được hết);
+ * `hit`: đối thủ phản ứng kiểu nào (trúng mặt / trúng thân)
+ */
+export type MoveSpec = {
+  clip: string;
+  startup: number;
+  active: number;
+  recover: number;
+  reach: number;
+  damage: number;
+  push: number;
+  knock?: boolean;
+  lunge?: number;
+  low?: boolean;
+  hit: "face" | "body";
+};
 
 export const DUEL = {
   step: 1 / 60,
@@ -15,22 +34,45 @@ export const DUEL = {
   jumpVel: 9,
   gravity: 28,
   maxHp: 100,
-  /** Đòn: thời gian ra đòn (startup), đòn trúng trong `active`, hồi đòn `recover`, tầm, sát thương, đẩy lùi */
+  /**
+   * Bộ chiêu (học từ Tekken / Bloody Roar): J bấm liên tục ra chuỗi đấm jab trái → jab phải → móc trái → đấm móc
+   * ngửa (ngã); K ra chuỗi đá gối → đá vòng cầu → đạp Sparta (ngã). Tiến + J: chỏ lao tới; tiến + K: phi cước;
+   * lùi + K: đá móc lộn ngược; giữ S + K: quét trụ; giữ S + J: đá hất; trên không J/K: đấm nhảy / phi cước.
+   */
   moves: {
-    punch: { startup: 0.08, active: 0.08, recover: 0.16, reach: 1.35, damage: 6, push: 1.5 },
-    kick: { startup: 0.18, active: 0.1, recover: 0.3, reach: 1.7, damage: 11, push: 3.2 },
-  },
-  /** Đòn thứ 3 liên tiếp trong combo mạnh gấp rưỡi */
+    jabL: { clip: "jabL", startup: 0.07, active: 0.07, recover: 0.13, reach: 1.3, damage: 5, push: 1.1, hit: "face" },
+    jabR: { clip: "jabR", startup: 0.08, active: 0.07, recover: 0.14, reach: 1.35, damage: 6, push: 1.3, hit: "face" },
+    hookL: { clip: "hookL", startup: 0.11, active: 0.08, recover: 0.18, reach: 1.3, damage: 8, push: 2, hit: "face" },
+    upperR: { clip: "upperR", startup: 0.13, active: 0.09, recover: 0.3, reach: 1.25, damage: 11, push: 2.6, knock: true, hit: "face" },
+    knee: { clip: "knee", startup: 0.1, active: 0.08, recover: 0.2, reach: 1.3, damage: 8, push: 1.6, hit: "body" },
+    roundhouse: { clip: "roundhouse", startup: 0.19, active: 0.1, recover: 0.28, reach: 1.75, damage: 11, push: 3.2, hit: "face" },
+    spartan: { clip: "spartan", startup: 0.18, active: 0.1, recover: 0.32, reach: 1.6, damage: 13, push: 5, knock: true, hit: "body" },
+    elbow: { clip: "elbow", startup: 0.12, active: 0.08, recover: 0.22, reach: 1.25, damage: 10, push: 2.4, lunge: 4, hit: "face" },
+    flykick: { clip: "flykick", startup: 0.24, active: 0.14, recover: 0.34, reach: 2, damage: 15, push: 5, knock: true, lunge: 7, hit: "body" },
+    backflip: { clip: "backflipkick", startup: 0.2, active: 0.12, recover: 0.4, reach: 1.6, damage: 14, push: 4, knock: true, hit: "face" },
+    sweep: { clip: "sweep", startup: 0.15, active: 0.1, recover: 0.3, reach: 1.75, damage: 9, push: 1, knock: true, low: true, hit: "body" },
+    risekick: { clip: "risekick", startup: 0.12, active: 0.1, recover: 0.3, reach: 1.4, damage: 10, push: 2.2, hit: "face" },
+    jumppunch: { clip: "jumppunch", startup: 0.14, active: 0.12, recover: 0.2, reach: 1.5, damage: 10, push: 2, hit: "face" },
+  } satisfies Record<string, MoveSpec>,
+  /** Chuỗi bấm liên tiếp cùng nút trong `comboWindow` giây */
+  chains: { punch: ["jabL", "jabR", "hookL", "upperR"], kick: ["knee", "roundhouse", "spartan"] } as const,
+  /** Đòn thứ 3 trúng liên tiếp trở đi mạnh gấp rưỡi */
   comboWindow: 0.45,
   comboBonus: 1.5,
-  /** Đỡ đòn: chỉ nhận phần này sát thương */
+  /** Đỡ đòn: chỉ nhận phần này sát thương (đòn thấp xuyên đỡ nhiều hơn) */
   blockChip: 0.15,
+  lowChip: 0.6,
   hitStun: 0.32,
+  /** Ngã sàn bao lâu, đứng dậy bao lâu (bất tử lúc đứng dậy) */
+  downTime: 0.9,
+  getupTime: 0.9,
+  /** Né (L): lùi nhanh, bất tử trong khoảng này, hồi bao lâu mới né tiếp */
+  dodge: { time: 0.32, speed: 7, cd: 0.6 },
   /** AI: độ trễ phản ứng và xác suất đỡ khi bị đánh */
   ai: { think: 0.28, blockChance: 0.35, aggression: 0.65 },
 };
 
-type MoveId = keyof typeof DUEL.moves;
+export type MoveId = keyof typeof DUEL.moves;
 
 /** Đối thủ trên thang đấu trường: máu, lực đòn, tốc độ phản ứng, tỉ lệ đỡ, độ hung hăng, CRED thưởng */
 export type Rival = {
@@ -75,8 +117,16 @@ export type Fighter = {
   stunUntil: number;
   combo: number;
   lastHitAt: number;
-  /** Lần cuối bị trúng đòn (cho hiệu ứng nháy) */
+  /** Lần cuối bị trúng đòn (cho hiệu ứng nháy) và kiểu trúng (mặt / thân) */
   hurtAt: number;
+  hurtKind: "face" | "body";
+  /** Vị trí trong chuỗi đòn đang bấm (đấm / đá) */
+  chain: { kind: "punch" | "kick" | null; step: number; at: number };
+  /** Ngã sàn tới lúc nào; đứng dậy xong lúc nào */
+  downUntil: number;
+  getupUntil: number;
+  /** Né: bất tử tới lúc nào, hồi né */
+  dodgeAt: number;
 };
 
 export type DuelStatus = "intro" | "fight" | "won" | "lost" | "draw";
@@ -96,6 +146,11 @@ const fighter = (x: number, facing: 1 | -1): Fighter => ({
   combo: 0,
   lastHitAt: -9,
   hurtAt: -9,
+  hurtKind: "face",
+  chain: { kind: null, step: 0, at: -9 },
+  downUntil: -9,
+  getupUntil: -9,
+  dodgeAt: -9,
 });
 
 export class DuelSim {
@@ -104,7 +159,7 @@ export class DuelSim {
   player = fighter(-3, 1);
   foe = fighter(3, -1);
   /** Sự kiện cho hiển thị / âm thanh */
-  events: { kind: "hit" | "block" | "whiff" | "ko"; who: "player" | "foe"; x: number; at: number; move?: MoveId }[] = [];
+  events: { kind: "hit" | "block" | "whiff" | "ko" | "knock" | "dodge"; who: "player" | "foe"; x: number; at: number; move?: MoveId }[] = [];
   private prev: DuelInput = NO_DUEL;
   private acc = 0;
   private aiNext = 0;
@@ -167,13 +222,40 @@ export class DuelSim {
     this.prev = input;
   }
 
+  /** Đang nằm sàn / đứng dậy / né: không điều khiển được */
+  lying(f: Fighter) {
+    return this.time < f.getupUntil;
+  }
+
+  dodging(f: Fighter) {
+    return this.time - f.dodgeAt < DUEL.dodge.time;
+  }
+
   private control(f: Fighter, other: Fighter, input: DuelInput, prev: DuelInput) {
     const stunned = this.time < f.stunUntil;
     const busy = f.move !== null;
+    if (this.lying(f)) {
+      f.vx *= 0.85;
+      f.blocking = false;
+      return;
+    }
+    if (this.dodging(f)) return;
     f.facing = other.x > f.x ? 1 : -1;
-    f.blocking = !stunned && !busy && input.block && f.y === 0;
+    const fwd = f.facing > 0 ? input.right : input.left;
+    const back = f.facing > 0 ? input.left : input.right;
+    const punch = input.punch && !prev.punch;
+    const kick = input.kick && !prev.kick;
+    // Giữ S + đòn = đòn thấp; giữ S không đánh = đỡ
+    f.blocking = !stunned && !busy && input.block && f.y === 0 && !punch && !kick;
     if (stunned || busy || f.blocking) {
       if (f.y === 0) f.vx = 0;
+      return;
+    }
+    // Né lùi (L): lướt ra sau, bất tử chốc lát
+    if (input.dodge && !prev.dodge && f.y === 0 && this.time - f.dodgeAt > DUEL.dodge.cd) {
+      f.dodgeAt = this.time;
+      f.vx = -f.facing * DUEL.dodge.speed;
+      this.events.push({ kind: "dodge", who: f === this.player ? "player" : "foe", x: f.x, at: this.time });
       return;
     }
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -185,35 +267,65 @@ export class DuelSim {
       f.move = m;
       f.moveAt = this.time;
       f.moveHit = false;
-      if (f.y === 0) f.vx = 0;
+      const L = (DUEL.moves[m] as MoveSpec).lunge;
+      if (L) f.vx = f.facing * L;
+      else if (f.y === 0) f.vx = 0;
     };
-    if (input.punch && !prev.punch) start("punch");
-    else if (input.kick && !prev.kick) start("kick");
+    // Bấm liên tiếp cùng nút trong nhịp combo thì ra đòn kế trong chuỗi
+    const next = (kind: "punch" | "kick") => {
+      const list = DUEL.chains[kind];
+      const c = f.chain;
+      const step = c.kind === kind && this.time - c.at < DUEL.comboWindow + 0.35 ? (c.step + 1) % list.length : 0;
+      f.chain = { kind, step, at: this.time };
+      return list[step] as MoveId;
+    };
+    if (!punch && !kick) return;
+    if (f.y > 0) start(punch ? "jumppunch" : "flykick");
+    else if (input.block) start(punch ? "risekick" : "sweep");
+    else if (fwd && kick) start("flykick");
+    else if (fwd && punch) start("elbow");
+    else if (back && kick) start("backflip");
+    else start(next(punch ? "punch" : "kick"));
   }
 
   /** Đòn đang ở khung trúng: chạm thì gây sát thương (đỡ thì chỉ trầy), hết đòn thì trả về trạng thái tự do */
   private resolve(a: Fighter, b: Fighter, who: "player" | "foe") {
     if (!a.move) return;
-    const m = DUEL.moves[a.move];
+    const m: MoveSpec = DUEL.moves[a.move];
     const t = this.time - a.moveAt;
+    // Lao tới chỉ trong lúc vung đòn
+    if (m.lunge && t > m.startup + m.active && a.y === 0) a.vx *= 0.8;
     if (!a.moveHit && t >= m.startup && t < m.startup + m.active) {
       const dist = (b.x - a.x) * a.facing;
-      if (dist > 0 && dist < m.reach && Math.abs(b.y - a.y) < 1.2) {
+      const immune = this.lying(b) || this.dodging(b);
+      if (dist > 0 && dist < m.reach && Math.abs(b.y - a.y) < 1.2 && !immune) {
         a.moveHit = true;
         const blocked = b.blocking && b.facing === -a.facing;
         a.combo = Math.min(3, a.combo + 1);
         a.lastHitAt = this.time;
         // Đối thủ mạnh đánh đau hơn theo lực đòn của bậc
         const mul = (a.combo >= 3 ? DUEL.comboBonus : 1) * (a === this.foe ? this.rival.power : 1);
-        const dmg = m.damage * mul * (blocked ? DUEL.blockChip : 1);
+        const chip = blocked ? (m.low ? DUEL.lowChip : DUEL.blockChip) : 1;
+        const dmg = m.damage * mul * chip;
         b.hp = Math.max(0, b.hp - dmg);
         b.vx = a.facing * m.push * (blocked ? 0.5 : 1);
-        if (!blocked) {
+        const knocked = !!m.knock && (!blocked || !!m.low);
+        if (!blocked || knocked) {
           b.stunUntil = this.time + DUEL.hitStun;
           b.move = null;
           b.hurtAt = this.time;
+          b.hurtKind = m.hit;
+          b.chain = { kind: null, step: 0, at: -9 };
         }
-        this.events.push({ kind: blocked ? "block" : "hit", who, x: b.x, at: this.time, move: a.move });
+        if (knocked) {
+          // Ngã sàn: văng ra, nằm một lúc rồi đứng dậy (bất tử cho tới khi đứng hẳn)
+          b.downUntil = this.time + DUEL.downTime;
+          b.getupUntil = b.downUntil + DUEL.getupTime;
+          b.stunUntil = b.getupUntil;
+          b.blocking = false;
+          if (b.y === 0) b.vy = 4;
+        }
+        this.events.push({ kind: knocked ? "knock" : blocked ? "block" : "hit", who, x: b.x, at: this.time, move: a.move });
         if (a.combo >= 3) a.combo = 0;
       }
     }
@@ -229,8 +341,8 @@ export class DuelSim {
       f.y = Math.max(0, f.y + f.vy * dt);
       if (f.y === 0) f.vy = 0;
       f.x += f.vx * dt;
-      // Lực đẩy lùi giảm dần
-      if (this.time < f.stunUntil) f.vx *= 0.9;
+      // Lực đẩy lùi / lướt né giảm dần
+      if (this.time < f.stunUntil || this.dodging(f)) f.vx *= 0.9;
       f.x = Math.max(-DUEL.arenaHalf, Math.min(DUEL.arenaHalf, f.x));
     }
     // Không cho hai thân chồng lên nhau
@@ -245,7 +357,10 @@ export class DuelSim {
     }
   }
 
-  /** AI đơn giản: tiến lại gần, vào tầm thì đấm/đá, thỉnh thoảng đỡ khi người chơi ra đòn, phản ứng có độ trễ */
+  /**
+   * AI: tiến lại gần, vào tầm thì ra chuỗi đấm / đá hoặc đòn đặc biệt theo khoảng cách, thỉnh thoảng đỡ / né khi
+   * người chơi ra đòn, quét trụ khi người chơi hay đỡ. Phản ứng có độ trễ theo bậc đối thủ.
+   */
   private think(): { now: DuelInput; prev: DuelInput } {
     const prev = this.aiIntent;
     if (this.time >= this.aiNext) {
@@ -254,15 +369,26 @@ export class DuelSim {
       const p = this.player;
       const dist = Math.abs(p.x - f.x);
       const toward = p.x > f.x ? { right: true } : { left: true };
+      const away = p.x > f.x ? { left: true } : { right: true };
+      const r = this.rng();
       let intent: DuelInput = { ...NO_DUEL };
-      if (p.move && dist < 2 && this.rng() < this.rival.blockChance) intent.block = true;
-      else if (dist > DUEL.moves.kick.reach * 0.9) intent = { ...NO_DUEL, ...toward };
-      else if (this.rng() < this.rival.aggression) intent = { ...NO_DUEL, [this.rng() < 0.6 ? "punch" : "kick"]: true };
-      else if (this.rng() < 0.3) intent = { ...NO_DUEL, jump: true };
+      if (this.lying(p)) intent = { ...NO_DUEL, ...away };
+      else if (p.move && dist < 2.2 && r < this.rival.blockChance) intent = this.rng() < 0.3 ? { ...NO_DUEL, dodge: true } : { ...NO_DUEL, block: true };
+      else if (dist > 3.2 && dist < 4.2 && r < this.rival.aggression * 0.35) intent = { ...NO_DUEL, ...toward, kick: true };
+      else if (dist > 1.6) intent = { ...NO_DUEL, ...toward };
+      else if (r < this.rival.aggression) {
+        const k = this.rng();
+        // Người chơi hay đỡ: quét trụ phá thế đỡ
+        if (p.blocking && k < 0.5) intent = { ...NO_DUEL, block: true, kick: true };
+        else if (k < 0.55) intent = { ...NO_DUEL, punch: true };
+        else if (k < 0.85) intent = { ...NO_DUEL, kick: true };
+        else intent = { ...NO_DUEL, ...toward, punch: true };
+      } else if (this.rng() < 0.3) intent = { ...NO_DUEL, jump: true };
       this.aiIntent = intent;
       // Nhấn phím một nhịp: lần nghĩ sau mới nhấn lại
       return { now: intent, prev: NO_DUEL };
     }
+    // Giữ hướng / đỡ, nhưng các nút đòn chỉ tính lần nhấn đầu
     return { now: prev, prev };
   }
 }

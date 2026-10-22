@@ -9,17 +9,18 @@ import { extraModel, playSfx, type ExtraModel } from "../game/assets";
 import { once } from "../game/meshyAnim";
 import { useFitted } from "../game/Showcase";
 import { useGame } from "../game/store";
-import { DUEL, RIVALS, type DuelInput, type DuelSim, type Fighter } from "./duel";
+import { DUEL, RIVALS, type DuelInput, type DuelSim, type Fighter, type MoveId } from "./duel";
+import { FIGHT_CLIPS, fightModel, type FightClip } from "./fightClips";
 import { GEAR, type GearId } from "./gear";
 import { DUEL_REWARD, settleDuel, useDuel } from "./duelSession";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { RetroGrade } from "./retroEffects";
 import { addOutline, buildRig, flash, Quiet, RED, setAnim, WHITE } from "./LevelScene";
 
-/** Phím: A/D đi, W/Space nhảy, S đỡ, J đấm, K đá */
+/** Phím: A/D đi, W/Space nhảy, S đỡ (giữ S + đòn = đòn thấp), J đấm, K đá, L né */
 function duelInput(): DuelInput {
   const i = levelInput.state();
-  return { left: i.left, right: i.right, jump: i.jump || i.up, block: i.down, punch: i.shoot, kick: i.dash };
+  return { left: i.left, right: i.right, jump: i.jump || i.up, block: i.down, punch: i.shoot, kick: i.dash, dodge: i.melee };
 }
 
 export function DuelCanvas() {
@@ -66,13 +67,23 @@ export function DuelCanvas() {
   );
 }
 
+/** Khựng hình khi trúng đòn (hitstop) và rung camera: đòn nặng / đánh ngã khựng lâu hơn, rung mạnh hơn */
+const impact = { freeze: 0, shake: 0 };
+
 function DuelDriver({ sim }: { sim: DuelSim }) {
   const seen = useRef(0);
   useFrame((_, dt) => {
-    if (!levelInput.paused) sim.update(Math.min(dt, 0.1), duelInput());
+    impact.freeze -= dt;
+    impact.shake = Math.max(0, impact.shake - dt * 2.5);
+    if (!levelInput.paused && impact.freeze <= 0) sim.update(Math.min(dt, 0.1), duelInput());
     for (let i = seen.current; i < sim.events.length; i++) {
       const e = sim.events[i];
-      if (e.kind === "hit") playSfx(e.move === "kick" ? "enemyDestroy" : "enemyHurt", 0.6);
+      if (e.kind === "hit" || e.kind === "knock" || e.kind === "ko") {
+        const heavy = e.kind !== "hit" || (e.move && DUEL.moves[e.move].damage >= 10);
+        impact.freeze = e.kind === "ko" ? 0.35 : heavy ? 0.11 : 0.05;
+        impact.shake = Math.max(impact.shake, e.kind === "ko" ? 0.5 : heavy ? 0.28 : 0.1);
+      } else if (e.kind === "block") impact.freeze = 0.04;
+      if (e.kind === "hit" || e.kind === "knock") playSfx(e.kind === "knock" || (e.move && DUEL.moves[e.move].hit === "body") ? "enemyDestroy" : "enemyHurt", 0.6);
       else if (e.kind === "block") playSfx("blaster", 0.25);
       else if (e.kind === "ko") playSfx("enemyDestroy", 1);
     }
@@ -93,7 +104,9 @@ function DuelCamera({ sim }: { sim: DuelSim }) {
     const k = 1 - Math.exp(-4 * Math.min(dt, 0.1));
     c.current.x += (mid - c.current.x) * k;
     c.current.z += (dist - c.current.z) * k;
-    camera.position.set(c.current.x, 2.1, c.current.z);
+    const t = performance.now() / 1000;
+    const sh = impact.shake * impact.shake;
+    camera.position.set(c.current.x + Math.sin(t * 61) * sh * 0.5, 2.1 + Math.sin(t * 47) * sh * 0.35, c.current.z);
     camera.lookAt(c.current.x, 1.25, 0);
   });
   return null;
@@ -296,49 +309,94 @@ function Throne() {
   return <primitive object={root} position={[0, 0, -7.5]} />;
 }
 
-/** Model võ sĩ: nhân vật chọn của người chơi; đối thủ theo bậc thang. Đấm/đá mượn clip của nhân vật Meshy khác */
-const BORROW = { punch: "mx_ct_guard_attack", kick: "mx_zmb_brute_attack", hit: "mx_vane_human_hit" } as const;
+/** Clip võ thuật Meshy dùng cho cả hai võ sĩ (cùng tên xương nên đối thủ nào cũng diễn được) */
+const STANCE = ["fidle", "fwalk", "fback", "block", "dodge", "facehit", "hitr", "knockdown", "getup", "taunt", "victory"] as const;
+const MOVE_CLIPS = [...new Set(Object.values(DUEL.moves).map((m) => m.clip))] as FightClip[];
+/** Đoạn có ích trong clip ngã / đứng dậy (giây trong clip): ngã 0 → 1.3, đứng dậy 4.2 → 6.7 */
+const KNOCK_END = 1.3;
+const GETUP = [4.2, 6.7] as const;
+
+/** Tốc độ tua clip một đòn: phần trước lúc vung mạnh nhất phải gói gọn trong thời gian ra đòn (startup) */
+function moveTiming(id: MoveId) {
+  const m = DUEL.moves[id];
+  const peak = FIGHT_CLIPS[m.clip as FightClip].peak;
+  const lead = Math.min(peak, 0.5);
+  const scale = THREE.MathUtils.clamp(lead / Math.max(0.05, m.startup), 1, 4);
+  return { scale, start: Math.max(0, peak - m.startup * scale) };
+}
 
 function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
   const skin = useGame((s) => s.profile?.hunter ?? "soldier");
   const base = who === "player" ? `mx_cls_${skin === "soldier" ? "racer" : skin}` : sim.rival.base;
-  const m = (n: string) => use(extraModel(n as ExtraModel));
-  const walk = m(`${base}_walk`);
-  const run = m(`${base}_run`);
-  // Đối thủ mới (model tải lên) chỉ có đi/chạy: động tác ngã mượn của vệ binh
-  const death = m(base.startsWith("mx_dr_") ? "mx_ct_guard_death" : `${base}_death`);
-  const idle = who === "player" ? m(`${base}_idle`) : walk;
-  const punch = m(BORROW.punch);
-  const kick = m(BORROW.kick);
-  const hit = m(BORROW.hit);
+  const walk = use(extraModel(`${base}_walk` as ExtraModel));
+  const names = [...STANCE, ...MOVE_CLIPS];
+  const gltfs = names.map((n) => use(extraModel(fightModel(n as FightClip))));
   const rig = useMemo(() => {
-    const r = buildRig(
-      walk.scene,
-      { idle: (who === "player" ? idle : walk).animations[0], walk: walk.animations[0], run: run.animations[0], death: death.animations[0], punch: punch.animations[0], kick: kick.animations[0], hit: hit.animations[0] },
-      who === "player" ? 1.8 : sim.rival.height,
-      who === "player" ? 0.55 : 0.4,
-    );
-    for (const n of ["punch", "kick"]) if (r.actions[n]) once(r.actions[n]);
+    const clips: Record<string, THREE.AnimationClip> = {};
+    names.forEach((n, i) => (clips[n] = gltfs[i].animations[0]));
+    const r = buildRig(walk.scene, clips, who === "player" ? 1.8 : sim.rival.height, who === "player" ? 0.55 : 0.4);
+    for (const n of [...MOVE_CLIPS, "facehit", "hitr", "knockdown", "getup", "dodge", "victory"]) if (r.actions[n]) once(r.actions[n]);
     if (who === "player") addOutline(r.scene, "#fff3a0", 0.02);
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walk, run, death, idle, punch, kick, hit, who, sim]);
+  }, [walk, who, sim, ...gltfs]);
   const group = useRef<THREE.Group>(null);
+  const lastMove = useRef(-9);
+  const lastHurt = useRef(-9);
+  const phase = useRef<"" | "down" | "getup">("");
   useFrame((_, dt) => {
     const f: Fighter = who === "player" ? sim.player : sim.foe;
     const o = group.current;
     if (!o) return;
     o.position.set(f.x, f.y, 0);
     o.rotation.y = f.facing * (Math.PI / 2 - 0.25);
+    const won = (who === "player" && sim.status === "won") || (who === "foe" && sim.status === "lost");
     const ko = (who === "player" && sim.status === "lost") || (who === "foe" && sim.status === "won");
-    if (ko) setAnim(rig, "death", 0.1);
-    else if (sim.time < f.stunUntil) setAnim(rig, "hit", 0.05, sim.time - f.hurtAt < 0.02);
-    else if (f.move) setAnim(rig, f.move, 0.06, sim.time - f.moveAt < 0.02);
-    else if (Math.abs(f.vx) > 0.3) setAnim(rig, "walk", 0.12);
-    else setAnim(rig, "idle", 0.2);
-    // Đỡ đòn: co người, khựng animation
-    o.scale.set(1, f.blocking ? 0.92 : 1, 1);
-    rig.mixer.update(Math.min(dt, 0.1) * (f.blocking ? 0.2 : f.move === "kick" ? 1.3 : f.move === "punch" ? 1.6 : 1));
+    const play = (name: string, fade: number, restart = false, time = 0, scale = 1) => {
+      setAnim(rig, name, fade, restart);
+      const a = rig.actions[name];
+      if (a && restart) {
+        a.time = time;
+        a.timeScale = scale;
+      }
+    };
+    if (ko || sim.time < f.downUntil) {
+      // Ngã: phát đoạn ngã một lần rồi nằm yên
+      if (phase.current !== "down") {
+        phase.current = "down";
+        play("knockdown", 0.05, true, 0, 2.6);
+      }
+      const a = rig.actions.knockdown;
+      if (a && a.time >= KNOCK_END) a.timeScale = 0;
+    } else if (sim.lying(f)) {
+      if (phase.current !== "getup") {
+        phase.current = "getup";
+        play("getup", 0.1, true, GETUP[0], (GETUP[1] - GETUP[0]) / DUEL.getupTime);
+      }
+    } else {
+      phase.current = "";
+      if (won) setAnim(rig, "victory", 0.3);
+      else if (sim.status === "intro") setAnim(rig, who === "foe" ? "taunt" : "fidle", 0.3);
+      else if (sim.time < f.stunUntil) {
+        if (lastHurt.current !== f.hurtAt) {
+          lastHurt.current = f.hurtAt;
+          const clip = f.hurtKind === "face" ? "facehit" : "hitr";
+          play(clip, 0.04, true, FIGHT_CLIPS[clip].peak * 0.5, 2.2);
+        }
+      } else if (sim.dodging(f)) setAnim(rig, "dodge", 0.05, sim.time - f.dodgeAt < 0.02);
+      else if (f.move) {
+        if (lastMove.current !== f.moveAt) {
+          lastMove.current = f.moveAt;
+          const t = moveTiming(f.move);
+          play(DUEL.moves[f.move].clip, 0.05, true, t.start, t.scale);
+        }
+      } else if (f.blocking) setAnim(rig, "block", 0.08);
+      else if (Math.abs(f.vx) > 0.3) setAnim(rig, f.vx * f.facing > 0 ? "fwalk" : "fback", 0.12);
+      else setAnim(rig, "fidle", 0.2);
+    }
+    const dodge = rig.actions.dodge;
+    if (dodge && rig.current === "dodge") dodge.timeScale = 1.43 / DUEL.dodge.time / 1.6;
+    rig.mixer.update(Math.min(dt, 0.1));
     const hurt = sim.time - f.hurtAt;
     flash(rig.scene, hurt < 0.12 ? 1 - hurt / 0.12 : 0, who === "player" ? RED : WHITE);
   });
@@ -463,7 +521,7 @@ export function DuelHud() {
       )}
       <div className="lv__help">
         <kbd>A</kbd>
-        <kbd>D</kbd> di chuyển · <kbd>W</kbd> nhảy · <kbd>S</kbd> đỡ · <kbd>J</kbd> đấm (3 đòn liên tiếp = combo) · <kbd>K</kbd> đá · <kbd>Esc</kbd> thoát
+        <kbd>D</kbd> di chuyển · <kbd>W</kbd> nhảy · <kbd>S</kbd> đỡ · <kbd>J</kbd> chuỗi đấm (jab–jab–móc–móc ngửa) · <kbd>K</kbd> chuỗi đá (gối–vòng cầu–đạp) · tiến+<kbd>J</kbd> chỏ · tiến+<kbd>K</kbd> phi cước · lùi+<kbd>K</kbd> đá lộn · <kbd>S</kbd>+<kbd>K</kbd> quét trụ · <kbd>L</kbd> né · <kbd>Esc</kbd> thoát
       </div>
     </div>
   );

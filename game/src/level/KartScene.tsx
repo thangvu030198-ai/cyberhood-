@@ -15,6 +15,7 @@ import { handles } from "../game/refs";
 import { MISSION_GATE } from "../game/config";
 import { KART, KartSim, type KartInput } from "./kart";
 import { bindLevelKeys, levelInput } from "./levelInput";
+import { ModeTouchPad, isTouchUi } from "./LevelHud";
 import { PunchGrade } from "./retroEffects";
 import { DriftFx, NitroFlames, SpeedLines, driftYaw, kartShake } from "./kartFx";
 import { Quiet } from "./LevelScene";
@@ -646,7 +647,20 @@ export function KartHud() {
           </button>
         </div>
       )}
-      <div className="lv__help">
+      <ModeTouchPad
+        left={[
+          { k: "left", label: "◀" },
+          { k: "right", label: "▶" },
+        ]}
+        right={[
+          { k: "down", label: "PHANH" },
+          { k: "shoot", label: "VẬT PHẨM" },
+          { k: "jump", label: "DRIFT" },
+          { k: "up", label: "GA", big: true },
+        ]}
+        onExit={leave}
+      />
+      <div className="lv__help" hidden={isTouchUi()}>
         <kbd>W</kbd> ga · <kbd>S</kbd> phanh · <kbd>A</kbd>
         <kbd>D</kbd> lái · giữ <kbd>Space</kbd> + lái = drift (tia lửa xanh → cam, nhả ra được turbo) · <kbd>J</kbd> dùng vật phẩm (turbo / tên lửa) · tấm cam = tăng tốc · <kbd>Esc</kbd> thoát
       </div>

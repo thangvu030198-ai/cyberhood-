@@ -1,3 +1,4 @@
+import { usePlatform } from "../platform/state";
 import { useEffect, useState } from "react";
 import { Joystick, VirtualButton } from "ecctrl/input";
 import { CARS } from "../game/Vehicles";
@@ -41,6 +42,27 @@ const FIRE_CAP = { ...TOUCH_CAP, width: "70px", height: "70px", background: "rgb
 
 function carName(id: number | null) {
   return CARS.find((c) => c.id === id)?.name ?? "";
+}
+
+/** Số người chơi khác đang online (khi có kết nối chơi chung) và cảnh báo bản build cũ */
+function OnlineChip() {
+  const net = usePlatform((s) => s.net);
+  const online = usePlatform((s) => s.online);
+  const outdated = usePlatform((s) => s.outdated);
+  return (
+    <>
+      {net !== "off" && (
+        <span className="brand__online">
+          <i aria-hidden /> {online + 1} online
+        </span>
+      )}
+      {outdated && (
+        <button type="button" className="brand__outdated" onClick={() => location.reload()}>
+          Có bản cập nhật mới · tải lại
+        </button>
+      )}
+    </>
+  );
 }
 
 function isTouchDevice() {
@@ -402,6 +424,7 @@ export function Hud() {
         <div className="brand">
           <span className="brand__name">CYBERHOOD</span>
           <span className="brand__build">{profile ? `${profile.handle} · ` : ""}build 0.3 · hạ gục {kills}</span>
+          <OnlineChip />
         </div>
         <Wanted />
         <SafeZoneTag />

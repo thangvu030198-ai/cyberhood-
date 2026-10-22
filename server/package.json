@@ -1,0 +1,9 @@
+{
+  "name": "cyberhood-realtime-ref",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Server realtime tham chiếu cho Hub CYBERHOOD (dev/staging). Production thay bằng Colyseus/Nakama giữ cùng giao thức.",
+  "scripts": { "start": "node server.mjs", "test": "node --test" },
+  "dependencies": { "ws": "^8.18.0" }
+}

@@ -54,6 +54,8 @@ import { LedBoards } from "./game/LedBoards";
 import { HubHolo } from "./game/HubHolo";
 import { NftBoard } from "./game/NftBoard";
 import { CityAds } from "./game/CityAds";
+import { RemotePlayers } from "./game/RemotePlayers";
+import { featureOn } from "./platform/remote";
 import { HubServices } from "./game/HubServices";
 import { LevelCanvas } from "./level/LevelScene";
 import { LevelHud } from "./level/LevelHud";
@@ -112,6 +114,18 @@ const NO_CARS = params.has("nocars");
 const NO_FX = params.has("nofx");
 const NO_ADS = params.has("noads");
 
+/** Điện thoại cầm dọc khi đã vào game: nhắc xoay ngang (màn tạo nhân vật vẫn dùng được khi cầm dọc) */
+function RotateHint() {
+  const hasProfile = useGame((s) => s.profile !== null);
+  if (!hasProfile) return null;
+  return (
+    <div className="rotate-hint" aria-live="polite">
+      <span aria-hidden>⟳</span>
+      <p>Xoay ngang điện thoại để chơi</p>
+    </div>
+  );
+}
+
 function DebugHook() {
   const state = useThree();
   if (params.has("debug")) {
@@ -169,8 +183,8 @@ export default function App() {
                 <LifeStatic quality={quality} />
                 <MeshyStatic />
                 <KitDressing />
-                <SiegeGatePortal />
-                <RaidGatePortal />
+                {featureOn("siege") && <SiegeGatePortal />}
+                {featureOn("raid") && <RaidGatePortal />}
               </group>
               <Player />
               {inSiege && !inRaid && <SiegeWorld />}
@@ -197,6 +211,7 @@ export default function App() {
               <HubHolo />
               {!NO_ADS && <NftBoard />}
               {!NO_ADS && <CityAds />}
+              <RemotePlayers />
               <HubServices />
             </group>
             {!inSiege && <ObjectiveArrow />}
@@ -239,6 +254,7 @@ export default function App() {
             <RaidLobby />
           </>
         )}
+        <RotateHint />
       </KeyboardControls>
     </Crash>
   );

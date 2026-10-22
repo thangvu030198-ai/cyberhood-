@@ -7,6 +7,7 @@ import { useGame } from "../game/store";
 import type { HunterSkin } from "../game/skins";
 import { SkinPicker } from "./SkinPicker";
 import { LanguagePicker } from "./LanguagePicker";
+import { usePlatform } from "../platform/state";
 import { ITEMS, NPCS, questById, type ItemId } from "../game/story";
 
 // Các bảng giao diện của giai đoạn 3: tạo nhân vật, theo dõi nhiệm vụ, hội thoại, túi đồ, thông báo.
@@ -43,7 +44,10 @@ export const CREDITS = [
 export function CharacterCreator() {
   const profile = useGame((s) => s.profile);
   const setProfile = useGame((s) => s.setProfile);
-  const [handle, setHandle] = useState("");
+  // Gợi ý biệt danh từ tên tài khoản (nếu nền tảng cung cấp), bỏ ký tự không hợp lệ
+  const account = usePlatform((s) => s.accountName);
+  const saveMode = usePlatform((s) => s.save);
+  const [handle, setHandle] = useState(() => account.replace(/[^\p{L}\p{N}_ -]/gu, "").slice(0, 16));
   const [body, setBody] = useState(BODY_COLORS[0]);
   const [glow, setGlow] = useState(GLOW_COLORS[0]);
   const [hunter, setHunter] = useState<HunterSkin>("soldier");
@@ -108,6 +112,7 @@ export function CharacterCreator() {
       <button type="submit" className="creator__go" disabled={!valid}>
         Jack in
       </button>
+      <p className="creator__save">{saveMode === "local" ? "Hồ sơ lưu trên thiết bị này" : saveMode === "account" ? "Hồ sơ lưu vào tài khoản CYBERHOOD" : "Hồ sơ lưu đám mây, chơi tiếp trên máy khác"}</p>
       <p className="creator__credits">{CREDITS.map((c, i) => (
           <span key={i}>{(i ? " · " : "") + c}</span>
         ))}</p>
@@ -234,6 +239,8 @@ export function InventoryPanel() {
           ))}
         </ul>
       )}
+      <h3 className="bag__section">Hồ sơ</h3>
+      <ProfileEditor />
       <h3 className="bag__section">
         <span aria-hidden>🌐 </span>Ngôn ngữ
       </h3>
@@ -256,6 +263,40 @@ export function InventoryPanel() {
           <span key={i}>{(i ? " · " : "") + c}</span>
         ))}</p>
     </div>
+  );
+}
+
+/** Đổi biệt danh; hồ sơ tự lưu (cục bộ, đám mây hoặc tài khoản tuỳ nền tảng) */
+function ProfileEditor() {
+  const profile = useGame((s) => s.profile);
+  const setProfile = useGame((s) => s.setProfile);
+  const save = usePlatform((s) => s.save);
+  const online = usePlatform((s) => s.online);
+  const net = usePlatform((s) => s.net);
+  const [name, setName] = useState(profile?.handle ?? "");
+  if (!profile) return null;
+  const clean = name.trim();
+  const valid = /^[\p{L}\p{N}_ -]{3,16}$/u.test(clean) && clean !== profile.handle;
+  return (
+    <form
+      className="profile-edit"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (valid) setProfile({ ...profile, handle: clean });
+      }}
+    >
+      <label>
+        <span>Biệt danh</span>
+        <input value={name} maxLength={16} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.stopPropagation()} />
+      </label>
+      <button type="submit" className="bag__use" disabled={!valid}>
+        Lưu
+      </button>
+      <p className="profile-edit__meta">
+        {save === "local" ? "Lưu trên thiết bị này" : save === "account" ? "Lưu vào tài khoản" : "Lưu đám mây"}
+        {net !== "off" ? ` · ${online} người khác đang online` : ""}
+      </p>
+    </form>
   );
 }
 

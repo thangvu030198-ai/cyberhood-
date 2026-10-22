@@ -14,6 +14,7 @@ import { FIGHT_CLIPS, fightAnim, type FightClip } from "./fightClips";
 import { GEAR, type GearId } from "./gear";
 import { DUEL_REWARD, settleDuel, useDuel } from "./duelSession";
 import { bindLevelKeys, levelInput } from "./levelInput";
+import { ModeTouchPad, isTouchUi } from "./LevelHud";
 import { PunchGrade } from "./retroEffects";
 import { addOutline, buildRig, flash, Quiet, RED, setAnim, WHITE } from "./LevelScene";
 
@@ -548,7 +549,21 @@ export function DuelHud() {
           </button>
         </div>
       )}
-      <div className="lv__help">
+      <ModeTouchPad
+        left={[
+          { k: "left", label: "◀" },
+          { k: "right", label: "▶" },
+          { k: "up", label: "▲" },
+        ]}
+        right={[
+          { k: "down", label: "ĐỠ" },
+          { k: "melee", label: "NÉ" },
+          { k: "dash", label: "ĐÁ" },
+          { k: "shoot", label: "ĐẤM", big: true },
+        ]}
+        onExit={() => useDuel.getState().leave()}
+      />
+      <div className="lv__help" hidden={isTouchUi()}>
         <kbd>A</kbd>
         <kbd>D</kbd> di chuyển · <kbd>W</kbd> nhảy · <kbd>S</kbd> đỡ · <kbd>J</kbd> chuỗi đấm (jab–jab–móc–móc ngửa) · <kbd>K</kbd> chuỗi đá (gối–vòng cầu–đạp) · tiến+<kbd>J</kbd> chỏ · tiến+<kbd>K</kbd> phi cước · lùi+<kbd>K</kbd> đá lộn · <kbd>S</kbd>+<kbd>K</kbd> quét trụ · <kbd>L</kbd> né · <kbd>Esc</kbd> thoát
       </div>

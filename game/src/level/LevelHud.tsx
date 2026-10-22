@@ -254,6 +254,45 @@ export function LevelHud() {
   );
 }
 
+type PadKey = { k: keyof Input; label: string; big?: boolean };
+
+/** Nút cảm ứng tuỳ chế độ (đua xe, đối kháng): giữ = nhấn phím; ✕ thoát về thành phố */
+export function ModeTouchPad({ left, right, onExit }: { left: PadKey[]; right: PadKey[]; onExit: () => void }) {
+  if (!touchDevice) return null;
+  const hold = (name: keyof Input) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      levelInput.setTouch(name, true);
+    },
+    onPointerUp: () => levelInput.setTouch(name, false),
+    onPointerCancel: () => levelInput.setTouch(name, false),
+  });
+  return (
+    <>
+      <div className="lv__pad lv__pad--left">
+        {left.map((b) => (
+          <button key={b.label} className={b.big ? "lv__jump" : undefined} {...hold(b.k)}>
+            {b.label}
+          </button>
+        ))}
+      </div>
+      <div className="lv__pad lv__pad--right">
+        {right.map((b) => (
+          <button key={b.label} className={b.big ? "lv__jump" : undefined} {...hold(b.k)}>
+            {b.label}
+          </button>
+        ))}
+      </div>
+      <button className="lv__pause lv__exit" aria-label="Thoát" onClick={onExit}>
+        ✕
+      </button>
+    </>
+  );
+}
+
+/** Thiết bị cảm ứng: ẩn dòng hướng dẫn phím bàn phím */
+export const isTouchUi = () => !!touchDevice;
+
 function TouchPad({ onPause, flying }: { onPause: () => void; flying: boolean }) {
   const hold = (name: keyof Input) => ({
     onPointerDown: (e: React.PointerEvent) => {

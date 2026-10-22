@@ -1,3 +1,6 @@
+import type { AnimationClip } from "three";
+import { extraModel } from "../game/assets";
+
 // Clip võ thuật / kiếm Meshy dùng chung (xương cùng tên nên nhân vật nào cũng mượn được).
 // `peak`: giây trong clip mà tay/chân ra đòn nhanh nhất (đo từ tốc độ xoay xương) — dùng để canh lúc trúng đòn.
 
@@ -38,4 +41,24 @@ export const FIGHT_CLIPS = {
 } as const;
 
 export type FightClip = keyof typeof FIGHT_CLIPS;
-export const fightModel = (c: FightClip) => `mx_fa_${c}` as const;
+
+/** Mọi clip nằm chung một file (mx_fa_all.glb, mỗi clip đặt tên theo khoá ở trên) */
+const cache = new Map<FightClip, Promise<{ animations: AnimationClip[] }>>();
+export function fightAnim(c: FightClip) {
+  let p = cache.get(c);
+  if (!p) {
+    // File gộp có nhiều khung xương trùng tên: bộ nạp GLTF đổi tên thành "Hips_3"… nên bỏ hậu tố số để clip
+    // bám vào xương của nhân vật bất kỳ
+    p = extraModel("mx_fa_all").then((g) => ({
+      animations: g.animations
+        .filter((a) => a.name === c)
+        .map((a) => {
+          const k = a.clone();
+          for (const t of k.tracks) t.name = t.name.replace(/_\d+(?=\.)/, "");
+          return k;
+        }),
+    }));
+    cache.set(c, p);
+  }
+  return p;
+}

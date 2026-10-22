@@ -10,7 +10,7 @@ import { once } from "../game/meshyAnim";
 import { useFitted } from "../game/Showcase";
 import { useGame } from "../game/store";
 import { DUEL, RIVALS, type DuelInput, type DuelSim, type Fighter, type MoveId } from "./duel";
-import { FIGHT_CLIPS, fightModel, type FightClip } from "./fightClips";
+import { FIGHT_CLIPS, fightAnim, type FightClip } from "./fightClips";
 import { GEAR, type GearId } from "./gear";
 import { DUEL_REWARD, settleDuel, useDuel } from "./duelSession";
 import { bindLevelKeys, levelInput } from "./levelInput";
@@ -358,7 +358,7 @@ function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
   const base = who === "player" ? `mx_cls_${skin === "soldier" ? "racer" : skin}` : sim.rival.base;
   const walk = use(extraModel(`${base}_walk` as ExtraModel));
   const names = [...STANCE, ...MOVE_CLIPS];
-  const gltfs = names.map((n) => use(extraModel(fightModel(n as FightClip))));
+  const gltfs = names.map((n) => use(fightAnim(n as FightClip)));
   const rig = useMemo(() => {
     const clips: Record<string, THREE.AnimationClip> = {};
     names.forEach((n, i) => (clips[n] = gltfs[i].animations[0]));

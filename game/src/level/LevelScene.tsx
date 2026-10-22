@@ -36,7 +36,7 @@ import type { Enemy, PlatformerSim } from "./platformer";
 import { THEMES, type LevelTheme } from "./themes";
 import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } from "./registry";
 import { GearDrops, HeroArms, WeaponShots, WornArmor } from "./gearView";
-import { FIGHT_CLIPS, fightModel } from "./fightClips";
+import { FIGHT_CLIPS, fightAnim } from "./fightClips";
 import { WornGear } from "./wornGear";
 import { CombatFx } from "./combatFx";
 import { SideSkin, TopSkin, asphaltTexture, graveyardTexture, skinSkips } from "./terrainSkin";
@@ -1710,12 +1710,12 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     hit: use(extraModel(`${base}_hit`)),
     death: use(extraModel(`${base}_death`)),
     // Bộ hoạt ảnh lớp nhân vật không có đòn kiếm: mượn clip kiếm Meshy (cùng tên xương)
-    sw0: use(extraModel(fightModel("slashR"))),
-    sw1: use(extraModel(fightModel("slashL"))),
-    sw2: use(extraModel(fightModel("sword3"))),
-    swUp: use(extraModel(fightModel("upslash"))),
-    swAir: use(extraModel(fightModel("jumpslash"))),
-    swWave: use(extraModel(fightModel("chargeslash"))),
+    sw0: use(fightAnim("slashR")),
+    sw1: use(fightAnim("slashL")),
+    sw2: use(fightAnim("sword3")),
+    swUp: use(fightAnim("upslash")),
+    swAir: use(fightAnim("jumpslash")),
+    swWave: use(fightAnim("chargeslash")),
   };
   const { rig, air, climb } = useMemo(() => {
     const rig = buildRig(

@@ -25,3 +25,6 @@ dist-ssr
 node_modules
 dist
 *.local
+
+# Ảnh xem trước gửi cho người dùng
+game/v*_*.jpg

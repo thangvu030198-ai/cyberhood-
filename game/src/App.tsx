@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { Component, Suspense, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { KeyboardControls } from "@react-three/drei";
@@ -105,7 +106,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel },
+      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE },
     });
   }
   return null;

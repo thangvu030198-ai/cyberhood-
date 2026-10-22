@@ -1931,4 +1931,9 @@ canvas {
 .lv__cred small { font: 600 11px/1 var(--font-mono, monospace); color: #ffd23d99; letter-spacing: 0.1em; }
 @keyframes coin-spin { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.15); } }
 @keyframes cred-pop { 0% { transform: scale(1.6); color: #fff; } 100% { transform: scale(1); } }
+.lv__wmode { position: absolute; left: 64px; top: 82px; display: flex; align-items: baseline; gap: 8px; padding: 3px 12px 3px 8px; background: linear-gradient(90deg, #0a0618dd, #0a061800); border-left: 2px solid #05d9e8; pointer-events: none; animation: cred-pop 0.3s ease-out; }
+.lv__wmode b { font: 800 15px/1 var(--font-mono, monospace); color: #7ff3ff; text-shadow: 0 0 8px #05d9e8; letter-spacing: 0.06em; }
+.lv__wmode.is-sword { border-left-color: #ff6a2a; }
+.lv__wmode.is-sword b { color: #ffb38a; text-shadow: 0 0 8px #ff6a2a; }
+.lv__wmode small { font: 600 10px/1 var(--font-mono, monospace); color: #ffffff77; }
 .lv__melee { background: #ff6a2a33 !important; border-color: #ff6a2a !important; }

@@ -29,63 +29,137 @@ const HOLD: Record<Exclude<WeaponId, "buster">, { len: number; tip: [number, num
   scythe: { len: 1.5, tip: [0, 1, 0], grip: 0.85 },
 };
 
-/** Gắn model vũ khí vào xương bàn tay phải của nhân vật (xương Meshy chạy dọc trục +Y của nó) */
-function HeldWeaponInner({ rig, weapon }: { rig: THREE.Object3D; weapon: Exclude<WeaponId, "buster"> }) {
-  const gltf = use(extraModel(GEAR[weapon].model));
-  useMemo(() => {
-    let hand: THREE.Object3D | undefined;
-    rig.traverse((o) => {
-      if (!hand && (o as THREE.Bone).isBone && /^RightHand$/i.test(o.name)) hand = o;
-    });
-    if (!hand) return;
-    const old = hand.getObjectByName("held-weapon");
-    if (old) hand.remove(old);
-    const h = HOLD[weapon];
-    const obj = gltf.scene.clone(true);
-    obj.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (!m.isMesh) return;
-      m.frustumCulled = false;
-      const mat = (m.material as THREE.MeshStandardMaterial).clone();
-      if (mat.map) {
-        mat.emissiveMap = mat.map;
-        mat.emissive.set("#ffffff");
-        mat.emissiveIntensity = 0.35;
-      }
-      m.material = mat;
-    });
-    const box = new THREE.Box3().setFromObject(obj);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const axis = new THREE.Vector3(...h.tip);
-    const L = Math.abs(axis.dot(size)) || Math.max(size.x, size.y, size.z);
-    const k = h.len / L;
-    // Điểm nắm: từ mũi lùi về đuôi theo tỉ lệ grip
-    const tip = center.clone().addScaledVector(axis, L / 2);
-    const grip = tip.addScaledVector(axis, -L * h.grip);
-    obj.scale.setScalar(k);
-    obj.position.copy(grip).multiplyScalar(-k);
-    const holder = new THREE.Group();
-    holder.name = "held-weapon";
-    holder.add(obj);
-    // Quay trục mũi về hướng ngón tay (+Y của xương), cung thì nằm ngang theo +X của xương
-    holder.quaternion.setFromUnitVectors(axis, h.side ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0));
-    rig.updateMatrixWorld(true);
-    const ws = hand.getWorldScale(new THREE.Vector3());
-    const rs = rig.getWorldScale(new THREE.Vector3());
-    // Xương mang tỉ lệ của cả khung nhân vật: bù lại để vũ khí giữ đúng kích thước mét trong thế giới của rig
-    holder.scale.setScalar(rs.x / Math.max(1e-6, ws.x));
-    holder.position.set(0, 0.06 / Math.max(1e-6, ws.x / rs.x), 0);
-    hand.add(holder);
-  }, [rig, gltf, weapon]);
+type Hold = { len: number; tip: [number, number, number]; grip: number; side?: boolean };
+/** Súng tay mặc định và katana đeo lưng (model Meshy riêng, mũi / nòng hướng −X) */
+const PISTOL: Hold = { len: 0.42, tip: [-1, 0, 0], grip: 0.72 };
+const KATANA: Hold = { len: 1.05, tip: [-1, 0, 0], grip: 0.8 };
+
+function findBone(rig: THREE.Object3D, re: RegExp) {
+  let bone: THREE.Object3D | undefined;
+  rig.traverse((o) => {
+    if (!bone && (o as THREE.Bone).isBone && re.test(o.name)) bone = o;
+  });
+  return bone;
+}
+
+/** Dựng model vũ khí: điểm nắm ở gốc toạ độ, trục mũi theo `h.tip`, dài `h.len` mét */
+function weaponObject(gltf: { scene: THREE.Object3D }, h: Hold) {
+  const obj = gltf.scene.clone(true);
+  obj.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    m.frustumCulled = false;
+    const mat = (m.material as THREE.MeshStandardMaterial).clone();
+    if (mat.map) {
+      mat.emissiveMap = mat.map;
+      mat.emissive.set("#ffffff");
+      mat.emissiveIntensity = 0.35;
+    }
+    m.material = mat;
+  });
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const axis = new THREE.Vector3(...h.tip);
+  const L = Math.abs(axis.dot(size)) || Math.max(size.x, size.y, size.z);
+  const k = h.len / L;
+  // Điểm nắm: từ mũi lùi về đuôi theo tỉ lệ grip
+  const tip = center.clone().addScaledVector(axis, L / 2);
+  const grip = tip.addScaledVector(axis, -L * h.grip);
+  obj.scale.setScalar(k);
+  obj.position.copy(grip).multiplyScalar(-k);
+  return { obj, axis };
+}
+
+/** Gắn vào xương bàn tay phải (xương Meshy chạy dọc trục +Y của nó) */
+function attachHand(rig: THREE.Object3D, gltf: { scene: THREE.Object3D }, h: Hold, name: string) {
+  const hand = findBone(rig, /^RightHand$/i);
+  if (!hand) return null;
+  hand.getObjectByName(name)?.removeFromParent();
+  const { obj, axis } = weaponObject(gltf, h);
+  const holder = new THREE.Group();
+  holder.name = name;
+  holder.add(obj);
+  // Quay trục mũi về hướng ngón tay (+Y của xương), cung thì nằm ngang theo +X của xương
+  holder.quaternion.setFromUnitVectors(axis, h.side ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0));
+  rig.updateMatrixWorld(true);
+  const ws = hand.getWorldScale(new THREE.Vector3());
+  const rs = rig.getWorldScale(new THREE.Vector3());
+  // Xương mang tỉ lệ của cả khung nhân vật: bù lại để vũ khí giữ đúng kích thước mét trong thế giới của rig
+  holder.scale.setScalar(rs.x / Math.max(1e-6, ws.x));
+  holder.position.set(0, 0.06 / Math.max(1e-6, ws.x / rs.x), 0);
+  hand.add(holder);
+  return holder;
+}
+
+/**
+ * Đeo kiếm chéo sau lưng: chuôi nhô qua vai phải, mũi chúc xuống hông trái. Tính trong hệ toạ độ của nhân vật
+ * (mặt nhìn +Z, tay phải ở −X) rồi đổi về hệ của xương ngực để kiếm đi theo thân khi chạy nhảy.
+ */
+function attachBack(rig: THREE.Object3D, gltf: { scene: THREE.Object3D }, h: Hold, name: string) {
+  const chest = findBone(rig, /^Spine02$/i) ?? findBone(rig, /^Spine/i);
+  const frame = rig.parent;
+  if (!chest || !frame) return null;
+  chest.getObjectByName(name)?.removeFromParent();
+  const { obj, axis } = weaponObject(gltf, h);
+  const holder = new THREE.Group();
+  holder.name = name;
+  holder.add(obj);
+  frame.updateMatrixWorld(true);
+  const inFrame = frame.matrixWorld.clone().invert().multiply(chest.matrixWorld);
+  const bp = new THREE.Vector3();
+  const bq = new THREE.Quaternion();
+  const bs = new THREE.Vector3();
+  inFrame.decompose(bp, bq, bs);
+  const pos = bp.clone().add(new THREE.Vector3(-0.3, 0.5, -0.2));
+  const dir = new THREE.Vector3(0.64, -0.75, -0.12).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(axis, dir);
+  holder.position.copy(pos).applyMatrix4(inFrame.clone().invert());
+  holder.quaternion.copy(bq.clone().invert().multiply(q));
+  holder.scale.set(1 / bs.x, 1 / bs.y, 1 / bs.z);
+  chest.add(holder);
+  return holder;
+}
+
+/**
+ * Vũ khí trên người nhân vật chính, theo chế độ (nút L):
+ * - chế độ súng: súng trên tay phải, kiếm đeo chéo sau lưng
+ * - chế độ kiếm: kiếm rút ra tay phải, súng cất đi
+ * Trang bị là súng thì cầm súng đó, là kiếm thì đeo / rút thanh đó; mặc định là súng tay + katana.
+ */
+function HeroArmsInner({ rig, sim }: { rig: THREE.Object3D; sim: PlatformerSim }) {
+  const gun = sim.gunWeapon;
+  const blade = sim.bladeGear ? (sim.weapon as Exclude<WeaponId, "buster">) : null;
+  const gunGltf = use(extraModel(gun === "buster" ? "mx_w_pistol" : GEAR[gun].model));
+  const bladeGltf = use(extraModel(blade ? GEAR[blade].model : "mx_w_katana"));
+  const parts = useMemo(() => {
+    const gh = gun === "buster" ? PISTOL : HOLD[gun as Exclude<WeaponId, "buster">];
+    const bh = blade ? HOLD[blade] : KATANA;
+    return {
+      gun: attachHand(rig, gunGltf, gh, "held-gun"),
+      sword: attachHand(rig, bladeGltf, bh, "held-sword"),
+      back: attachBack(rig, bladeGltf, { ...bh, len: Math.min(bh.len, 1.1) }, "back-sword"),
+    };
+  }, [rig, gunGltf, bladeGltf, gun, blade]);
+  // Tìm lại theo tên mỗi khung: StrictMode dựng hai lần, bản còn gắn trên xương mới là bản đang hiển thị
+  const hand = useMemo(() => findBone(rig, /^RightHand$/i), [rig]);
+  const chest = useMemo(() => findBone(rig, /^Spine02$/i) ?? findBone(rig, /^Spine/i), [rig]);
+  useFrame(() => {
+    const sword = sim.player.weaponMode === "sword";
+    const g = hand?.getObjectByName("held-gun") ?? parts.gun;
+    const w = hand?.getObjectByName("held-sword") ?? parts.sword;
+    const b = chest?.getObjectByName("back-sword") ?? parts.back;
+    if (g) g.visible = !sword;
+    if (w) w.visible = sword;
+    if (b) b.visible = !sword;
+  });
   return null;
 }
 
-export function HeldWeapon({ rig, weapon }: { rig: THREE.Object3D; weapon: WeaponId }) {
-  if (weapon === "buster") return null;
+export function HeroArms({ rig, sim }: { rig: THREE.Object3D; sim: PlatformerSim }) {
   return (
     <Suspense fallback={null}>
-      <HeldWeaponInner rig={rig} weapon={weapon} />
+      <HeroArmsInner rig={rig} sim={sim} />
     </Suspense>
   );
 }

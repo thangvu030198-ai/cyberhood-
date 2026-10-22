@@ -50,7 +50,10 @@ export function dodge(sim: PlatformerSim, input: Input, f: number): Input {
   const out = { ...input };
   // Cận chiến: quái thường đứng sát trước mặt, hoặc lính khiên trong tầm chém
   const front = sim.enemies.find((e) => e.alive && e.awake && e.kind !== "boss" && (top ? Math.hypot(e.x - p.x, e.y - p.y) < 2.2 : Math.abs(e.y - p.y) < 1.5 && (e.x - p.x) * p.facing > -0.3 && Math.abs(e.x - p.x) < (e.trait === "shield" ? 2.6 : 1.9)));
-  if (front && f % 9 === 0) out.melee = true;
+  // Nút L đổi súng ↔ kiếm: quái sát mặt thì rút kiếm, xa ra thì cầm súng lại (trang bị kiếm thì giữ kiếm)
+  const want = front || sim.bladeGear ? "sword" : "gun";
+  if (p.weaponMode !== want && f % 9 === 0 && sim.time - p.swapAt > 0.4) out.melee = true;
+  if (front && p.weaponMode === "sword") out.shoot = f % 9 < 2;
   const z = hazardAt(sim, p.x, p.y, p.w, p.h);
   if (!z) return out;
   if (!top && !fly && z.shape === "rect" && z.y1 - z.y0 < 2.2 && z.x1 - z.x0 > 8) {
@@ -197,11 +200,9 @@ export function topPlay(sim: PlatformerSim, f: number, path: { cells: [number, n
       return { ...NO_INPUT, right: dx > 0.4, left: dx < -0.4, up: dy > 0.4, down: dy < -0.4 };
     }
   }
-  // Khung 0: quay mặt về mục tiêu (nhả nút bắn để đổi hướng ngắm); khung còn lại: bắn và đi
-  if (target && shootPhase === 0 && !(target === boss && boss.guard) && !(bow && target === boss)) {
-    const dx = target.x - p.x;
-    const dy = target.y - p.y;
-    return { ...NO_INPUT, right: dx > 0.4, left: dx < -0.4, up: dy > 0.4, down: dy < -0.4 };
+  // Khung 0–2: đứng lại bắn (ngắm hỗ trợ tự quay về quái gần nhất); khung còn lại: bắn và đi
+  if (target && shootPhase < 3 && !(target === boss && boss.guard) && !(bow && target === boss)) {
+    return { ...NO_INPUT, shoot: !bow || shootPhase !== 0 };
   }
   const dx = tx - p.x;
   const dy = ty - (p.y + p.h / 2);

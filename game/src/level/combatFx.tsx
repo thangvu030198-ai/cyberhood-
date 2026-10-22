@@ -402,6 +402,7 @@ const SPECIAL: Partial<Record<NonNullable<Shot["kind"]>, { rgb: [number, number,
   orb: { rgb: [1.8, 0.8, 3.2], scale: 1.05, stretch: 1 },
   snipe: { rgb: [3.2, 0.5, 0.5], scale: 1, stretch: 7 },
   shard: { rgb: [3.2, 2.4, 0.6], scale: 1.2, stretch: 2.2 },
+  chuong: { rgb: [0.6, 2.6, 3.4], scale: 1.25, stretch: 1.25 },
 };
 
 function SpecialShots({ sim }: { sim: PlatformerSim }) {
@@ -439,7 +440,7 @@ function SpecialShots({ sim }: { sim: PlatformerSim }) {
       const armed = sh.kind === "grenade" && !sh.lands;
       const blink = armed ? (Math.sin(t * (14 + (1 - sh.life) * 30)) > 0 ? 1 : 0) : 0;
       b.setColorAt(n, armed && blink ? c.setRGB(3.2, 0.4, 0.3) : c.setRGB(...spec.rgb));
-      const halo = sh.kind === "orb" ? 1.6 : 2.2;
+      const halo = sh.kind === "orb" ? 1.6 : sh.kind === "chuong" ? 2.4 + Math.sin(t * 20) * 0.3 : 2.2;
       m.compose(v.set(sh.x, sh.y, zz + lift - 0.01), q, s.set(r * spec.stretch * halo, r * halo, r * halo));
       g.setMatrixAt(n, m);
       const gr = sh.kind === "grenade" || sh.kind === "bomb" ? (armed && blink ? [1.6, 0.2, 0.15] : [0.5, 0.3, 0.2]) : spec.rgb.map((x) => x * 0.35);

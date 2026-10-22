@@ -72,6 +72,8 @@ export const LEVEL_TUNING = {
     knock: [3, 3, 10] as [number, number, number],
     stagger: 0.32,
     bladeMul: 1.45,
+    /** Sóng kiếm của kiếm mặc định (tụ lực rồi thả J ở chế độ kiếm) */
+    wave: { dmg: 6, r: 0.7, speed: 15 },
   },
 
   /** Biến thể quái (platformer.ts · Trait): thời gian báo trước, tầm, sát thương */
@@ -87,7 +89,7 @@ export const LEVEL_TUNING = {
     /** Zombie phun axit: giữ khoảng cách, thời gian gồng, nhịp phun, thời gian bay, vũng axit rộng / tồn tại / sát thương */
     spitter: { keep: 5, tele: 0.55, every: 2.6, flight: 0.85, grav: 24, puddle: 1.8, puddleTime: 2.6, dmg: 2 },
     /** Drone thả bom: bay cao trên đầu bao nhiêu, nhịp thả, trọng lực bom, bán kính nổ, sát thương */
-    bomber: { above: 5.5, every: 1.9, grav: 20, r: 1.5, dmg: 4, follow: 3.2 },
+    bomber: { above: 3.9, every: 1.9, grav: 20, r: 1.5, dmg: 4, follow: 3.2 },
     /** Drone laser: khoảng cách giữ, thời gian nạp (tia cảnh báo), độ dài / độ dày tia, thời gian bắn, sát thương, nghỉ */
     laser: { keep: 6.5, tele: 0.95, length: 15, width: 0.55, dur: 0.35, dmg: 4, rest: 2.6 },
   },
@@ -170,6 +172,8 @@ export const LEVEL_TUNING = {
     small: { speed: 22, r: 0.22, dmg: 1 },
     mid: { speed: 22, r: 0.4, dmg: 3 },
     full: { speed: 24, r: 0.65, dmg: 6 },
+    /** Chưởng tụ đầy: cầu năng lượng tự đuổi địch gần nhất trong tầm `seek`; `home` = độ bẻ lái/giây */
+    chuong: { speed: 14, r: 0.6, life: 2.4, home: 5, seek: 14 },
   },
 
   /** Vũ khí trang bị (gear.ts): tốc độ, cỡ, tầm của từng kiểu bắn */
@@ -194,7 +198,7 @@ export const LEVEL_TUNING = {
   shmup: { scrollSpeed: 4, speed: 7, boost: 1.6, viewHalf: 13, crashDamage: 4 },
 
   /** Đi 8 hướng (nhìn từ trên / nhìn chéo): tốc độ, lướt, cỡ thân, tầm giữ khoảng cách của lính */
-  topdown: { speed: 6, dashMul: 2, dashTime: 0.22, body: 0.8, trooperRange: 8, cornerAssist: 0.4 },
+  topdown: { speed: 6, dashMul: 2, dashTime: 0.22, body: 0.8, trooperRange: 8, cornerAssist: 0.4, autoAim: { range: 12, cone: 1.0 } },
 
   /** Đồ rơi: chờ một nhịp rồi mới nhặt được, gần thì tự bay về phía người chơi */
   /**
@@ -211,7 +215,7 @@ export const LEVEL_TUNING = {
     /** Kỹ năng quái: zombie vồ, lính nhảy né đạn, drone bổ nhào */
     skill: { lungeRange: 3.2, lungeEvery: 2.6, lungeTime: 0.45, lungeVy: 7.5, lungeSpeed: 6.5, dodgeEvery: 2.2, dodgeRange: 4, dodgeVy: 10, diveEvery: 5.5, diveRange: 9, diveTime: 1.4 },
     trooper: { w: 0.9, h: 1.9, hp: 4, sight: 11, fireEvery: 2.2, shotSpeed: 9, shotDamage: 2, patrol: 3, walk: 1.4 },
-    drone: { w: 1.1, h: 0.9, hp: 2, sway: 2.5, sight: 12, fireEvery: 2.8, shotSpeed: 7, shotDamage: 2 },
+    drone: { w: 1.1, h: 0.9, hp: 2, maxAlt: 3.6, sway: 2.5, sight: 12, fireEvery: 2.8, shotSpeed: 7, shotDamage: 2 },
     zombie: { w: 0.9, h: 1.8, hp: 5, sight: 9, chase: 2.4, walk: 0.8 },
     boss: {
       w: 2.4,

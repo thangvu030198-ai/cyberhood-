@@ -35,7 +35,8 @@ import { useLevel } from "./session";
 import type { Enemy, PlatformerSim } from "./platformer";
 import { THEMES, type LevelTheme } from "./themes";
 import { levelById, type LevelEntry, type Look, type RigLook, type StaticLook } from "./registry";
-import { GearDrops, HeldWeapon, WeaponShots, WornArmor } from "./gearView";
+import { GearDrops, HeroArms, WeaponShots, WornArmor } from "./gearView";
+import { FIGHT_CLIPS, fightModel } from "./fightClips";
 import { CombatFx } from "./combatFx";
 import { SideSkin, TopSkin, asphaltTexture, skinSkips } from "./terrainSkin";
 import { SideDressing, SkyTraffic, TopDressing } from "./dressing";
@@ -1648,6 +1649,11 @@ export function flash(scene: THREE.Object3D, amount: number, color: THREE.Color)
 export const WHITE = new THREE.Color(1, 1, 1);
 export const RED = new THREE.Color(1, 0.15, 0.1);
 
+/** Nhát kiếm: hoạt ảnh kéo dài bao lâu, tua nhanh gấp mấy lần, lúc vung mạnh nhất rơi vào bao lâu sau khi bấm */
+const SWING_TIME = 0.4;
+const SWING_SPEED = 2.2;
+const SWING_LEAD = 0.1;
+
 /** Hướng mặt: model Meshy nhìn +Z; quay về phía chạy nhưng chếch về camera một chút để thấy mặt */
 const faceYaw = (facing: number) => facing * (Math.PI / 2 - 0.35);
 
@@ -1664,8 +1670,13 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     jump: use(extraModel(`${base}_jump`)),
     hit: use(extraModel(`${base}_hit`)),
     death: use(extraModel(`${base}_death`)),
-    // Bộ hoạt ảnh lớp nhân vật không có đòn chém: mượn clip đánh của lính gác Citadel (cùng tên xương Meshy)
-    melee: use(extraModel("mx_ct_guard_attack")),
+    // Bộ hoạt ảnh lớp nhân vật không có đòn kiếm: mượn clip kiếm Meshy (cùng tên xương)
+    sw0: use(extraModel(fightModel("slashR"))),
+    sw1: use(extraModel(fightModel("slashL"))),
+    sw2: use(extraModel(fightModel("sword3"))),
+    swUp: use(extraModel(fightModel("upslash"))),
+    swAir: use(extraModel(fightModel("jumpslash"))),
+    swWave: use(extraModel(fightModel("chargeslash"))),
   };
   const { rig, air, climb } = useMemo(() => {
     const rig = buildRig(
@@ -1678,7 +1689,12 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
         jump: g.jump.animations[0],
         hit: g.hit.animations[0],
         death: g.death.animations[0],
-        melee: g.melee.animations[0],
+        sw0: g.sw0.animations[0],
+        sw1: g.sw1.animations[0],
+        sw2: g.sw2.animations[0],
+        swUp: g.swUp.animations[0],
+        swAir: g.swAir.animations[0],
+        swWave: g.swWave.animations[0],
       },
       1.8,
       0.6,
@@ -1740,15 +1756,26 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
     const meleeT = sim.time - p.meleeAt;
     if (sim.status === "dead") setAnim(rig, "death", 0.1);
     else if (p.knock > 0) setAnim(rig, "hit", 0.05);
-    else if (meleeT < 0.32 && rig.actions.melee) {
-      // Chém: mỗi nhát phát lại clip đánh từ đầu, tua nhanh cho dứt khoát (nhát kết liễu chậm hơn chút)
+    else if (meleeT < SWING_TIME) {
+      // Chém kiếm: mỗi nhát chọn clip theo nhịp combo (phải → trái → xoay kết liễu), chém lên khi giữ W,
+      // trên không thì bổ từ trên xuống. Tua nhanh đoạn quanh lúc vung mạnh nhất để đòn dứt khoát
       if (lastMelee.current !== p.meleeAt) {
         lastMelee.current = p.meleeAt;
-        setAnim(rig, "melee", 0.04, true);
-        const a = rig.actions.melee;
-        const clip = a.getClip();
-        a.timeScale = (clip.duration / 0.36) * (p.meleeStep === 2 ? 0.85 : 1);
-        a.time = clip.duration * (p.meleeStep === 1 ? 0.15 : 0.05);
+        const wave = p.waveAt === p.meleeAt;
+        const [name, clip] = !p.onGround && sim.mode !== "topdown"
+          ? (["swAir", "jumpslash"] as const)
+          : p.aimUp
+            ? (["swUp", "upslash"] as const)
+            : wave
+              ? (["swWave", "chargeslash"] as const)
+              : ([`sw${p.meleeStep}`, (["slashR", "slashL", "sword3"] as const)[p.meleeStep]] as const);
+        setAnim(rig, name, 0.04, true);
+        const a = rig.actions[name];
+        if (a) {
+          const peak = FIGHT_CLIPS[clip].peak;
+          a.timeScale = SWING_SPEED;
+          a.time = Math.max(0, peak - SWING_LEAD * SWING_SPEED);
+        }
       }
     }
     else if (sim.mode === "shmup" && jump) {
@@ -1824,7 +1851,7 @@ function Hero({ sim, theme }: { sim: PlatformerSim; theme: LevelTheme }) {
       <group ref={group}>
         <primitive object={rig.scene} />
       </group>
-      <HeldWeapon rig={rig.scene} weapon={sim.weapon} />
+      <HeroArms rig={rig.scene} sim={sim} />
       <WornArmor rig={rig.scene} armor={sim.armor} />
       <mesh ref={shadow} rotation-x={-Math.PI / 2}>
         <circleGeometry args={[0.55, 24]} />

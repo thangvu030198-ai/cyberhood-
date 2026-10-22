@@ -7,7 +7,7 @@ const KEYS: Record<keyof Input, string[]> = {
   right: ["KeyD", "ArrowRight"],
   up: ["KeyW", "ArrowUp"],
   down: ["KeyS", "ArrowDown"],
-  jump: ["Space", "KeyW", "ArrowUp"],
+  jump: ["Space"],
   shoot: ["KeyJ", "KeyX"],
   dash: ["KeyK", "ShiftLeft", "ShiftRight", "KeyZ"],
   melee: ["KeyL", "KeyC"],

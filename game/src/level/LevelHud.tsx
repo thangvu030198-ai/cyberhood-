@@ -126,6 +126,12 @@ export function LevelHud() {
         <b key={levelCred(sim)}>{levelCred(sim)}</b>
         <small>CRED</small>
       </div>
+      {sim.mode !== "shmup" && (
+        <div className={`lv__wmode is-${sim.player.weaponMode}`} key={sim.player.swapAt} aria-label="Chế độ vũ khí (L để đổi)">
+          <b>{sim.player.weaponMode === "sword" ? "⚔ KIẾM" : "▸ SÚNG"}</b>
+          <small>L đổi</small>
+        </div>
+      )}
       <div className="lv__top">
         <span className="lv__stage">{sim.def.name}</span>
         <span>
@@ -207,19 +213,19 @@ export function LevelHud() {
               <kbd>W</kbd>
               <kbd>A</kbd>
               <kbd>S</kbd>
-              <kbd>D</kbd> đi 8 hướng · <kbd>J</kbd> bắn theo hướng nhìn (giữ J để khoá hướng) · <kbd>L</kbd> chém (bấm liên tiếp ra combo 3 nhát) · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
+              <kbd>D</kbd> đi 8 hướng (tự ngắm quái phía trước, đứng yên thì ngắm quái gần nhất) · <kbd>J</kbd> bắn / chém, giữ để nạp chưởng · <kbd>L</kbd> đổi súng ↔ kiếm · <kbd>K</kbd> lướt · <kbd>Esc</kbd> tạm dừng
             </>
           ) : sim.mode === "shmup" ? (
             <>
               <kbd>W</kbd>
               <kbd>A</kbd>
               <kbd>S</kbd>
-              <kbd>D</kbd> bay · <kbd>J</kbd> bắn, giữ để nạp · <kbd>L</kbd> chém · <kbd>K</kbd> tăng tốc · <kbd>Esc</kbd> tạm dừng
+              <kbd>D</kbd> bay · <kbd>J</kbd> bắn / chém, giữ để nạp · <kbd>L</kbd> đổi súng ↔ kiếm · <kbd>K</kbd> tăng tốc · <kbd>Esc</kbd> tạm dừng
             </>
           ) : (
             <>
               <kbd>A</kbd>
-              <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (giữ sát tường để leo) · <kbd>J</kbd> bắn, giữ để nạp · <kbd>L</kbd> chém combo 3 nhát · <kbd>K</kbd> lướt · <kbd>S</kbd>+<kbd>Space</kbd> trên không: đập đất · <kbd>Esc</kbd> tạm dừng
+              <kbd>D</kbd> chạy · <kbd>Space</kbd> nhảy (sát tường để leo) · <kbd>J</kbd> bắn / chém, giữ nạp chưởng đuổi · <kbd>W</kbd>+<kbd>J</kbd> bắn lên cao · <kbd>L</kbd> đổi súng ↔ kiếm · <kbd>K</kbd> lướt · <kbd>S</kbd>+<kbd>Space</kbd> đập đất · <kbd>Esc</kbd> tạm dừng
             </>
           )}
         </div>
@@ -242,16 +248,13 @@ function TouchPad({ onPause, flying }: { onPause: () => void; flying: boolean })
       <div className="lv__pad lv__pad--left">
         <button {...hold("left")}>◀</button>
         <button {...hold("right")}>▶</button>
-        {flying && (
-          <>
-            <button {...hold("up")}>▲</button>
-            <button {...hold("down")}>▼</button>
-          </>
-        )}
+        {/* ▲ dùng cả khi đi ngang: giữ để ngắm bắn lên cao */}
+        <button {...hold("up")}>▲</button>
+        {flying && <button {...hold("down")}>▼</button>}
       </div>
       <div className="lv__pad lv__pad--right">
         <button {...hold("dash")}>LƯỚT</button>
-        <button className="lv__melee" {...hold("melee")}>CHÉM</button>
+        <button className="lv__melee" {...hold("melee")}>ĐỔI VK</button>
         <button {...hold("shoot")}>BẮN</button>
         {!flying && (
           <button className="lv__jump" {...hold("jump")}>

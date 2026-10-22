@@ -3,7 +3,7 @@
 // Kết quả là một atlas PNG (window.__atlas) để nhúng vào src/game/nftAtlas.ts.
 import * as THREE from "three";
 import { extraModel, type ExtraModel } from "../game/assets";
-import { NFT_ITEMS, NFT_CELL } from "../game/nftAlbum";
+import { CAST, NFT_CELL } from "../game/nftAlbum";
 
 const PX = NFT_CELL;
 // ?raw=512: xuất ảnh render gốc từng món (nền trong suốt) làm đầu vào cho dịch vụ vẽ pixel bên ngoài
@@ -119,7 +119,7 @@ async function shoot(model: string, node: string | undefined, yaw: number, anim:
 
 async function main() {
   const cols = 6;
-  const rows = Math.ceil(NFT_ITEMS.length / cols);
+  const rows = Math.ceil(CAST.length / cols);
   const out = document.getElementById("out") as HTMLCanvasElement;
   out.width = cols * PX;
   out.height = rows * PX;
@@ -127,8 +127,8 @@ async function main() {
   out.style.imageRendering = "pixelated";
   const g = out.getContext("2d")!;
   const raw: string[] = [];
-  for (let i = 0; i < NFT_ITEMS.length; i++) {
-    const it = NFT_ITEMS[i];
+  for (let i = 0; i < CAST.length; i++) {
+    const it = CAST[i];
     if (RAW) {
       const s = await shoot(it.model, it.node, it.yaw ?? -0.6, it.anim ?? 0.35, it.roll ?? 0, it.bright ?? 1).catch(() => null);
       raw.push(s ? s.toDataURL("image/png") : "");

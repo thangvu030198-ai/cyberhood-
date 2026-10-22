@@ -8,6 +8,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { CITY } from "./config";
 import { NFT_ATLAS } from "./nftAtlas";
+import { CAST_ATLAS } from "./castAtlas";
 import { NFT_CELL, NFT_COLS, NFT_ITEMS, RARITY_COLOR, type NftItem } from "./nftAlbum";
 
 /** Góc ngoài của toà tháp (mép đông + mép bắc) và kích thước hai mặt bảng */
@@ -30,10 +31,13 @@ const FONT = "'Chakra Petch', 'Arial Black', sans-serif";
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
 export const atlas = new Image();
-export const atlasReady = new Promise<void>((res) => {
-  atlas.onload = () => res();
-  atlas.src = NFT_ATLAS;
-});
+export const castAtlas = new Image();
+const loadImg = (img: HTMLImageElement, src: string) =>
+  new Promise<void>((res) => {
+    img.onload = () => res();
+    img.src = src;
+  });
+export const atlasReady = Promise.all([loadImg(atlas, NFT_ATLAS), loadImg(castAtlas, CAST_ATLAS)]).then(() => {});
 
 /** Chủ sở hữu và lượt thích giả lập, cố định theo số token */
 export function owner(i: number) {
@@ -52,6 +56,12 @@ const usd = (eth: number) => `$${Math.round(eth * 3100).toLocaleString("en-US")}
 export function sprite(g: CanvasRenderingContext2D, i: number, x: number, y: number, size: number) {
   g.imageSmoothingEnabled = false;
   g.drawImage(atlas, (i % NFT_COLS) * NFT_CELL, Math.floor(i / NFT_COLS) * NFT_CELL, NFT_CELL, NFT_CELL, x, y, size, size);
+}
+
+/** Nhân vật / quái cho clip quảng cáo, lấy từ atlas CAST (không phải NFT) */
+export function castSprite(g: CanvasRenderingContext2D, i: number, x: number, y: number, size: number) {
+  g.imageSmoothingEnabled = false;
+  g.drawImage(castAtlas, (i % NFT_COLS) * NFT_CELL, Math.floor(i / NFT_COLS) * NFT_CELL, NFT_CELL, NFT_CELL, x, y, size, size);
 }
 
 export function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

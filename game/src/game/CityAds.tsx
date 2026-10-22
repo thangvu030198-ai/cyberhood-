@@ -9,8 +9,8 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { CITY, BLOCK_CENTERS } from "./config";
 import { BUILDINGS } from "./City";
-import { NFT_CELL, NFT_COLS, NFT_ITEMS, RARITY_COLOR } from "./nftAlbum";
-import { NFT_TOWER, artBg, atlas, atlasReady, eth, ledMaterial, likes, roundRect, sprite, tokenId, verified } from "./NftBoard";
+import { CAST, NFT_CELL, NFT_COLS, NFT_ITEMS, RARITY_COLOR } from "./nftAlbum";
+import { NFT_TOWER, artBg, atlas, atlasReady, castAtlas, castSprite, eth, ledMaterial, likes, roundRect, sprite, tokenId, verified } from "./NftBoard";
 
 const W = 1024;
 const H = 576;
@@ -25,6 +25,7 @@ const SLOT_SECONDS = 9;
 const programAt = (t: number, offset: number) => PROGRAMS[Math.floor((t + offset) / SLOT_SECONDS) % PROGRAMS.length];
 
 const byName = (n: string) => NFT_ITEMS.findIndex((it) => it.name === n);
+const castByName = (n: string) => CAST.findIndex((it) => it.name === n);
 
 // ---------- Clip replay: Hunter hạ quái ----------
 
@@ -51,12 +52,12 @@ function flashSprite(g: Ctx, i: number, x: number, y: number, size: number, flip
     x = 0;
     y = 0;
   }
-  sprite(g, i, x, y, size);
+  castSprite(g, i, x, y, size);
   if (white > 0) {
     const f = flashCanvas.getContext("2d")!;
     f.clearRect(0, 0, 64, 64);
     f.globalCompositeOperation = "source-over";
-    sprite(f, i, 0, 0, 64);
+    castSprite(f, i, 0, 0, 64);
     f.globalCompositeOperation = "source-atop";
     f.fillStyle = "#ffffff";
     f.fillRect(0, 0, 64, 64);
@@ -128,8 +129,8 @@ function hpBar(g: Ctx, x: number, y: number, w: number, frac: number, name: stri
 function drawClip(g: Ctx, t: number) {
   const n = Math.floor(t / CLIP_LEN);
   const [hn, bn, drop] = MATCHES[n % MATCHES.length];
-  const hi = byName(hn);
-  const bi = byName(bn);
+  const hi = castByName(hn);
+  const bi = castByName(bn);
   const di = byName(drop);
   const lt = t % CLIP_LEN;
   // Rung màn hình lúc đánh
@@ -624,15 +625,15 @@ function drawKol(g: Ctx, t: number) {
     g.font = `900 40px ${FONT}`;
     g.fillStyle = k === 0 ? "#ffd84a" : k < 3 ? "#05f0ff" : "#6c6c8a";
     g.fillText(`${k + 1}`, 42, y + rowH / 2);
-    const i = byName(who);
+    const i = castByName(who);
     roundRect(g, 90, y + 6, 64, 64, 10);
     g.save();
     g.clip();
-    g.fillStyle = RARITY_COLOR[NFT_ITEMS[i].rarity] + "55";
+    g.fillStyle = RARITY_COLOR[CAST[i].rarity] + "55";
     g.fillRect(90, y + 6, 64, 64);
     // Cắt nửa trên (đầu, vai) làm ảnh đại diện
     g.imageSmoothingEnabled = false;
-    g.drawImage(atlas, (i % NFT_COLS) * NFT_CELL + NFT_CELL * 0.22, Math.floor(i / NFT_COLS) * NFT_CELL, NFT_CELL * 0.56, NFT_CELL * 0.56, 90, y + 6, 64, 64);
+    g.drawImage(castAtlas, (i % NFT_COLS) * NFT_CELL + NFT_CELL * 0.22, Math.floor(i / NFT_COLS) * NFT_CELL, NFT_CELL * 0.56, NFT_CELL * 0.56, 90, y + 6, 64, 64);
     g.restore();
     g.font = `800 30px ${FONT}`;
     g.fillStyle = "#ffffff";

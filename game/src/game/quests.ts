@@ -148,6 +148,10 @@ export function interact(target: Interactable) {
     void import("./missionStore").then((m) => m.useMissions.getState().setOpen(true));
     return;
   }
+  if (target.kind === "siege") {
+    void import("../siege/siegeSession").then((m) => m.useSiege.getState().setLobby(true));
+    return;
+  }
   if (target.kind === "gate") {
     // Nạp muộn để tránh vòng import (session → contracts → Enemies → quests)
     void import("../level/session").then((m) => m.enterLevel());

@@ -6,7 +6,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { extraModel, models, type ExtraModel } from "./assets";
 import { inPlace } from "./meshyAnim";
 import { fitCharacter } from "./Player";
-import { MISSION_GATE, PALETTE } from "./config";
+import { MISSION_GATE, PALETTE, SIEGE_GATE } from "./config";
 import { MISSION_BOARD } from "./LedBoards";
 import { SERVICES, SERVICE_REACH } from "./services";
 import { fx } from "./Effects";
@@ -280,13 +280,16 @@ function InteractionScanner() {
         best = target;
       }
     };
-    if (s.location === "city") {
+    if (s.location === "siege") {
+      // Trong trận Công thành không có điểm tương tác của sảnh
+    } else if (s.location === "city") {
       for (const npc of Object.values(NPCS)) {
         if (!npc.inVault) consider({ kind: "npc", id: npc.id }, npc.pos[0], npc.pos[2], TALK_REACH);
       }
       consider({ kind: "door" }, VAULT_DOOR[0], VAULT_DOOR[2], DOOR_REACH);
       consider({ kind: "board" }, BOARD_POS.x, BOARD_POS.z, DOOR_REACH);
       consider({ kind: "gate" }, MISSION_GATE.x, MISSION_GATE.z, MISSION_GATE.reach);
+      consider({ kind: "siege" }, SIEGE_GATE.x, SIEGE_GATE.z, SIEGE_GATE.reach);
       consider({ kind: "missions" }, MISSION_BOARD.x - 1, MISSION_BOARD.z, MISSION_BOARD.reach);
       for (const sv of SERVICES) consider({ kind: "service", id: sv.id }, sv.x, sv.z, SERVICE_REACH);
     } else {

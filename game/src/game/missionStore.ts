@@ -1,7 +1,7 @@
 // Kho trạng thái nhiệm vụ ngày/tuần/tháng: lưu máy người chơi, ghi tiến độ, trao thưởng vào tài khoản.
 
 import { create } from "zustand";
-import { MISSIONS, PERIOD_BONUS, claim, claimBonus, freshMissions, refresh, track, type Metric, type MissionState, type Period, type Reward } from "./missions";
+import { MISSIONS, PERIOD_BONUS, claim, claimBonus, freshMissions, refresh, track, type Metric, type MissionState, type Period, type Reward , addHunterPoints } from "./missions";
 import { rollDrop } from "../sim/loot";
 import { createRng } from "../sim/rng";
 import { useGame } from "./store";
@@ -35,6 +35,8 @@ type Store = {
   track: (metric: Metric, amount?: number) => void;
   claim: (id: string) => void;
   claimBonus: (p: Period) => void;
+  /** Cộng Điểm Hunter trực tiếp (Công thành: 30–80 điểm/trận) */
+  gainPoints: (n: number) => void;
 };
 
 export const useMissions = create<Store>((set, get) => ({
@@ -47,6 +49,11 @@ export const useMissions = create<Store>((set, get) => ({
   },
   track: (metric, amount = 1) => {
     const state = track(get().state, metric, amount, new Date());
+    save(state);
+    set({ state });
+  },
+  gainPoints: (n) => {
+    const state = addHunterPoints(get().state, n);
     save(state);
     set({ state });
   },

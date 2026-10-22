@@ -273,6 +273,7 @@ const INTERACT_LABEL = {
   board: "Mở bảng hợp đồng",
   gate: "Qua cổng nhiệm vụ: chọn map",
   missions: "Xem nhiệm vụ ngày · tuần · tháng",
+  siege: "Qua Cổng Công Thành: Đại chiến Thành Băng",
 } as const;
 
 export function interactLabel(i: NonNullable<ReturnType<typeof useGame.getState>["nearInteract"]>) {

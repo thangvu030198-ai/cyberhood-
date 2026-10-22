@@ -12,6 +12,7 @@ import { uiBlocking, useGame } from "./store";
 import { rayBuildings, rayGround } from "./world";
 import { MECH_DAMAGE_MUL, mechActive } from "./Mech";
 import { isLocked, pointer, requestLock } from "./pointer";
+import { siegeShot } from "../siege/siegeSession";
 
 const RANGE = 90;
 const WEAPONS = {
@@ -208,9 +209,18 @@ export function PlayerCombat() {
       if (assisted) _dir.subVectors(assisted.pos, _origin).normalize();
     }
 
-    const droneHit = hitDrones(_origin, _dir, RANGE);
-    const wall = Math.min(rayBuildings(_origin, _dir, RANGE), rayGround(_origin, _dir));
+    const siege = s.location === "siege";
+    const droneHit = siege ? null : hitDrones(_origin, _dir, RANGE);
+    const wall = siege ? rayGround(_origin, _dir) : Math.min(rayBuildings(_origin, _dir, RANGE), rayGround(_origin, _dir));
     let dist = Math.min(RANGE, wall);
+    if (siege) {
+      // Công thành: đạn trúng quân địch / máy phát / cổng / pháo / Boss Mech
+      const t = siegeShot(_origin.x, _origin.y, _origin.z, _dir.x, _dir.y, _dir.z, Math.min(RANGE, wall), damage);
+      if (t !== null) {
+        dist = t;
+        s.markHit();
+      }
+    }
     if (droneHit && droneHit.t < wall) {
       dist = droneHit.t;
       damageDrone(droneHit.drone, damage);

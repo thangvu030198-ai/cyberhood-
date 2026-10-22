@@ -56,10 +56,10 @@ function useInstanceSource(name: ExtraModel, selfLit = 0.3) {
 }
 
 /** Một vật cần đặt: gốc giữa đáy tại (x, y, z), kích thước mong muốn rộng w × cao h × sâu d, xoay quanh trục đứng */
-type Placed = { x: number; y: number; z: number; w: number; h: number; d: number; rot?: number; tilt?: THREE.Quaternion };
+export type Placed = { x: number; y: number; z: number; w: number; h: number; d: number; rot?: number; tilt?: THREE.Quaternion };
 
 /** Vẽ hàng loạt một model theo danh sách vị trí; tỉ lệ co giãn tính từ hộp bao thật của model */
-function ModelSet({ name, items, selfLit = 0.3 }: { name: ExtraModel; items: Placed[]; selfLit?: number }) {
+export function ModelSet({ name, items, selfLit = 0.3 }: { name: ExtraModel; items: Placed[]; selfLit?: number }) {
   const src = useInstanceSource(name, selfLit);
   const mesh = useMemo(() => {
     const m = new THREE.InstancedMesh(src.geometry, src.material, Math.max(1, items.length));

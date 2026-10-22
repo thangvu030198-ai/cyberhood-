@@ -3,7 +3,7 @@
 // Kèm các dịch vụ ở sảnh: lò rèn (đập đồ), vòng quay may mắn, cửa hàng trang bị.
 
 import { create } from "zustand";
-import { FORGE, forgeRoll, GEAR, MAX_ENHANCE, rollGear, type AccessoryId, type ArmorId, type GearId, type Loadout, type Slot, type WeaponId } from "../level/gear";
+import { FORGE, forgeRoll, GEAR, MAX_ENHANCE, rollGear, salvageValue, type AccessoryId, type ArmorId, type GearId, type Loadout, type Slot, type WeaponId } from "../level/gear";
 import { rarityIndex } from "../sim/config";
 import { useGame } from "./store";
 import { useHunter } from "./hunter";
@@ -27,6 +27,8 @@ type GearState = Saved & {
   forge: (id: GearId) => { ok: boolean; level: number; error?: string };
   spin: () => { prize: SpinPrize; free: boolean } | { error: string };
   buy: (id: GearId) => string | null;
+  /** Phân rã một món (không phân rã món đang mặc khi chỉ còn một): trả về CRED nhận được hoặc thông báo lỗi */
+  salvage: (id: GearId) => { cred: number } | { error: string };
 };
 
 const EMPTY: Saved = { owned: {}, enh: {}, weapon: "buster", armor: "none", head: null, hands: null, feet: null, chip: null, fresh: [], freeSpin: "" };
@@ -112,6 +114,22 @@ export const useGear = create<GearState>((set, get) => {
   };
   return {
     ...load(),
+    salvage: (id) => {
+      const s = get();
+      const n = s.owned[id] ?? 0;
+      if (n <= 0) return { error: "Không có món này" };
+      const worn = [s.weapon, s.armor, s.head, s.hands, s.feet, s.chip].includes(id as never);
+      if (worn && n <= 1) return { error: "Đang mặc: tháo ra trước khi phân rã" };
+      const cred = salvageValue(id, n <= 1 ? s.enh[id] ?? 0 : 0);
+      const owned = { ...s.owned };
+      if (n <= 1) delete owned[id];
+      else owned[id] = n - 1;
+      const enh = { ...s.enh };
+      if (n <= 1) delete enh[id];
+      commit({ owned, enh, fresh: s.fresh.filter((f) => f !== id || n > 1) });
+      useGame.getState().addCred(cred);
+      return { cred };
+    },
     add: (ids) => {
       if (!ids.length) return;
       const owned = { ...get().owned };

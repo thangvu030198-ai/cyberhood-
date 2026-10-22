@@ -22,7 +22,7 @@ export const inMechForm = () => useHunter.getState().transform.phase !== "normal
 export function tryTransform() {
   const g = useGame.getState();
   const h = useHunter.getState();
-  if (g.mode !== "foot" || g.flatlinedAt !== null || uiBlocking(g) || g.location !== "city") return;
+  if (g.mode !== "foot" || g.flatlinedAt !== null || uiBlocking(g) || (g.location !== "city" && g.location !== "siege")) return;
   const mech = h.equippedMech();
   if (!mech) return g.showToast("Chưa trang bị Mech: nhấn G để vào Gara");
   if (!canTransform(h.transform, mech.durability)) {

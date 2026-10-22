@@ -5,10 +5,10 @@ import type { ExtraModel } from "../game/assets";
 import { RARITIES, rarityIndex, type Rarity } from "../sim/config";
 import type { Rng } from "../sim/rng";
 
-export type WeaponId = "buster" | "ar" | "shotgun" | "sniper" | "bow" | "celestial" | "frost" | "scythe" | "cosmic";
-export type ArmorId = "none" | "darkset" | "void";
+export type WeaponId = "buster" | "ar" | "shotgun" | "sniper" | "bow" | "celestial" | "frost" | "scythe" | "cosmic" | "iceblade";
+export type ArmorId = "none" | "darkset" | "void" | "icewar";
 /** Mũ, găng, giày, chip cấy: chỉ cộng chỉ số (model Meshy tạo riêng) */
-export type AccessoryId = "helm_visor" | "helm_oni" | "glove_shock" | "glove_titan" | "boot_runner" | "boot_grav" | "chip_luck" | "chip_overclock";
+export type AccessoryId = "helm_visor" | "helm_oni" | "glove_shock" | "glove_titan" | "boot_runner" | "boot_grav" | "chip_luck" | "chip_overclock" | "helm_ice" | "glove_ice" | "boot_ice";
 export type GearId = Exclude<WeaponId, "buster"> | Exclude<ArmorId, "none"> | AccessoryId;
 export type Slot = "weapon" | "armor" | "head" | "hands" | "feet" | "chip";
 export const SLOTS: { id: Slot; label: string }[] = [
@@ -58,6 +58,8 @@ export type GearInfo = {
   model: ExtraModel;
   /** Mô tả ngắn hiện trong Túi đồ */
   blurb: string;
+  /** Bộ "Băng Chiến": chỉ rơi từ Cổng Công Thành, không rơi trong màn 2D / rương thường */
+  siegeOnly?: boolean;
 };
 
 export const WEAPONS: Record<WeaponId, WeaponSpec> = {
@@ -70,12 +72,14 @@ export const WEAPONS: Record<WeaponId, WeaponSpec> = {
   scythe: { style: "blade", dmg: 3.5, cooldown: 0.34, sweep: true, wave: { dmg: 9, r: 0.8, speed: 13 } },
   frost: { style: "blade", dmg: 3.5, cooldown: 0.26, freeze: true, wave: { dmg: 10, r: 0.75, speed: 16 } },
   cosmic: { style: "blade", dmg: 4.5, cooldown: 0.24, wave: { dmg: 14, r: 1.1, speed: 18 } },
+  iceblade: { style: "blade", dmg: 4, cooldown: 0.25, freeze: true, wave: { dmg: 12, r: 0.95, speed: 17 } },
 };
 
 export const ARMORS: Record<ArmorId, { hp: number; reduce: number }> = {
   none: { hp: 0, reduce: 0 },
   darkset: { hp: 8, reduce: 0.1 },
   void: { hp: 14, reduce: 0.2 },
+  icewar: { hp: 18, reduce: 0.22 },
 };
 
 export const GEAR: Record<GearId, GearInfo> = {
@@ -96,6 +100,11 @@ export const GEAR: Record<GearId, GearInfo> = {
   boot_runner: { name: "Giày Chạy Neon", slot: "feet", rarity: "rare", model: "mx_gr_boot_runner", stats: { speed: 0.12, jump: 0.05 }, blurb: "Đế phản lực: chạy nhanh hơn." },
   boot_grav: { name: "Giày Phản Trọng Lực", slot: "feet", rarity: "legendary", model: "mx_gr_boot_grav", stats: { speed: 0.15, jump: 0.14 }, blurb: "Nhảy cao, chạy nhanh, lướt xa." },
   chip_luck: { name: "Chip Cỏ Bốn Lá", slot: "chip", rarity: "epic", model: "mx_gr_chip_luck", stats: { luck: 0.25 }, blurb: "Đồ hiếm rơi nhiều hơn 25%." },
+  iceblade: { name: "Đại Kiếm Băng Chiến", slot: "weapon", rarity: "legendary", model: "mx_w_ice_blade", siegeOnly: true, blurb: "Bộ Băng Chiến (chỉ rơi từ Công thành): chém đóng băng, sóng kiếm băng xuyên." },
+  icewar: { name: "Giáp Băng Chiến", slot: "armor", rarity: "legendary", model: "mx_gr_ice_armor", siegeOnly: true, blurb: "Bộ Băng Chiến: +18 máu, giảm 22% sát thương." },
+  helm_ice: { name: "Mũ Băng Chiến", slot: "head", rarity: "epic", model: "mx_gr_ice_helm", siegeOnly: true, stats: { def: 0.1, hp: 4 }, blurb: "Bộ Băng Chiến: mũ giáp pha lê băng, chịu đòn tốt." },
+  glove_ice: { name: "Găng Băng Chiến", slot: "hands", rarity: "epic", model: "mx_gr_ice_glove", siegeOnly: true, stats: { atk: 0.14, charge: 0.1 }, blurb: "Bộ Băng Chiến: móng băng tăng sát thương và tốc độ nạp." },
+  boot_ice: { name: "Giày Băng Chiến", slot: "feet", rarity: "epic", model: "mx_gr_ice_boot", siegeOnly: true, stats: { speed: 0.12, def: 0.05 }, blurb: "Bộ Băng Chiến: chạy nhanh trên tuyết, thêm giáp." },
   chip_overclock: { name: "Chip Ép Xung", slot: "chip", rarity: "legendary", model: "mx_gr_chip_overclock", stats: { atk: 0.15, charge: 0.3, def: -0.05 }, blurb: "Bắn nạp siêu nhanh, mạnh hơn nhưng dễ vỡ." },
 };
 
@@ -138,6 +147,10 @@ export const FORGE = {
   dropFrom: 5,
 };
 
+/** Phân rã đồ thừa: CRED nhận lại theo độ hiếm, cộng thêm theo cấp cường hoá (+10% / cấp) */
+export const SALVAGE: Record<Rarity, number> = { common: 20, rare: 50, epic: 120, legendary: 300, mythic: 800 };
+export const salvageValue = (id: GearId, enh = 0) => Math.round(SALVAGE[GEAR[id].rarity] * (1 + enh * 0.1));
+
 export function forgeRoll(level: number, roll: number): { ok: boolean; next: number } {
   const ok = roll < (FORGE.chance[level] ?? 0);
   return { ok, next: ok ? level + 1 : level >= FORGE.dropFrom ? level - 1 : level };
@@ -155,9 +168,9 @@ export const GEAR_DROP = {
 /** Chọn một món trang bị theo trọng số độ hiếm; map có hệ số cao thì đồ hiếm dễ ra hơn */
 export function rollGear(rng: Rng, mapMultiplier = 1, minRarity: Rarity = "common"): GearId {
   const min = rarityIndex(minRarity);
-  const pool = GEAR_IDS.filter((g) => rarityIndex(GEAR[g].rarity) >= min);
+  const pool = GEAR_IDS.filter((g) => rarityIndex(GEAR[g].rarity) >= min && !GEAR[g].siegeOnly);
   // Trọng số tính cho cả bậc độ hiếm rồi chia đều cho các món cùng bậc
-  const same = (r: Rarity) => GEAR_IDS.filter((g) => GEAR[g].rarity === r).length;
+  const same = (r: Rarity) => GEAR_IDS.filter((g) => GEAR[g].rarity === r && !GEAR[g].siegeOnly).length;
   const w = pool.map((g) => (GEAR_DROP.weight[GEAR[g].rarity] * mapMultiplier ** rarityIndex(GEAR[g].rarity)) / same(GEAR[g].rarity));
   let r = rng() * w.reduce((a, b) => a + b, 0);
   for (let i = 0; i < pool.length; i++) {
@@ -168,3 +181,6 @@ export function rollGear(rng: Rng, mapMultiplier = 1, minRarity: Rarity = "commo
 }
 
 export const RARITY_ORDER = RARITIES;
+
+/** Bộ "Băng Chiến" chỉ rơi từ Cổng Công Thành */
+export const ICE_WAR_SET = GEAR_IDS.filter((g) => GEAR[g].siegeOnly);

@@ -46,7 +46,7 @@ export type Profile = { handle: string; body: string; glow: string; hunter?: Hun
 export type Inventory = Partial<Record<ItemId, number>>;
 export type QuestState = { active: string | null; step: number; progress: number; done: string[] };
 export type Quality = "high" | "low";
-export type Location = "city" | "vault" | "level";
+export type Location = "city" | "vault" | "level" | "siege";
 
 export type DialogueAction = "close" | "accept" | "advance" | "shop";
 export type Dialogue = {
@@ -64,7 +64,8 @@ export type Interactable =
   | { kind: "board" }
   | { kind: "gate" }
   | { kind: "service"; id: import("./services").ServiceId }
-  | { kind: "missions" };
+  | { kind: "missions" }
+  | { kind: "siege" };
 
 type SaveData = {
   cred: number;

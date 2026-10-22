@@ -1,0 +1,1091 @@
+{
+  "branding": {
+    "gameName": "CYBERHOOD",
+    "tokenName": "CYBERHOOD",
+    "tokenSymbol": "CYBERHOOD",
+    "motif": "arrow",
+    "slogan": "Ngắm chuẩn · Làm chủ thành phố",
+    "palette": {
+      "night": "#0A0A18",
+      "neonCyan": "#00E5FF",
+      "neonMagenta": "#FF2BD6",
+      "arrowGold": "#FFD400",
+      "electricViolet": "#7B2CFF",
+      "holoWhite": "#EAF6FF"
+    },
+    "keyColors": {
+      "copper": "#C87533",
+      "jade": "#00C08B",
+      "crystal": "#B9F2FF"
+    },
+    "rarityArrows": {
+      "common": 1,
+      "rare": 2,
+      "epic": 3,
+      "legendary": 4,
+      "mythic": 5
+    },
+    "rarityColors": {
+      "common": "#9AA0A6",
+      "rare": "#3DA5FF",
+      "epic": "#A855F7",
+      "legendary": "#FFD400",
+      "mythic": "#FF3B3B"
+    },
+    "avoid": [
+      "robinhood_green",
+      "feather_shape"
+    ],
+    "assetsDir": "CYBERHOOD_Brand/"
+  },
+  "season": {
+    "id": "S1",
+    "durationDays": 28,
+    "launchProject": "PROJECT_X",
+    "shardsPerKey": 15,
+    "maps": [
+      {
+        "id": "neon_city",
+        "key": "copper",
+        "unlockDay": 0,
+        "dropMultiplier": 1.0,
+        "missions": [
+          "race",
+          "carjack",
+          "delivery",
+          "chase"
+        ],
+        "secret": "run_left_at_start"
+      },
+      {
+        "id": "hollow_hotel",
+        "key": "jade",
+        "unlockDay": 7,
+        "dropMultiplier": 1.2,
+        "missions": [
+          "search",
+          "survive",
+          "puzzle",
+          "evade"
+        ]
+      },
+      {
+        "id": "warzone",
+        "key": "crystal",
+        "unlockDay": 14,
+        "dropMultiplier": 1.5,
+        "missions": [
+          "assault",
+          "shield_break"
+        ]
+      },
+      {
+        "id": "citadel_raid",
+        "key": null,
+        "unlockDay": 21,
+        "dropMultiplier": 2.0,
+        "requiresKeys": 3,
+        "minMechPower": 300,
+        "boss": "director_vane_mech"
+      }
+    ],
+    "resetOnEnd": [
+      "shards",
+      "keys",
+      "seasonPoints"
+    ],
+    "keepOnEnd": [
+      "level",
+      "items",
+      "mechs",
+      "token"
+    ],
+    "stagesPerArea": {
+      "normal": 3,
+      "boss": 1
+    },
+    "chunksPerArea": 30
+  },
+  "energy": {
+    "max": 5,
+    "regenPerHour": 1,
+    "dailyQuestBonus": 2,
+    "referralBonusPerFriend": 1,
+    "referralDailyCap": 3,
+    "tokenPurchaseDailyCap": 5
+  },
+  "match": {
+    "durationSec": 420,
+    "eventAtSec": 240,
+    "events": [
+      "supply_ship_hold_30s",
+      "autoscroll_chase",
+      "mini_boss_mech"
+    ],
+    "deathLoss": {
+      "shards": 0.3,
+      "itemsUpToRarity": "rare",
+      "itemsLossRate": 0.3,
+      "insuranceCardNegates": true
+    },
+    "score": {
+      "mission": 100,
+      "kill": 10,
+      "secondLeft": 2,
+      "eventMin": 200,
+      "eventMax": 500
+    },
+    "stars": {
+      "1": 500,
+      "2": 1200,
+      "3": 2000
+    },
+    "starMultiplier": {
+      "1": 1.0,
+      "2": 1.5,
+      "3": 2.0
+    },
+    "loginStreak": {
+      "perDay": 0.05,
+      "max": 0.5
+    },
+    "shardChancePerMission": 0.2,
+    "objectives": [
+      "clear_legion_group",
+      "rescue_hostage",
+      "destroy_shield_generator",
+      "grab_data_drive",
+      "find_secret_path",
+      "open_hidden_chest"
+    ],
+    "objectivesPerStage": 6,
+    "extract": "exit_gate_end_of_stage"
+  },
+  "modes": {
+    "hub": {
+      "space": "3d",
+      "cap": 100,
+      "energyCost": 0,
+      "drops": false
+    },
+    "pve_contract": {
+      "space": "2d",
+      "players": [
+        1,
+        4
+      ],
+      "energyCost": 1,
+      "drops": true,
+      "personalGear": true
+    },
+    "solo_challenge": {
+      "space": "2d",
+      "players": [
+        1,
+        1
+      ],
+      "energyCost": 1,
+      "drops": false,
+      "personalGear": false,
+      "sameSeed": true,
+      "leaderboard": "weekly"
+    },
+    "contested_stage": {
+      "space": "2d",
+      "teams": 2,
+      "teamSize": 4,
+      "energyCost": 1,
+      "drops": true,
+      "dropMultiplier": 1.5,
+      "minLevel": 10,
+      "pvp": true
+    },
+    "arena": {
+      "space": "2d",
+      "formats": [
+        "1v1",
+        "2v2",
+        "4v4"
+      ],
+      "energyCost": 0,
+      "drops": false,
+      "rating": "elo",
+      "minLevel": 10,
+      "pvp": true
+    },
+    "citadel_raid": {
+      "space": "2d",
+      "players": [
+        1,
+        4
+      ],
+      "energyCost": 1,
+      "raidTicket": true,
+      "drops": true,
+      "minMechPower": 300
+    },
+    "world_boss": {
+      "space": "2d",
+      "players": [
+        4,
+        12
+      ],
+      "energyCost": 1,
+      "raidTicket": true,
+      "drops": true,
+      "dropMultiplier": 2.0
+    },
+    "territory_war": {
+      "space": "3d",
+      "mode": "siege3d",
+      "ticket": "siege_registration"
+    },
+    "siege_daily": {
+      "space": "3d",
+      "mode": "siege3d",
+      "energyCost": 1
+    }
+  },
+  "transform": {
+    "meterMax": 100,
+    "cooldownSec": 60,
+    "transformAnimSec": 1.5,
+    "revertAnimSec": 1.0,
+    "empPenaltySec": 5,
+    "durabilityCostPerUse": 1,
+    "gain": {
+      "kill": 5,
+      "mission": 20,
+      "noHitPerSec": 1,
+      "battery": 15
+    },
+    "forms": {
+      "titan_frame": {
+        "durationSec": 20,
+        "hpMul": 5,
+        "speedMul": 0.6,
+        "canDrive": false,
+        "skills": [
+          "punch_break_wall",
+          "stomp",
+          "spike_immune",
+          "high_jump"
+        ],
+        "canDash": false
+      },
+      "colossus": {
+        "durationSec": 15,
+        "hpMul": 4,
+        "speedMul": 0.5,
+        "canDrive": false,
+        "skills": [
+          "ground_shockwave",
+          "screen_laser"
+        ]
+      },
+      "velocity": {
+        "durationSec": 25,
+        "hpMul": 1.5,
+        "speedMul": 2.0,
+        "canDrive": true,
+        "skills": [
+          "vehicle_mode_autoscroll",
+          "ramp_jump",
+          "ram",
+          "instant_robot_swap"
+        ]
+      }
+    },
+    "onlyIn2D": true
+  },
+  "consumables": {
+    "extra_coin": {
+      "effect": "extra_life",
+      "perMatch": 1
+    },
+    "chrono_cube": {
+      "effect": "rewind",
+      "rewindSec": 10,
+      "perMatch": 1
+    },
+    "nova_bomb": {
+      "effect": "clear_screen_enemies",
+      "perMatch": 1,
+      "raidOnly": true
+    },
+    "battery": {
+      "effect": "transform_meter",
+      "amount": 15,
+      "perMatch": 3
+    }
+  },
+  "dropTable": {
+    "rollsPerMission": 1,
+    "rarity": {
+      "common": 0.6,
+      "rare": 0.3,
+      "epic": 0.08,
+      "legendary": 0.018,
+      "mythic": 0.002
+    },
+    "transformBonus": 0.1,
+    "supplyDropMinRarity": "epic",
+    "pity": {
+      "legendary": 60,
+      "mythic": 500
+    },
+    "statRange": {
+      "common": [
+        1.0,
+        1.0
+      ],
+      "rare": [
+        1.05,
+        1.1
+      ],
+      "epic": [
+        1.12,
+        1.2
+      ],
+      "legendary": [
+        1.18,
+        1.3
+      ],
+      "mythic": [
+        1.28,
+        1.35
+      ]
+    },
+    "maxPowerGap": 0.35,
+    "seasonExclusiveSet": true,
+    "serverAnnounceMinRarity": "legendary",
+    "mythicRng": "chainlink_vrf_if_available_else_commit_reveal"
+  },
+  "mech": {
+    "slots": [
+      "core",
+      "armor",
+      "weapon",
+      "engine"
+    ],
+    "durability": {
+      "common": 20,
+      "rare": 20,
+      "epic": 25,
+      "legendary": 30,
+      "mythic": 40
+    },
+    "repairTokenPerPoint": {
+      "common": 0.2,
+      "rare": 0.3,
+      "epic": 0.5,
+      "legendary": 1,
+      "mythic": 2
+    },
+    "smeltReturn": 0.4
+  },
+  "craft": {
+    "inputCount": 5,
+    "recipes": {
+      "common_to_rare": {
+        "costToken": 2,
+        "successRate": 0.9
+      },
+      "rare_to_epic": {
+        "costToken": 8,
+        "successRate": 0.7
+      },
+      "epic_to_legendary": {
+        "costToken": 30,
+        "successRate": 0.4
+      }
+    },
+    "failKeepInputs": 2
+  },
+  "market": {
+    "feeRate": 0.05,
+    "feeSplit": {
+      "burn": 0.4,
+      "seasonPool": 0.4,
+      "territoryGuild": 0.2
+    },
+    "minLevel": 10,
+    "minAccountDays": 7,
+    "dailyListLimit": 20
+  },
+  "auction": {
+    "minRarity": "legendary",
+    "durationH": 24,
+    "minBidStep": 0.05,
+    "antiSnipeMin": 5,
+    "feeRate": 0.05,
+    "easterEggSplit": {
+      "finder": 0.85,
+      "nextSeasonPool": 0.1,
+      "burn": 0.05
+    }
+  },
+  "nftMintFee": {
+    "common": null,
+    "rare": 1,
+    "epic": 3,
+    "legendary": 10,
+    "mythic": 25
+  },
+  "economy": {
+    "raidTokenDailyCapPerPlayer": 20,
+    "targetSinkSourceRatio": 1.1
+  },
+  "launchpad": {
+    "tiers": [
+      {
+        "id": "bronze",
+        "keys": 1,
+        "minSeasonPoints": 5000,
+        "reward": "whitelist_lottery"
+      },
+      {
+        "id": "silver",
+        "keys": 2,
+        "minSeasonPoints": 15000,
+        "tickets": 1
+      },
+      {
+        "id": "gold",
+        "keys": 3,
+        "finalGate": true,
+        "minSeasonPoints": 30000,
+        "tickets": 2,
+        "earlyAccessH": 1
+      },
+      {
+        "id": "diamond",
+        "rule": "top100_solo_challenge OR (gold AND mech_rarity>=legendary)",
+        "tickets": 3,
+        "earlyAccessH": 2
+      }
+    ],
+    "onePerWalletPerSeason": true,
+    "kycRequired": true
+  },
+  "world": {
+    "hub": {
+      "channelCap": 100,
+      "channelSwitchCooldownSec": 60,
+      "partyGuildSameChannelPriority": true,
+      "pvp": false,
+      "aoiGridM": 50,
+      "places": [
+        "portals",
+        "market",
+        "auction_screen",
+        "garage",
+        "guild_hall",
+        "leaderboards",
+        "territory_board",
+        "pvp_gate",
+        "archivist"
+      ],
+      "districts": [
+        "port",
+        "neon_street",
+        "industrial"
+      ]
+    },
+    "hubEvents": {
+      "flash_auction": {
+        "everyMin": 120,
+        "durationMin": 10,
+        "minRarity": "epic"
+      },
+      "legion_alarm": {
+        "everyMin": 60,
+        "portalOpenMin": 10,
+        "maxPlayers": 12,
+        "rewardBy": "contribution"
+      },
+      "world_boss": {
+        "perDay": 3
+      },
+      "archivist_hunt": {
+        "random": true,
+        "reward": "bonus_shard"
+      }
+    },
+    "net": {
+      "hubTickHz": 20,
+      "pveSyncHz": 30,
+      "pveModel": "client_predict_server_validate",
+      "pvpTickHz": 30,
+      "pvpModel": "server_authoritative_lag_comp",
+      "lootRoll": "server"
+    }
+  },
+  "party": {
+    "size": [
+      2,
+      4
+    ],
+    "autoMatch": {
+      "by": [
+        "map",
+        "level"
+      ],
+      "levelRange": 5
+    },
+    "loot": "personal",
+    "bonusPerExtraMember": 0.05,
+    "bonusMax": 0.15,
+    "syncTransform": {
+      "minMembers": 3,
+      "windowSec": 10,
+      "damageBonus": 0.2,
+      "extraSec": 5
+    },
+    "fusion": {
+      "phase": 3,
+      "members": 4,
+      "durationSec": 30
+    },
+    "revivesPerContract": 1,
+    "difficultyScale": [
+      1.0,
+      1.6,
+      2.1,
+      2.5
+    ],
+    "sharedCamera": true,
+    "teleportToGroup": true,
+    "reviveHoldSec": 3
+  },
+  "guild": {
+    "create": {
+      "minLevel": 15,
+      "costToken": 100,
+      "burn": true
+    },
+    "memberCapByLevel": {
+      "1": 30,
+      "2": 50,
+      "3": 80,
+      "4": 100,
+      "5": 100
+    },
+    "ranks": {
+      "leader": 1,
+      "vice": 2,
+      "elder": 5,
+      "member": null,
+      "recruit": null
+    },
+    "recruitDays": 3,
+    "leaderInactiveDaysTransfer": 14,
+    "techTreeCaps": {
+      "dropRate": 0.05,
+      "repairDiscount": 0.1,
+      "energyMax": 1,
+      "xp": 0.05
+    },
+    "rankingTopMembersCounted": 30,
+    "territoryWar": {
+      "registerDays": [
+        "thu",
+        "fri"
+      ],
+      "siegeDays": [
+        "sat",
+        "sun"
+      ],
+      "durationMin": 30,
+      "maxPlayersPerGuild": 30,
+      "registerFeeToken": 50,
+      "capturePoints": 3,
+      "holdWeeks": 1,
+      "maxAllianceSize": 2,
+      "towerDecayAfterWeeks": 3,
+      "towerDecayPerWeek": 0.2,
+      "ownerRewards": {
+        "marketTaxShare": 0.01,
+        "dropBonus": 0.2,
+        "dailyTerritoryBoss": 1
+      },
+      "mapWidthScreens": 6,
+      "territories": "hub_districts",
+      "bracketWhenMultiple": true,
+      "maxTerritoriesPerGuild": 2,
+      "mode": "siege3d"
+    },
+    "launchpadPool": {
+      "top1": 30,
+      "top2_3": 20,
+      "top4_10": 10,
+      "splitBy": "contribution",
+      "minDaysInGuild": 14,
+      "kycRequired": true
+    }
+  },
+  "pvp": {
+    "where": [
+      "contested_stage",
+      "arena",
+      "territory_war"
+    ],
+    "newbieProtectionLevel": 10,
+    "deathDropRate": 0.3,
+    "deathDropMaxRarity": "epic",
+    "neverDrop": [
+      "equipped",
+      "mech_parts",
+      "legendary",
+      "mythic"
+    ],
+    "shardLossOnNoLives": 0.3,
+    "matchmaking": {
+      "powerRange": 0.15,
+      "levelRange": 5
+    },
+    "powerGapCap": 0.2,
+    "weaponChipDamageVsPlayers": 0.7,
+    "leavePenaltyMin": 15
+  },
+  "chain": {
+    "network": "Robinhood Chain",
+    "type": "Ethereum L2 (Arbitrum Orbit)",
+    "chainId": 4663,
+    "chainIdVerified": false,
+    "gasToken": "ETH",
+    "contracts": {
+      "token": "ERC20",
+      "items": "ERC1155",
+      "marketplace": true,
+      "auction": true,
+      "launchpad": "merkle_whitelist",
+      "treasury": "multisig",
+      "tokenContract": "CyberhoodToken"
+    },
+    "mint": "eip712_voucher_on_demand",
+    "mythicRng": "chainlink_vrf_if_available_else_commit_reveal",
+    "upgradeable": "uups_timelock_multisig",
+    "gasSponsorNewPlayers": true
+  },
+  "presentation": {
+    "hub": {
+      "view": "3d_gta_topdown",
+      "pvp": false
+    },
+    "stages": {
+      "view": "2d_side_scrolling",
+      "internalResolution": [
+        480,
+        270
+      ],
+      "integerScaling": true,
+      "physicsHz": 60
+    }
+  },
+  "controls2d": {
+    "lives": 3,
+    "checkpointsPerStage": 3,
+    "hitInvulnSec": 1.0,
+    "airDashPerJump": 1,
+    "chargeShot": {
+      "levelsSec": [
+        0.5,
+        1.5
+      ],
+      "damageMul": [
+        1,
+        3,
+        6
+      ]
+    },
+    "meleeCombo": 3,
+    "weaponChipSlots": 2
+  },
+  "items": {
+    "characterArmor": {
+      "slots": [
+        "helmet",
+        "body",
+        "arms",
+        "legs"
+      ],
+      "setBonus": true,
+      "tradeable": true
+    },
+    "weaponChips": {
+      "source": "area_boss",
+      "dropChance": 0.05,
+      "raidDropChance": 0.1,
+      "tradeable": true,
+      "usesWeaponEnergy": true
+    },
+    "vehicles": {
+      "hub": "cosmetic_travel",
+      "rideChaser": "2d_autoscroll_sections"
+    }
+  },
+  "playerRewards": {
+    "revenueSharePool": {
+      "shareOfNetRevenue": 0.4,
+      "payout": "weekly",
+      "onchainTreasury": true,
+      "sources": {
+        "launchpad": 0.5,
+        "marketFees": 0.4,
+        "sponsorship": 0.4,
+        "cosmetics": 0.3,
+        "raidTicketsEnergy": 0.3
+      },
+      "split": {
+        "activity": 0.5,
+        "soloChallengeTop500": 0.2,
+        "pvp": 0.15,
+        "guildTop50": 0.15
+      },
+      "activityWeighting": "sqrt",
+      "hunterPointsWeeklyCap": 2000,
+      "hunterPoints": {
+        "contract3star": 30,
+        "contract2star": 15,
+        "contract1star": 5,
+        "areaBoss": 40,
+        "worldBoss": 25,
+        "hubEvent": 10,
+        "dailyQuest": 10
+      }
+    },
+    "launchpad": {
+      "publicSaleReservedForPlayers": 0.3,
+      "projectAirdropToKeyHolders": [
+        0.01,
+        0.03
+      ],
+      "freeLotteryMinActiveDays": 5,
+      "refundOnCancel": true
+    },
+    "freeToPlay": {
+      "starterMechSoulbound": true,
+      "weeklyChestMinRarity": "epic",
+      "weeklyChestActiveDays": 5,
+      "gasSponsoredTx": 20,
+      "insuranceCardFromDaily": true
+    },
+    "rental": {
+      "enabled": true,
+      "defaultSplit": {
+        "player": 0.7,
+        "owner": 0.25,
+        "platform": 0.05
+      },
+      "playerShareRange": [
+        0.5,
+        0.85
+      ]
+    },
+    "professions": [
+      "mechanic_shop",
+      "crafter",
+      "bounty_hunter",
+      "trader"
+    ],
+    "referral": {
+      "platformRevenueShare": 0.1,
+      "days": 180,
+      "newPlayerBonusDays": 14,
+      "creatorShare": 0.15
+    },
+    "season0": {
+      "pointsToAirdrop": true,
+      "founderMultiplierSeason1": 1.2
+    },
+    "tokenAllocationDraft": {
+      "community": 0.4,
+      "team": 0.15,
+      "investors": 0.15,
+      "liquidity": 0.1,
+      "treasury": 0.15,
+      "marketing": 0.05
+    },
+    "rewardsByActivityNotHolding": true
+  },
+  "bounty": {
+    "board": {
+      "dailyFree": 3,
+      "eliteWeekly": 2,
+      "playerPostFee": 0.05,
+      "playerPostEscrow": true,
+      "playerPostMinRank": "D",
+      "noBountiesOnPlayers": true,
+      "serverWideWeekly": "fri_20h"
+    },
+    "portals": {
+      "copper": {
+        "minRank": "F",
+        "minPower": 0,
+        "party": [
+          1,
+          4
+        ],
+        "timeMin": 10,
+        "rewardMul": 1.0,
+        "pvp": false,
+        "energy": 1,
+        "hunterPoints": 20
+      },
+      "jade": {
+        "minRank": "D",
+        "minPower": 300,
+        "party": [
+          2,
+          4
+        ],
+        "timeMin": 15,
+        "rewardMul": 1.6,
+        "pvp": false,
+        "energy": 1,
+        "hunterPoints": 35
+      },
+      "crystal": {
+        "minRank": "B",
+        "minPower": 600,
+        "party": [
+          3,
+          4
+        ],
+        "timeMin": 20,
+        "rewardMul": 2.5,
+        "pvp": false,
+        "energy": 1,
+        "hunterPoints": 60
+      },
+      "red": {
+        "minRank": "C",
+        "minLevel": 20,
+        "teams": 2,
+        "teamSize": 4,
+        "timeMin": 20,
+        "rewardMul": 3.0,
+        "pvp": true,
+        "targetStealable": true,
+        "energy": 1,
+        "hunterPoints": 50
+      },
+      "gold": {
+        "minRank": "F",
+        "players": [
+          8,
+          20
+        ],
+        "timeMin": 30,
+        "reward": "weekly_pool",
+        "pvp": false,
+        "energy": 0,
+        "hunterPoints": 40
+      }
+    },
+    "hunt": {
+      "cluesForExactLocation": 3,
+      "targetFleeHpPct": 0.3,
+      "captureHpPct": 0.2,
+      "captureItem": "emp_net",
+      "captureRewardMul": 1.5,
+      "failLoss": 0.3,
+      "realPlayerBonusPer": 0.05,
+      "realPlayerBonusMax": 0.15
+    },
+    "ranks": [
+      "F",
+      "E",
+      "D",
+      "C",
+      "B",
+      "A",
+      "S"
+    ],
+    "rankSTopPct": 0.01
+  },
+  "mercenaries": {
+    "partySlots": 4,
+    "wideMapSupportSlot": 1,
+    "maxHiredByRank": {
+      "F": 1,
+      "E": 1,
+      "D": 2,
+      "C": 2,
+      "B": 3,
+      "A": 3,
+      "S": 3
+    },
+    "tiers": {
+      "regular": {
+        "fee": "coin",
+        "freePerDay": 1,
+        "powerPct": 0.55
+      },
+      "elite": {
+        "fee": "coin_high",
+        "powerPct": 0.65
+      },
+      "hero": {
+        "fee": "none",
+        "recovery": "2h_or_coin_token",
+        "powerPct": [
+          0.7,
+          0.8
+        ]
+      }
+    },
+    "roles": [
+      "guardian",
+      "neon_archer",
+      "medic_engineer",
+      "scout",
+      "shield_breaker",
+      "driver",
+      "support_drone"
+    ],
+    "commands": [
+      "follow",
+      "hold",
+      "attack_target",
+      "regroup"
+    ],
+    "specialCooldownSec": [
+      30,
+      60
+    ],
+    "countsForPartyBonus": false,
+    "replacesDisconnectedPlayer": true,
+    "heroCards": {
+      "rarities": 5,
+      "tradeable": true,
+      "rentable": true,
+      "skillUnlockLevels": [
+        10,
+        20,
+        30
+      ],
+      "loyaltyTiers": 3,
+      "loyaltyBonusPerTier": 0.05,
+      "sources": [
+        "elite_bounty",
+        "capture",
+        "crystal_portal",
+        "gold_portal"
+      ]
+    }
+  },
+  "wideMaps": {
+    "widthScreens": [
+      20,
+      30
+    ],
+    "layers": [
+      "ground",
+      "rooftop_highway",
+      "underground"
+    ],
+    "maxPlayers": 8,
+    "goldPortalPlayers": [
+      8,
+      20
+    ],
+    "travel": [
+      "teleport_beacons",
+      "ride_chaser",
+      "driver_npc",
+      "ladders_pipes"
+    ],
+    "respawnAtBeaconSec": 10,
+    "teamPings": "arrow",
+    "perArea": {
+      "neon_city": 1,
+      "hollow_hotel": 1,
+      "warzone": 1
+    },
+    "goldPortalMap": "citadel_extended"
+  },
+  "siege3d": {
+    "view": "3d_gta_reuse_hub_engine",
+    "map": "ixo_ice_citadel",
+    "sides": {
+      "attack": "hunters",
+      "defend": "ixo_villains"
+    },
+    "npcRatio": 0.7,
+    "humanRatio": 0.3,
+    "sizes": {
+      "small": {
+        "perSide": 50,
+        "humans": 15
+      },
+      "standard": {
+        "perSide": 100,
+        "humans": 30
+      },
+      "event": {
+        "perSide": 200,
+        "humans": 60
+      }
+    },
+    "durationMin": 25,
+    "respawnWaveSec": 20,
+    "sideTickets": true,
+    "transformAllowed": true,
+    "phases": [
+      "charge",
+      "shield_generators_3",
+      "gate_break",
+      "courtyard_towers_2",
+      "core_hold_60s"
+    ],
+    "defenderBossMechPilot": "defender_mvp",
+    "defenderNovaBombUses": 1,
+    "extraCoinSurvivesNova": true,
+    "schedule": {
+      "daily": [
+        "12:30",
+        "20:30"
+      ],
+      "territoryWar": [
+        "sat",
+        "sun"
+      ]
+    },
+    "territoryWar": {
+      "maxHumansPerGuild": 30,
+      "npcPerSide": 70
+    },
+    "autoBalance": {
+      "fillWithEliteNpc": true,
+      "underdogRewardBonus": 0.1
+    },
+    "npcPerHumanSquad": 2,
+    "npcPowerPct": [
+      0.55,
+      0.65
+    ],
+    "heroCardAsSquadLeader": true,
+    "rewards": {
+      "winMul": 1.5,
+      "loseMul": 0.6,
+      "exclusiveSet": "ice_war",
+      "hunterPoints": [
+        30,
+        80
+      ],
+      "mvpPerSide": true
+    },
+    "tech": {
+      "tickHz": 20,
+      "farNpcHz": 5,
+      "aoiM": 60,
+      "npcAi": "server_flow_field",
+      "render": "gpu_instancing",
+      "targetFpsPc": 60,
+      "targetFpsMobile": 30
+    },
+    "afkKickMin": 3
+  }
+}

@@ -144,7 +144,7 @@ describe("trang bị: rơi đồ", () => {
     }
     expect(boss).toBeGreaterThan(100);
     for (let i = 0; i < 3000; i++) for (const d of rollEnemyDrops("zombie", ctx)) if (d.kind === "gear") seen.add(d.gear);
-    expect([...seen].sort()).toEqual([...GEAR_IDS].sort());
+    expect([...seen].sort()).toEqual(GEAR_IDS.filter((g) => !GEAR[g].siegeOnly).sort());
   });
 });
 
@@ -188,5 +188,20 @@ describe("vòng quay may mắn", () => {
     }
     expect(n.cred30).toBeGreaterThan(n.jackpot * 5);
     expect(n.jackpot).toBeGreaterThan(0);
+  });
+});
+
+describe("bộ Băng Chiến & phân rã", () => {
+  it("đồ Băng Chiến không rơi trong màn thường", async () => {
+    const { rollGear, ICE_WAR_SET, GEAR } = await import("./gear");
+    const { createRng } = await import("../sim/rng");
+    expect(ICE_WAR_SET.length).toBe(5);
+    const rng = createRng(42);
+    for (let i = 0; i < 3000; i++) expect(GEAR[rollGear(rng, 2)].siegeOnly).toBeFalsy();
+  });
+  it("giá phân rã theo độ hiếm, +10% mỗi cấp cường hoá", async () => {
+    const { salvageValue, SALVAGE } = await import("./gear");
+    expect(salvageValue("frost")).toBe(SALVAGE.legendary);
+    expect(salvageValue("celestial", 6)).toBe(Math.round(SALVAGE.epic * 1.6));
   });
 });

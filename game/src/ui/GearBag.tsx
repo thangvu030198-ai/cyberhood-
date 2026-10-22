@@ -3,7 +3,7 @@
 
 import { GearPreview } from "../level/wornGear";
 import { useEffect, useState } from "react";
-import { GEAR, GEAR_IDS, WEAPONS, ARMORS, SLOTS, loadoutStats, type GearId, type Slot } from "../level/gear";
+import { GEAR, GEAR_IDS, WEAPONS, ARMORS, SLOTS, loadoutStats, type GearId, type Slot, salvageValue } from "../level/gear";
 import { loadoutOf, useGear } from "../game/gearStore";
 import { useHunter } from "../game/hunter";
 import { useGame } from "../game/store";
@@ -168,6 +168,23 @@ export function GearBag() {
                   Trang bị
                 </button>
               ))}
+            {sel.kind === "gear" && (
+              <button
+                type="button"
+                className="bag__use bag__use--salvage"
+                onClick={() => {
+                  const r = useGear.getState().salvage(sel.id);
+                  const g = useGame.getState();
+                  if ("error" in r) g.showToast(r.error);
+                  else {
+                    g.showToast(`Phân rã ${GEAR[sel.id].name}: +${r.cred} CRED`);
+                    setPick(null);
+                  }
+                }}
+              >
+                Phân rã (+{salvageValue(sel.id, (owned[sel.id] ?? 0) <= 1 ? enh[sel.id] ?? 0 : 0)} CRED)
+              </button>
+            )}
           </>
         ) : (
           <span>

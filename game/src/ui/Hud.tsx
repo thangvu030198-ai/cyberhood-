@@ -201,7 +201,9 @@ function DamageFlash() {
 
 function Flatline() {
   const flatlinedAt = useGame((s) => s.flatlinedAt);
-  if (flatlinedAt === null) return null;
+  // Công thành có màn hồi sinh theo đợt riêng (SiegeHud)
+  const siege = useGame((s) => s.location === "siege");
+  if (flatlinedAt === null || siege) return null;
   return (
     <div className="flatline" role="alert">
       <p className="flatline__title">FLATLINED</p>

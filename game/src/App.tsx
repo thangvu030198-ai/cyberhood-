@@ -15,6 +15,10 @@ import { TrafficDebug } from "./game/TrafficDebug";
 import { traffic } from "./game/trafficWorld";
 import { Effects } from "./game/Effects";
 import { PlayerCombat, combatDebug } from "./game/Weapons";
+import { SiegeWorld } from "./siege/SiegeWorld";
+import { SiegeHud, SiegeLobby } from "./siege/SiegeHud";
+import { SiegeGatePortal } from "./siege/SiegeGatePortal";
+import { useSiege } from "./siege/siegeSession";
 import { Shop } from "./game/Shop";
 import { GameRules } from "./game/GameRules";
 import { Npcs } from "./game/Npcs";
@@ -106,7 +110,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE },
+      __level: { useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege },
     });
   }
   return null;
@@ -118,6 +122,8 @@ export default function App() {
   const inLevel = useGame((s) => s.location === "level");
   const inDuel = useDuel((s) => s.sim !== null);
   const inKart = useKart((s) => s.sim !== null);
+  // Công thành: dùng chung engine Hub, chỉ thay bản đồ (thành phố ẩn đi, bản đồ tuyết hiện ra)
+  const inSiege = useGame((s) => s.location === "siege");
   return (
     <Crash>
       <KeyboardControls map={KEYMAP}>
@@ -130,26 +136,32 @@ export default function App() {
           camera={{ fov: 60, near: 0.1, far: 1200, position: [0, 4, 12] }}
         >
           <Suspense fallback={null}>
-            <Sky />
-            <Lights />
+            {!inSiege && <Sky />}
+            {!inSiege && <Lights />}
             <Physics timeStep="vary" paused>
               <PhysicsStepper />
-              <City />
+              <group visible={!inSiege}>
+                <City />
+                {!NO_CARS && !inSiege && <Vehicles />}
+                <Shop />
+                <Npcs />
+                <Vault />
+                <ContractScene />
+                <HubProps />
+                <LifeStatic quality={quality} />
+                <MeshyStatic />
+                <KitDressing />
+                <SiegeGatePortal />
+              </group>
               <Player />
-              {!NO_CARS && <Vehicles />}
-              <Shop />
-              <Npcs />
-              <Vault />
-              <ContractScene />
-              <HubProps />
-              <LifeStatic quality={quality} />
-              <MeshyStatic />
-              <KitDressing />
+              {inSiege && <SiegeWorld />}
             </Physics>
-            <VaultDoor />
-            <NeonEnvironment />
-            <HoloAds />
-            <SteamVents />
+            <group visible={!inSiege}>
+              <VaultDoor />
+              <NeonEnvironment />
+              <HoloAds />
+              <SteamVents />
+            </group>
             {!HUB_PEACEFUL && <Enemies />}
             <MechController />
             <PlayerCombat />
@@ -157,15 +169,17 @@ export default function App() {
             <GameRules />
             <CameraRig />
             <Interaction />
-            <Showcase quality={quality} />
-            <LifeDynamic quality={quality} />
-            <MeshyDynamic />
-            <ObjectiveArrow />
-            <LedBoards />
-            <HubHolo />
-            <HubServices />
+            <group visible={!inSiege}>
+              <Showcase quality={quality} />
+              <LifeDynamic quality={quality} />
+              <MeshyDynamic />
+              <LedBoards />
+              <HubHolo />
+              <HubServices />
+            </group>
+            {!inSiege && <ObjectiveArrow />}
             <TrafficDebug />
-            <Rain />
+            {!inSiege && <Rain />}
             <DebugHook />
             {!NO_FX && (
               <EffectComposer multisampling={0}>
@@ -195,7 +209,11 @@ export default function App() {
             )}
           </Suspense>
         ) : (
-          <Hud />
+          <>
+            <Hud />
+            <SiegeHud />
+            <SiegeLobby />
+          </>
         )}
       </KeyboardControls>
     </Crash>

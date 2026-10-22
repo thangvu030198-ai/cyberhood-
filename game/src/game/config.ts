@@ -74,6 +74,10 @@ export const SAFE_ZONE = { x: 0, z: 6, r: 26 };
 export const HUB_PEACEFUL = true;
 /** Cổng nhiệm vụ: cổng torii neon trên phố phía bắc điểm xuất phát */
 export const MISSION_GATE = { x: 0, z: -26, reach: 4.5 };
+/** Cổng Công Thành: cổng băng trên đại lộ phía nam điểm xuất phát (đối xứng cổng nhiệm vụ) */
+export const SIEGE_GATE = { x: 0, z: 34, reach: 5 };
+/** Bản đồ Thành Băng IXO đặt xa thành phố (cùng một thế giới vật lý, sương mù che hết thành phố) */
+export const SIEGE_ORIGIN = { x: 0, z: 1600 };
 /** Vùng cách ly phía tây ngoài thành phố: tàn tích sau đợt bùng phát, zombie cyber lang thang */
 export const QUARANTINE = { x: -CITY_HALF - 58, z: 48, r: 48 };
 export const inQuarantine = (x: number, z: number, pad = 0) => Math.hypot(x - QUARANTINE.x, z - QUARANTINE.z) < QUARANTINE.r + pad;

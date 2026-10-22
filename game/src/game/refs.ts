@@ -12,4 +12,6 @@ export const handles = {
   mechBlend: 0,
   /** Xoay camera theo góc azimuth (rad; 0 = nhìn về −z) — dùng khi dịch chuyển sang bản đồ khác */
   aimCamera: null as null | ((azimuth: number, polar?: number) => void),
+  /** CameraControls của camera chính (công cụ quay phim / debug điều khiển trực tiếp) */
+  camControls: null as unknown,
 };

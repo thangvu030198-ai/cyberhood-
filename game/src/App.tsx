@@ -113,6 +113,8 @@ const params = typeof location !== "undefined" ? new URLSearchParams(location.se
 const NO_CARS = params.has("nocars");
 const NO_FX = params.has("nofx");
 const NO_ADS = params.has("noads");
+/** Quay phim giới thiệu: ẩn mũi tên chỉ đường */
+const CINE = params.has("cine");
 
 /** Điện thoại cầm dọc khi đã vào game: nhắc xoay ngang (màn tạo nhân vật vẫn dùng được khi cầm dọc) */
 function RotateHint() {
@@ -214,7 +216,7 @@ export default function App() {
               <RemotePlayers />
               <HubServices />
             </group>
-            {!inSiege && <ObjectiveArrow />}
+            {!inSiege && !CINE && <ObjectiveArrow />}
             <TrafficDebug />
             {!inSiege && <Rain />}
             <DebugHook />

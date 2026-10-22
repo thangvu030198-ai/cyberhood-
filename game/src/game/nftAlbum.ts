@@ -1,7 +1,7 @@
 // Album NFT "CYBERHOOD Genesis" chiếu trên bảng LED khổng lồ ở sảnh: nhân vật, vật phẩm, quái thú hiếm trong game.
-// Ảnh pixel nướng sẵn từ model 3D (nftbake.html) thành một atlas nhúng trong nftAtlas.ts.
+// Ảnh render từ model 3D (nftbake.html?raw=512) rồi vẽ lại thành pixel art bằng PixelLab, ghép thành atlas nhúng trong nftAtlas.ts.
 
-export const NFT_CELL = 64;
+export const NFT_CELL = 128;
 export const NFT_COLS = 6;
 
 export type NftRarity = "Common" | "Rare" | "Epic" | "Legendary" | "Mythic";

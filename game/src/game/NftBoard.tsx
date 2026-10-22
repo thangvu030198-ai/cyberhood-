@@ -176,7 +176,7 @@ function featured(g: CanvasRenderingContext2D, i: number, x: number, y: number, 
   roundRect(g, x + pad, y + pad, art, artH, 18);
   g.clip();
   artBg(g, it, x + pad, y + pad, art, artH);
-  const sz = Math.floor(artH / NFT_CELL) * NFT_CELL * 0.98;
+  const sz = Math.floor(artH / 64) * 64 * 0.98;
   sprite(g, i, x + pad + (art - sz) / 2, y + pad + (artH - sz) / 2 + artH * 0.02, sz);
   g.restore();
   // Nhãn trên ảnh

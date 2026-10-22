@@ -632,7 +632,7 @@ function drawKol(g: Ctx, t: number) {
     g.fillRect(90, y + 6, 64, 64);
     // Cắt nửa trên (đầu, vai) làm ảnh đại diện
     g.imageSmoothingEnabled = false;
-    g.drawImage(atlas, (i % NFT_COLS) * NFT_CELL + 14, Math.floor(i / NFT_COLS) * NFT_CELL, 36, 36, 90, y + 6, 64, 64);
+    g.drawImage(atlas, (i % NFT_COLS) * NFT_CELL + NFT_CELL * 0.22, Math.floor(i / NFT_COLS) * NFT_CELL, NFT_CELL * 0.56, NFT_CELL * 0.56, 90, y + 6, 64, 64);
     g.restore();
     g.font = `800 30px ${FONT}`;
     g.fillStyle = "#ffffff";

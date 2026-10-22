@@ -6,7 +6,9 @@ import { extraModel, type ExtraModel } from "../game/assets";
 import { NFT_ITEMS, NFT_CELL } from "../game/nftAlbum";
 
 const PX = NFT_CELL;
-const SS = 4; // siêu lấy mẫu trước khi hạ xuống PX
+// ?raw=512: xuất ảnh render gốc từng món (nền trong suốt) làm đầu vào cho dịch vụ vẽ pixel bên ngoài
+const RAW = Number(new URLSearchParams(location.search).get("raw")) || 0;
+const SS = RAW ? RAW / PX : 4; // siêu lấy mẫu trước khi hạ xuống PX
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setSize(PX * SS, PX * SS);
 renderer.setPixelRatio(1);
@@ -74,6 +76,7 @@ async function shoot(model: string, node: string | undefined, yaw: number, anim:
   const big = document.createElement("canvas");
   big.width = big.height = PX * SS;
   big.getContext("2d")!.drawImage(renderer.domElement, 0, 0);
+  if (RAW) return big;
   const sm = document.createElement("canvas");
   sm.width = sm.height = PX;
   const g = sm.getContext("2d")!;
@@ -123,8 +126,14 @@ async function main() {
   out.style.width = `${cols * PX * 3}px`;
   out.style.imageRendering = "pixelated";
   const g = out.getContext("2d")!;
+  const raw: string[] = [];
   for (let i = 0; i < NFT_ITEMS.length; i++) {
     const it = NFT_ITEMS[i];
+    if (RAW) {
+      const s = await shoot(it.model, it.node, it.yaw ?? -0.6, it.anim ?? 0.35, it.roll ?? 0, it.bright ?? 1).catch(() => null);
+      raw.push(s ? s.toDataURL("image/png") : "");
+      continue;
+    }
     try {
       const s = await shoot(it.model, it.node, it.yaw ?? -0.6, it.anim ?? 0.35, it.roll ?? 0, it.bright ?? 1);
       g.drawImage(s, (i % cols) * PX, Math.floor(i / cols) * PX);
@@ -132,6 +141,7 @@ async function main() {
       console.error("bake fail", it.model, e);
     }
   }
-  (window as unknown as { __atlas: string }).__atlas = out.toDataURL("image/png");
+  if (RAW) (window as unknown as { __raw: string[] }).__raw = raw;
+  else (window as unknown as { __atlas: string }).__atlas = out.toDataURL("image/png");
 }
 main();

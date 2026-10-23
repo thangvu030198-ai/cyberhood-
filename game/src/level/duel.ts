@@ -28,8 +28,8 @@ export const DUEL = {
   arenaHalf: 9,
   roundTime: 60,
   introTime: 1.5,
-  /** Hai người đứng cách nhau tối thiểu (thân không chồng lên nhau) */
-  bodyGap: 1.1,
+  /** Hai người đứng cách nhau tối thiểu: đủ chỗ cho tay chân vươn ra mà không xuyên vào thân nhau */
+  bodyGap: 1.4,
   walk: 3.2,
   jumpVel: 9,
   gravity: 28,
@@ -40,24 +40,26 @@ export const DUEL = {
    * lùi + K: đá móc lộn ngược; giữ S + K: quét trụ; giữ S + J: đá hất; trên không J/K: đấm nhảy / phi cước.
    */
   moves: {
-    jabL: { clip: "jabL", startup: 0.07, active: 0.07, recover: 0.13, reach: 1.3, damage: 5, push: 1.1, hit: "face" },
-    jabR: { clip: "jabR", startup: 0.08, active: 0.07, recover: 0.14, reach: 1.35, damage: 6, push: 1.3, hit: "face" },
-    hookL: { clip: "hookL", startup: 0.11, active: 0.08, recover: 0.18, reach: 1.3, damage: 8, push: 2, hit: "face" },
-    upperR: { clip: "upperR", startup: 0.13, active: 0.09, recover: 0.3, reach: 1.25, damage: 11, push: 2.6, knock: true, hit: "face" },
-    knee: { clip: "knee", startup: 0.1, active: 0.08, recover: 0.2, reach: 1.3, damage: 8, push: 1.6, hit: "body" },
-    roundhouse: { clip: "roundhouse", startup: 0.19, active: 0.1, recover: 0.28, reach: 1.75, damage: 11, push: 3.2, hit: "face" },
-    spartan: { clip: "spartan", startup: 0.18, active: 0.1, recover: 0.32, reach: 1.6, damage: 13, push: 5, knock: true, hit: "body" },
-    elbow: { clip: "elbow", startup: 0.12, active: 0.08, recover: 0.22, reach: 1.25, damage: 10, push: 2.4, lunge: 4, hit: "face" },
-    flykick: { clip: "flykick", startup: 0.24, active: 0.14, recover: 0.34, reach: 2, damage: 15, push: 5, knock: true, lunge: 7, hit: "body" },
-    backflip: { clip: "backflipkick", startup: 0.2, active: 0.12, recover: 0.4, reach: 1.6, damage: 14, push: 4, knock: true, hit: "face" },
-    sweep: { clip: "sweep", startup: 0.15, active: 0.1, recover: 0.3, reach: 1.75, damage: 9, push: 1, knock: true, low: true, hit: "body" },
-    risekick: { clip: "risekick", startup: 0.12, active: 0.1, recover: 0.3, reach: 1.4, damage: 10, push: 2.2, hit: "face" },
-    jumppunch: { clip: "jumppunch", startup: 0.14, active: 0.12, recover: 0.2, reach: 1.5, damage: 10, push: 2, hit: "face" },
+    jabL: { clip: "jabL", startup: 0.07, active: 0.07, recover: 0.13, reach: 1.55, damage: 5, push: 1.1, hit: "face" },
+    jabR: { clip: "jabR", startup: 0.08, active: 0.07, recover: 0.14, reach: 1.6, damage: 6, push: 1.3, hit: "face" },
+    hookL: { clip: "hookL", startup: 0.11, active: 0.08, recover: 0.18, reach: 1.55, damage: 8, push: 2, hit: "face" },
+    upperR: { clip: "upperR", startup: 0.13, active: 0.09, recover: 0.3, reach: 1.5, damage: 11, push: 2.6, knock: true, hit: "face" },
+    knee: { clip: "knee", startup: 0.1, active: 0.08, recover: 0.2, reach: 1.55, damage: 8, push: 1.6, hit: "body" },
+    roundhouse: { clip: "roundhouse", startup: 0.19, active: 0.1, recover: 0.28, reach: 2.0, damage: 11, push: 3.2, hit: "face" },
+    spartan: { clip: "spartan", startup: 0.18, active: 0.1, recover: 0.32, reach: 1.85, damage: 13, push: 5, knock: true, hit: "body" },
+    elbow: { clip: "elbow", startup: 0.12, active: 0.08, recover: 0.22, reach: 1.5, damage: 10, push: 2.4, lunge: 4, hit: "face" },
+    flykick: { clip: "flykick", startup: 0.24, active: 0.14, recover: 0.34, reach: 2.25, damage: 15, push: 5, knock: true, lunge: 7, hit: "body" },
+    backflip: { clip: "backflipkick", startup: 0.2, active: 0.12, recover: 0.4, reach: 1.85, damage: 14, push: 4, knock: true, hit: "face" },
+    sweep: { clip: "sweep", startup: 0.15, active: 0.1, recover: 0.3, reach: 2.0, damage: 9, push: 1, knock: true, low: true, hit: "body" },
+    risekick: { clip: "risekick", startup: 0.12, active: 0.1, recover: 0.3, reach: 1.65, damage: 10, push: 2.2, hit: "face" },
+    jumppunch: { clip: "jumppunch", startup: 0.14, active: 0.12, recover: 0.2, reach: 1.75, damage: 10, push: 2, hit: "face" },
   } satisfies Record<string, MoveSpec>,
   /** Chuỗi bấm liên tiếp cùng nút trong `comboWindow` giây */
   chains: { punch: ["jabL", "jabR", "hookL", "upperR"], kick: ["knee", "roundhouse", "spartan"] } as const,
   /** Đòn thứ 3 trúng liên tiếp trở đi mạnh gấp rưỡi */
   comboWindow: 0.45,
+  /** Bấm đòn lúc đang bận (đang ra đòn / bị choáng) thì nhớ lại chừng này giây, rảnh là ra ngay: chuỗi đòn liền mạch */
+  buffer: 0.22,
   comboBonus: 1.5,
   /** Đỡ đòn: chỉ nhận phần này sát thương (đòn thấp xuyên đỡ nhiều hơn) */
   blockChip: 0.15,
@@ -127,6 +129,8 @@ export type Fighter = {
   getupUntil: number;
   /** Né: bất tử tới lúc nào, hồi né */
   dodgeAt: number;
+  /** Nút đòn bấm sớm đang chờ ra */
+  queued: { kind: "punch" | "kick" | null; at: number };
 };
 
 export type DuelStatus = "intro" | "fight" | "won" | "lost" | "draw";
@@ -151,6 +155,7 @@ const fighter = (x: number, facing: 1 | -1): Fighter => ({
   downUntil: -9,
   getupUntil: -9,
   dodgeAt: -9,
+  queued: { kind: null, at: -9 },
 });
 
 export class DuelSim {
@@ -243,8 +248,14 @@ export class DuelSim {
     f.facing = other.x > f.x ? 1 : -1;
     const fwd = f.facing > 0 ? input.right : input.left;
     const back = f.facing > 0 ? input.left : input.right;
-    const punch = input.punch && !prev.punch;
-    const kick = input.kick && !prev.kick;
+    let punch = input.punch && !prev.punch;
+    let kick = input.kick && !prev.kick;
+    if (punch || kick) f.queued = { kind: punch ? "punch" : "kick", at: this.time };
+    // Bấm trong lúc bận: giữ lại, hết bận trong khung đệm thì ra luôn
+    if (!punch && !kick && f.queued.kind && this.time - f.queued.at < DUEL.buffer && !stunned && !busy) {
+      punch = f.queued.kind === "punch";
+      kick = f.queued.kind === "kick";
+    }
     // Giữ S + đòn = đòn thấp; giữ S không đánh = đỡ
     f.blocking = !stunned && !busy && input.block && f.y === 0 && !punch && !kick;
     if (stunned || busy || f.blocking) {
@@ -280,6 +291,7 @@ export class DuelSim {
       return list[step] as MoveId;
     };
     if (!punch && !kick) return;
+    f.queued = { kind: null, at: -9 };
     if (f.y > 0) start(punch ? "jumppunch" : "flykick");
     else if (input.block) start(punch ? "risekick" : "sweep");
     else if (fwd && kick) start("flykick");
@@ -373,9 +385,9 @@ export class DuelSim {
       const r = this.rng();
       let intent: DuelInput = { ...NO_DUEL };
       if (this.lying(p)) intent = { ...NO_DUEL, ...away };
-      else if (p.move && dist < 2.2 && r < this.rival.blockChance) intent = this.rng() < 0.3 ? { ...NO_DUEL, dodge: true } : { ...NO_DUEL, block: true };
+      else if (p.move && dist < 2.45 && r < this.rival.blockChance) intent = this.rng() < 0.3 ? { ...NO_DUEL, dodge: true } : { ...NO_DUEL, block: true };
       else if (dist > 3.2 && dist < 4.2 && r < this.rival.aggression * 0.35) intent = { ...NO_DUEL, ...toward, kick: true };
-      else if (dist > 1.6) intent = { ...NO_DUEL, ...toward };
+      else if (dist > 1.85) intent = { ...NO_DUEL, ...toward };
       else if (r < this.rival.aggression) {
         const k = this.rng();
         // Người chơi hay đỡ: quét trụ phá thế đỡ

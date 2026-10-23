@@ -16,7 +16,7 @@ import { DUEL_REWARD, settleDuel, useDuel } from "./duelSession";
 import { bindLevelKeys, levelInput } from "./levelInput";
 import { ModeTouchPad, isTouchUi } from "./LevelHud";
 import { PunchGrade } from "./retroEffects";
-import { addOutline, buildRig, flash, Quiet, RED, setAnim, WHITE } from "./LevelScene";
+import { buildRig, flash, Quiet, RED, setAnim, WHITE } from "./LevelScene";
 
 /** Phím: A/D đi, W/Space nhảy, S đỡ (giữ S + đòn = đòn thấp), J đấm, K đá, L né */
 function duelInput(): DuelInput {
@@ -42,6 +42,7 @@ export function DuelCanvas() {
       <hemisphereLight args={["#9aa4ff", "#120618", 0.7]} />
       <directionalLight position={[-6, 12, 8]} intensity={2.2} color="#f0e8ff" />
       <directionalLight position={[8, 5, -6]} intensity={1.6} color="#ff4fd8" />
+      <FighterLights sim={sim} />
       <Arena />
       <Quiet>
         <Suspense fallback={null}>
@@ -102,16 +103,37 @@ function DuelCamera({ sim }: { sim: DuelSim }) {
     const gap = Math.abs(sim.player.x - sim.foe.x);
     // Hai người càng xa nhau camera càng lùi; K.O. thì sát lại
     const ko = sim.status !== "fight" && sim.status !== "intro";
-    const dist = ko ? 6.5 : THREE.MathUtils.clamp(7 + gap * 0.9, 7.5, 15);
+    const dist = ko ? 5.8 : THREE.MathUtils.clamp(5 + gap * 0.95, 6.2, 13);
     const k = 1 - Math.exp(-4 * Math.min(dt, 0.1));
     c.current.x += (mid - c.current.x) * k;
     c.current.z += (dist - c.current.z) * k;
     const t = performance.now() / 1000;
     const sh = impact.shake * impact.shake;
-    camera.position.set(c.current.x + Math.sin(t * 61) * sh * 0.5, 2.1 + Math.sin(t * 47) * sh * 0.35, c.current.z);
-    camera.lookAt(c.current.x, 1.25, 0);
+    camera.position.set(c.current.x + Math.sin(t * 61) * sh * 0.5, 1.75 + Math.sin(t * 47) * sh * 0.35, c.current.z);
+    camera.lookAt(c.current.x, 1.15, 0);
   });
   return null;
+}
+
+/** Đèn chính phía trước và đèn viền phía sau bám theo hai võ sĩ: thân hình rõ khối, tách khỏi nền tối */
+function FighterLights({ sim }: { sim: DuelSim }) {
+  const key = useRef<THREE.SpotLight>(null);
+  const rim = useRef<THREE.SpotLight>(null);
+  const tgt = useMemo(() => new THREE.Object3D(), []);
+  useFrame(() => {
+    const mid = (sim.player.x + sim.foe.x) / 2;
+    tgt.position.set(mid, 1, 0);
+    tgt.updateMatrixWorld();
+    key.current?.position.set(mid + 2, 6, 7);
+    rim.current?.position.set(mid - 1, 5, -5);
+  });
+  return (
+    <>
+      <primitive object={tgt} />
+      <spotLight ref={key} target={tgt} angle={0.55} penumbra={0.7} intensity={90} distance={20} color="#fff4e8" />
+      <spotLight ref={rim} target={tgt} angle={0.6} penumbra={0.6} intensity={70} distance={16} color="#7fe9ff" />
+    </>
+  );
 }
 
 /** Sàn đấu: ô vuông rêu phong, mép đá, hàng cọc gỗ phía sau, khán đài tối */
@@ -315,10 +337,6 @@ function Prop({ name, size, at, rot = 0, lit = 0.3 }: { name: ExtraModel; size: 
 function ArenaProps() {
   return (
     <>
-      <Prop name="mx_du_bleachers" size={4.2} at={[-10.5, 0, -11]} rot={0.25} />
-      <Prop name="mx_du_bleachers" size={4.2} at={[10.5, 0, -11]} rot={-0.25} />
-      <Prop name="mx_du_bleachers" size={4.6} at={[-17, 0, -4]} rot={Math.PI / 2} />
-      <Prop name="mx_du_bleachers" size={4.6} at={[17, 0, -4]} rot={-Math.PI / 2} />
       <Prop name="mx_du_floodlight" size={11} at={[-14, 0, -9]} rot={0.6} lit={0.5} />
       <Prop name="mx_du_floodlight" size={11} at={[14, 0, -9]} rot={-0.6} lit={0.5} />
       <Prop name="mx_du_speaker_stack" size={2.8} at={[-4.6, 0, -7]} rot={0.3} lit={0.4} />
@@ -404,7 +422,6 @@ function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
     retargetHips(walk.scene, clips);
     const r = buildRig(walk.scene, clips, who === "player" ? 1.8 : sim.rival.height, who === "player" ? 0.55 : 0.4);
     for (const n of [...MOVE_CLIPS, "facehit", "hitr", "knockdown", "getup", "dodge", "victory"]) if (r.actions[n]) once(r.actions[n]);
-    if (who === "player") addOutline(r.scene, "#fff3a0", 0.02);
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walk, who, sim, ...gltfs]);
@@ -417,7 +434,8 @@ function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
     const o = group.current;
     if (!o) return;
     o.position.set(f.x, f.y, 0);
-    o.rotation.y = f.facing * (Math.PI / 2 - 0.25);
+    // Gần như nghiêng hẳn (kiểu game đối kháng): đòn vung về phía đối thủ, nhìn rõ đường đi của tay chân
+    o.rotation.y = f.facing * (Math.PI / 2 - 0.12);
     const won = (who === "player" && sim.status === "won") || (who === "foe" && sim.status === "lost");
     const ko = (who === "player" && sim.status === "lost") || (who === "foe" && sim.status === "won");
     const play = (name: string, fade: number, restart = false, time = 0, scale = 1) => {
@@ -458,6 +476,10 @@ function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
           const t = moveTiming(f.move);
           play(DUEL.moves[f.move].clip, 0.05, true, t.start, t.scale);
         }
+        // Vung nhanh tới điểm chạm, sau đó thu đòn chậm lại: đòn dứt khoát mà không giật cục
+        const m = DUEL.moves[f.move];
+        const a = rig.actions[m.clip];
+        if (a && sim.time - f.moveAt > m.startup + m.active) a.timeScale = Math.min(a.timeScale, 1.25);
       } else if (f.blocking) setAnim(rig, "block", 0.08);
       else if (Math.abs(f.vx) > 0.3) setAnim(rig, f.vx * f.facing > 0 ? "fwalk" : "fback", 0.12);
       else setAnim(rig, "fidle", 0.2);
@@ -477,37 +499,68 @@ function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
 
 const SPARKS = 8;
 
-/** Tia lửa ở chỗ trúng đòn / đỡ đòn */
+/** Ảnh tia sáng hình sao (vẽ một lần): lõi trắng, tia nhọn toả ra */
+function starTex() {
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = 128;
+  const g = cv.getContext("2d")!;
+  g.translate(64, 64);
+  const grd = g.createRadialGradient(0, 0, 0, 0, 0, 30);
+  grd.addColorStop(0, "rgba(255,255,255,1)");
+  grd.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grd;
+  g.fillRect(-64, -64, 128, 128);
+  g.fillStyle = "#fff";
+  for (let k = 0; k < 8; k++) {
+    const len = k % 2 ? 34 : 60;
+    g.rotate(Math.PI / 4);
+    g.beginPath();
+    g.moveTo(-4, 0);
+    g.lineTo(0, -len);
+    g.lineTo(4, 0);
+    g.closePath();
+    g.fill();
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/** Tia sáng ở đúng chỗ va chạm (phía người ra đòn, ngang mặt hoặc ngang thân), loé lên rồi tắt trong 0,15 s */
 function HitSparks({ sim }: { sim: DuelSim }) {
   const group = useRef<THREE.Group>(null);
+  const tex = useMemo(starTex, []);
   useFrame(() => {
     const g = group.current;
     if (!g) return;
     let i = 0;
     for (let k = sim.events.length - 1; k >= 0 && i < SPARKS; k--) {
       const e = sim.events[k];
-      if (e.kind !== "hit" && e.kind !== "block") continue;
+      if (e.kind !== "hit" && e.kind !== "block" && e.kind !== "knock") continue;
       const age = sim.time - e.at;
-      if (age > 0.25) break;
-      const o = g.children[i++] as THREE.Mesh;
+      if (age > 0.15) break;
+      const o = g.children[i++] as THREE.Sprite;
       o.visible = true;
       const target = e.who === "player" ? sim.player : sim.foe;
-      o.position.set(target.x - target.facing * 0.3, target.y + 1.3, 0.4);
-      o.scale.setScalar((e.kind === "hit" ? 0.5 : 0.3) + age * 3);
-      const mat = o.material as THREE.MeshBasicMaterial;
-      mat.opacity = 1 - age / 0.25;
-      mat.color.setRGB(...((e.kind === "hit" ? [3, 2, 0.6] : [0.6, 2, 3]) as [number, number, number]));
+      const face = !e.move || DUEL.moves[e.move].hit === "face";
+      // Bị đánh từ phía mình đang nhìn: điểm chạm lệch về phía người ra đòn
+      o.position.set(target.x + target.facing * 0.32, target.y + (face ? 1.55 : 1.1), 0.5);
+      const heavy = e.kind === "knock" || (e.move && DUEL.moves[e.move].damage >= 10);
+      const u = age / 0.15;
+      o.scale.setScalar((e.kind === "block" ? 0.45 : heavy ? 0.95 : 0.65) * (0.6 + u * 0.7));
+      const mat = o.material;
+      mat.rotation = k * 0.7;
+      mat.opacity = 1 - u * u;
+      mat.color.setRGB(...((e.kind === "block" ? [0.7, 2.2, 3] : [3, 2.4, 1.2]) as [number, number, number]));
     }
     for (; i < SPARKS; i++) g.children[i].visible = false;
   });
   return (
     <group ref={group}>
       {Array.from({ length: SPARKS }, (_, i) => (
-        <mesh key={i} visible={false}>
-          {/* Vòng xung kích mỏng toả ra ở chỗ trúng đòn (kiểu manga) */}
-          <ringGeometry args={[0.36, 0.5, 28]} />
-          <meshBasicMaterial transparent depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
-        </mesh>
+        <sprite key={i} visible={false}>
+          <spriteMaterial map={tex} transparent depthWrite={false} depthTest={false} toneMapped={false} blending={THREE.AdditiveBlending} />
+        </sprite>
       ))}
     </group>
   );

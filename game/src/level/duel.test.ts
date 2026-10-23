@@ -51,6 +51,21 @@ describe("đối kháng 1v1", () => {
     expect(sim.foe.hp).toBeCloseTo(DUEL.maxHp - M.jabL.damage - M.jabR.damage - M.hookL.damage * DUEL.comboBonus, 5);
   });
 
+  it("bấm sớm lúc đòn trước chưa xong thì đòn sau vẫn ra liền mạch (đệm phím)", () => {
+    const sim = ready();
+    sim.player.x = -0.7;
+    sim.foe.x = 0.7;
+    // Bấm J lần hai khi jab trái còn đang thu đòn: phải ra jab phải ngay khi rảnh
+    const second = Math.round((DUEL.moves.jabL.startup + DUEL.moves.jabL.active + 0.05) / DUEL.step);
+    let jabR = false;
+    fight(sim, 60, (f) => {
+      sim.foe.x = sim.player.x + 1.4;
+      if (sim.player.move === "jabR") jabR = true;
+      return { punch: f === 0 || f === second };
+    });
+    expect(jabR).toBe(true);
+  });
+
   it("hết máu thì thắng; hết giờ thì ai nhiều máu hơn thắng", () => {
     const sim = ready();
     sim.foe.hp = 3;

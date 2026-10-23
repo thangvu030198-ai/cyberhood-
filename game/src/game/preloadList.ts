@@ -58,7 +58,6 @@ export const PRELOAD: Record<string, string[]> = {
     "mx_dr_throne",
     "mx_dr_warlord_walk",
     "mx_dr_wolfwar_walk",
-    "mx_du_bleachers",
     "mx_du_floodlight",
     "mx_du_speaker_stack",
     "mx_fa_all"

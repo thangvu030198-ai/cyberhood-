@@ -9,8 +9,9 @@ const team = (humans: number, elites: number): TeamSlot[] => [
 
 describe("Raid Leviathan", () => {
   it("máu tăng theo số người, luật người thật / NPC theo độ khó", () => {
-    expect(creatureHp(4, "normal")).toBe(RAID.baseHp);
-    expect(creatureHp(10, "normal")).toBeCloseTo(RAID.baseHp * 3.1, -2);
+    const N = RAID.difficulty.normal.hpMul;
+    expect(creatureHp(4, "normal")).toBe(Math.round(RAID.baseHp * N));
+    expect(creatureHp(10, "normal")).toBeCloseTo(RAID.baseHp * 3.1 * N, -2);
     expect(teamCheck(team(1, 3), "normal")).toBeNull();
     expect(teamCheck(team(1, 2), "normal")).toMatch(/tối thiểu 4/);
     expect(teamCheck(team(1, 5), "nightmare")).toMatch(/người thật/);

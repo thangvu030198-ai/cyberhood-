@@ -46,7 +46,7 @@ export const RAID = {
   minTeam: 4,
   maxTeam: 10,
   difficulty: {
-    normal: { label: "Thường", minHumans: 1, maxNpc: 9, hpMul: 1, dmgMul: 1, enrage: 12 * 60, legend: 0.1, mythic: 0.01, mats: 1 },
+    normal: { label: "Thường", minHumans: 1, maxNpc: 9, hpMul: 0.9, dmgMul: 1, enrage: 12 * 60, legend: 0.1, mythic: 0.01, mats: 1 },
     nightmare: { label: "Ác mộng", minHumans: 2, maxNpc: 6, hpMul: 1.6, dmgMul: 1.4, enrage: 11 * 60, legend: 0.2, mythic: 0.02, mats: 1.6 },
     legend: { label: "Huyền thoại", minHumans: 4, maxNpc: 4, hpMul: 2.4, dmgMul: 1.85, enrage: 10 * 60, legend: 0.35, mythic: 0.04, mats: 2.4 },
   } as Record<Difficulty, { label: string; minHumans: number; maxNpc: number; hpMul: number; dmgMul: number; enrage: number; legend: number; mythic: number; mats: number }>,

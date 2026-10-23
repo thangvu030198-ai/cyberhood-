@@ -124,7 +124,7 @@ const MODES = [
 ];
 $('#modeGrid').innerHTML = MODES.map((m, i) => `<button class="mode hud" type="button" data-i="${i}"><div class="shot"><video poster="assets/img/game/${m.img}.webp" muted loop playsinline preload="none" aria-label="${esc(m.t)} gameplay" width="1600" height="900"><source src="assets/video/${m.img}.mp4" type="video/mp4"><source src="assets/video/${m.img}.webm" type="video/webm"></video><span class="tag">${m.tag}</span></div><div class="body"><span class="meta">${m.m}</span><h3>${m.t}</h3><p>${m.d}</p></div></button>`).join('');
 {
-  const vids = [...document.querySelectorAll('#modeGrid video')];
+  const vids = [...document.querySelectorAll('#modeGrid video, .reel video')];
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!still && 'IntersectionObserver' in window) {
     const io = new IntersectionObserver((es) => es.forEach((e) => { const v = e.target; if (e.isIntersecting) { v.preload = 'auto'; v.play().catch(() => {}); } else v.pause(); }), { threshold: 0.35 });
@@ -143,13 +143,13 @@ $('#modeGrid').addEventListener('click', (e) => {
 
 /* ---------- Season ---------- */
 const CHAPS = [
-  ['key-bronze.png', 'Weeks 1–2', 'Bronze contracts', 'Clear the Quarantine Zone and the Hollow Hotel. Bronze chest keys drop from every boss.'],
-  ['key-jade.png', 'Weeks 3–4', 'Jade raids', 'The Ancient Beast Gate opens. Squads of 4–10 break Leviathan scales for Jade keys.'],
-  ['key-crystal.png', 'Weeks 5–6', 'Crystal siege', '100 v 100 at the IXO Ice Citadel. Hold the core to earn Crystal keys.'],
-  ['mech-colossus.webp', 'Week 7', 'Colossus awakens', 'Three synced Mechs against the Colossus. The finale boss drops Mythic gear.'],
-  ['egg.webp', 'Finale', 'Genesis egg', 'Every key you hold cracks the Genesis egg. What hatches is minted to your wallet.'],
+  ['season/bronze.webp', 'Weeks 1–2', 'Bronze contracts', 'Clear the Quarantine Zone and the Hollow Hotel. Bronze chest keys drop from every boss.'],
+  ['season/jade.webp', 'Weeks 3–4', 'Jade raids', 'The Ancient Beast Gate opens. Squads of 4–10 break Leviathan scales for Jade keys.'],
+  ['season/crystal.webp', 'Weeks 5–6', 'Crystal siege', '100 v 100 at the IXO Ice Citadel. Hold the core to earn Crystal keys.'],
+  ['season/colossus.webp', 'Week 7', 'Colossus awakens', 'Three synced Mechs against the Colossus. The finale boss drops Mythic gear.'],
+  ['season/genesis.webp', 'Finale', 'Genesis egg', 'Every key you hold cracks the Genesis egg. What hatches is minted to your wallet.'],
 ];
-$('#chaps').innerHTML = CHAPS.map(([img, wk, t, d]) => `<div class="chap hud"><div class="pic"><img src="assets/img/${img}" alt="" loading="lazy"></div><span class="wk">${wk}</span><h3>${t}</h3><p>${d}</p></div>`).join('');
+$('#chaps').innerHTML = CHAPS.map(([img, wk, t, d]) => `<div class="chap hud"><div class="pic"><img src="assets/img/${img}" alt="" loading="lazy" width="720" height="540"></div><span class="wk">${wk}</span><h3>${t}</h3><p>${d}</p></div>`).join('');
 
 /* ---------- Marketplace ---------- */
 let fav = store.get('ch.fav', {});

@@ -354,6 +354,36 @@ function moveTiming(id: MoveId) {
   return { scale, start: Math.max(0, peak - m.startup * scale) };
 }
 
+/**
+ * Clip võ thuật làm cho khung xương người ~1,8 m: vị trí Hips trong clip là số đo của khung đó.
+ * Gắn lên đối thủ khác tỉ lệ (goblin, golem…) thì hông bị đặt sai chỗ: lơ lửng hoặc khuỵu gập.
+ * Quy đổi: giữ chuyển động tương đối của hông, nhân theo tỉ lệ chiều cao hông lúc đứng của nhân vật đích.
+ */
+function retargetHips(target: THREE.Object3D, clips: Record<string, THREE.AnimationClip>) {
+  let hips: THREE.Object3D | null = null;
+  target.traverse((o) => {
+    if (!hips && (o as THREE.Bone).isBone && /hips/i.test(o.name)) hips = o;
+  });
+  const rest = (hips as THREE.Object3D | null)?.position;
+  const ref = clips.fidle?.tracks.find((t) => t.name.endsWith(".position") && /hips/i.test(t.name));
+  if (!rest || !ref || Math.abs(ref.values[1]) < 1e-4) return;
+  const [sx, sy, sz] = [ref.values[0], ref.values[1], ref.values[2]];
+  const k = rest.y / sy;
+  for (const [name, clip] of Object.entries(clips)) {
+    const c = clip.clone();
+    for (const t of c.tracks) {
+      if (!t.name.endsWith(".position") || !/hips/i.test(t.name)) continue;
+      const v = t.values;
+      for (let i = 0; i < v.length; i += 3) {
+        v[i] = rest.x + (v[i] - sx) * k;
+        v[i + 1] = rest.y + (v[i + 1] - sy) * k;
+        v[i + 2] = rest.z + (v[i + 2] - sz) * k;
+      }
+    }
+    clips[name] = c;
+  }
+}
+
 function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
   const skin = useGame((s) => s.profile?.hunter ?? "soldier");
   const base = who === "player" ? `mx_cls_${skin === "soldier" ? "racer" : skin}` : sim.rival.base;
@@ -363,6 +393,7 @@ function DuelFighter({ sim, who }: { sim: DuelSim; who: "player" | "foe" }) {
   const rig = useMemo(() => {
     const clips: Record<string, THREE.AnimationClip> = {};
     names.forEach((n, i) => (clips[n] = gltfs[i].animations[0]));
+    retargetHips(walk.scene, clips);
     const r = buildRig(walk.scene, clips, who === "player" ? 1.8 : sim.rival.height, who === "player" ? 0.55 : 0.4);
     for (const n of [...MOVE_CLIPS, "facehit", "hitr", "knockdown", "getup", "dodge", "victory"]) if (r.actions[n]) once(r.actions[n]);
     if (who === "player") addOutline(r.scene, "#fff3a0", 0.02);

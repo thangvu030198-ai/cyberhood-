@@ -769,11 +769,10 @@ export function RaidWorld() {
         <Roofs />
         <CityBlocks />
         <Nature />
-        <Suspense fallback={null}>
-          <Rods sim={sim} />
-          <Leviathan sim={sim} />
-          <Eels sim={sim} />
-        </Suspense>
+        {/* Không bọc Suspense riêng: màn "Đang tải" chờ cả Leviathan, trận chỉ bắt đầu khi trùm đã có mặt */}
+        <Rods sim={sim} />
+        <Leviathan sim={sim} />
+        <Eels sim={sim} />
         <Team sim={sim} />
         <RaidFx sim={sim} />
         <LeviathanFx sim={sim} />

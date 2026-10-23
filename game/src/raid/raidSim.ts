@@ -204,7 +204,7 @@ export class RaidSim {
   events: RaidEvent[] = [];
   missiles: { id: number; tgt: number; x0: number; z0: number; at: number; hitAt: number }[] = [];
   /** Đầu rắn và vệt đường đi (thân bám theo vệt) */
-  head = { x: 0, y: 4, z: -6, yaw: 0, pitch: 0, mode: "swim" as "swim" | "rear" | "lunge" | "paralyzed" | "down" | "dead", modeAt: 0, tx: 0, tz: 0 };
+  head = { x: -4, y: -4, z: 36, yaw: 0, pitch: 0, mode: "swim" as "swim" | "rear" | "lunge" | "paralyzed" | "down" | "dead", modeAt: 0, tx: 0, tz: 0 };
   trail: { x: number; y: number; z: number }[] = [];
   body: { x: number; y: number; z: number }[] = [];
   stagger = 0;
@@ -374,10 +374,10 @@ export class RaidSim {
         H.modeAt = t;
       }
     } else if (t < RAID_INTRO) {
-      // Mở màn: trồi lên giữa phố ngập, ngóc cao trước mặt trại cho cả đội thấy rõ
-      tx = 0;
-      tz = 16;
-      ty = 14;
+      // Mở màn: trồi lên giữa phố ngập trước mặt trại (khoảng trống trước cao ốc z = 20), ngóc cao cho cả đội thấy rõ
+      tx = -4;
+      tz = 36;
+      ty = 13;
       sp = 8;
     } else {
       // Bơi vòng số 8 quanh các cao ốc, ngụp lặn lên xuống

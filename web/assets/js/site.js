@@ -122,10 +122,23 @@ const MODES = [
   { img: 'kart', tag: 'Race', t: 'Neon Kart', m: '6 racers · 3 laps', d: 'Drift until the sparks turn orange, release for turbo, and fire items at whoever is ahead.' },
   { img: 'duel', tag: 'Arena', t: 'Arena Duel', m: '1 v 1 · 8 ranks', d: 'Jab, hook, roundhouse and sweep your way up eight rival ranks, on keyboard or touch.' },
 ];
-$('#modeGrid').innerHTML = MODES.map((m, i) => `<button class="mode hud" type="button" data-i="${i}"><div class="shot"><img src="assets/img/game/${m.img}.webp" alt="${esc(m.t)} gameplay" loading="lazy" width="1600" height="900"><span class="tag">${m.tag}</span></div><div class="body"><span class="meta">${m.m}</span><h3>${m.t}</h3><p>${m.d}</p></div></button>`).join('');
+$('#modeGrid').innerHTML = MODES.map((m, i) => `<button class="mode hud" type="button" data-i="${i}"><div class="shot"><video poster="assets/img/game/${m.img}.webp" muted loop playsinline preload="none" aria-label="${esc(m.t)} gameplay" width="1600" height="900"><source src="assets/video/${m.img}.mp4" type="video/mp4"><source src="assets/video/${m.img}.webm" type="video/webm"></video><span class="tag">${m.tag}</span></div><div class="body"><span class="meta">${m.m}</span><h3>${m.t}</h3><p>${m.d}</p></div></button>`).join('');
+{
+  const vids = [...document.querySelectorAll('#modeGrid video')];
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!still && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => { const v = e.target; if (e.isIntersecting) { v.preload = 'auto'; v.play().catch(() => {}); } else v.pause(); }), { threshold: 0.35 });
+    vids.forEach((v) => io.observe(v));
+  }
+}
 $('#modeGrid').addEventListener('click', (e) => {
   const b = e.target.closest('.mode'); if (!b) return; const m = MODES[+b.dataset.i];
-  $('#lbImg').src = `assets/img/game/${m.img}.webp`; $('#lbImg').alt = m.t; $('#lbCap').textContent = `${m.t} · ${m.m}`; openOv('#lb');
+  // Lightbox: play the full clip large; the screenshot <img> stays hidden
+  let v = $('#lbVid');
+  if (!v) { v = document.createElement('video'); v.id = 'lbVid'; v.muted = true; v.loop = true; v.playsInline = true; v.controls = true; $('#lbImg').before(v); }
+  $('#lbImg').hidden = true;
+  v.poster = `assets/img/game/${m.img}.webp`; v.innerHTML = `<source src="assets/video/${m.img}.mp4" type="video/mp4"><source src="assets/video/${m.img}.webm" type="video/webm">`; v.load(); v.setAttribute('aria-label', m.t);
+  $('#lbCap').textContent = `${m.t} · ${m.m}`; openOv('#lb'); v.play().catch(() => {});
 });
 
 /* ---------- Season ---------- */
@@ -186,7 +199,7 @@ $('#sheet').addEventListener('click', (e) => {
 /* ---------- Overlays ---------- */
 let lastFocus = null;
 function openOv(sel) { lastFocus = document.activeElement; const o = $(sel); o.hidden = false; document.body.style.overflow = 'hidden'; const f = o.querySelector('[data-close],button,input'); f && f.focus({ preventScroll: true }); }
-function closeOv(sel) { $(sel).hidden = true; if (!$$('.ov').some((o) => !o.hidden)) document.body.style.overflow = ''; lastFocus && lastFocus.focus && lastFocus.focus({ preventScroll: true }); }
+function closeOv(sel) { $(sel).hidden = true; $(sel).querySelectorAll('video').forEach((v) => v.pause()); if (!$$('.ov').some((o) => !o.hidden)) document.body.style.overflow = ''; lastFocus && lastFocus.focus && lastFocus.focus({ preventScroll: true }); }
 $$('.ov').forEach((o) => o.addEventListener('click', (e) => { if (e.target === o || e.target.closest('[data-close]')) closeOv('#' + o.id); }));
 addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; const o = $$('.ov').reverse().find((x) => !x.hidden); if (o) closeOv('#' + o.id); else if (!$('#editor').hidden) $('#editor').hidden = true; });
 

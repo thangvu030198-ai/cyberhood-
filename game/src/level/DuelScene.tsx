@@ -359,25 +359,33 @@ function moveTiming(id: MoveId) {
  * Gắn lên đối thủ khác tỉ lệ (goblin, golem…) thì hông bị đặt sai chỗ: lơ lửng hoặc khuỵu gập.
  * Quy đổi: giữ chuyển động tương đối của hông, nhân theo tỉ lệ chiều cao hông lúc đứng của nhân vật đích.
  */
+/** Hông lúc đứng thẳng của khung xương người Meshy mà bộ clip võ được dựng trên đó (cm, như lớp Engineer) */
+const FIGHT_SRC_HIPS_Y = 101.5;
+
 function retargetHips(target: THREE.Object3D, clips: Record<string, THREE.AnimationClip>) {
-  let hips: THREE.Object3D | null = null;
-  target.traverse((o) => {
-    if (!hips && (o as THREE.Bone).isBone && /hips/i.test(o.name)) hips = o;
-  });
-  const rest = (hips as THREE.Object3D | null)?.position;
+  const hipsOf = (root: THREE.Object3D) => {
+    let h: THREE.Object3D | null = null;
+    root.traverse((o) => {
+      if (!h && (o as THREE.Bone).isBone && /^hips/i.test(o.name)) h = o;
+    });
+    return h as THREE.Object3D | null;
+  };
+  // Mốc là hông lúc ĐỨNG THẲNG (tư thế nghỉ của khung xương), không phải tư thế thủ đã khuỵu gối
+  const rest = hipsOf(target)?.position;
   const ref = clips.fidle?.tracks.find((t) => t.name.endsWith(".position") && /hips/i.test(t.name));
-  if (!rest || !ref || Math.abs(ref.values[1]) < 1e-4) return;
-  const [sx, sy, sz] = [ref.values[0], ref.values[1], ref.values[2]];
-  const k = rest.y / sy;
+  if (!rest || !ref) return;
+  // Ngang: lấy khung đầu của tư thế thủ làm gốc (không xê dịch sang bên); dọc: hông lúc đứng thẳng
+  const src = { x: ref.values[0], y: FIGHT_SRC_HIPS_Y, z: ref.values[2] };
+  const k = rest.y / src.y;
   for (const [name, clip] of Object.entries(clips)) {
     const c = clip.clone();
     for (const t of c.tracks) {
       if (!t.name.endsWith(".position") || !/hips/i.test(t.name)) continue;
       const v = t.values;
       for (let i = 0; i < v.length; i += 3) {
-        v[i] = rest.x + (v[i] - sx) * k;
-        v[i + 1] = rest.y + (v[i + 1] - sy) * k;
-        v[i + 2] = rest.z + (v[i + 2] - sz) * k;
+        v[i] = rest.x + (v[i] - src.x) * k;
+        v[i + 1] = rest.y + (v[i + 1] - src.y) * k;
+        v[i + 2] = rest.z + (v[i + 2] - src.z) * k;
       }
     }
     clips[name] = c;

@@ -547,6 +547,9 @@ function useMemberRig(cls: "samurai" | "racer" | "engineer" | "hacker" | "ninja"
   );
 }
 
+/** Quay phim (?cine): ẩn bảng tên đồng đội cho khung hình sạch */
+const CINE = new URLSearchParams(location.search).has("cine");
+
 /** Bảng tên trên đầu đồng đội: biểu tượng vai trò + tên + nhãn NPC / người thật, thanh máu bên dưới */
 function nameTex(name: string, role: string, color: string, npc: boolean) {
   const c = document.createElement("canvas");
@@ -604,10 +607,14 @@ function MemberView({ sim, m, make }: { sim: RaidSim; m: Member; make: () => Rig
   return (
     <group ref={ref}>
       <primitive object={rig.scene} />
-      <sprite position={[0, 2.55, 0]} scale={[2.2, 0.55, 1]} renderOrder={15}>
-        <spriteMaterial map={tag} transparent depthWrite={false} toneMapped={false} />
-      </sprite>
-      <MemberBar m={m} color={c} />
+      {!CINE && (
+        <>
+          <sprite position={[0, 2.55, 0]} scale={[2.2, 0.55, 1]} renderOrder={15}>
+            <spriteMaterial map={tag} transparent depthWrite={false} toneMapped={false} />
+          </sprite>
+          <MemberBar m={m} color={c} />
+        </>
+      )}
       <mesh ref={mech} position={[0, 1.6, 0]} visible={false}>
         <octahedronGeometry args={[1.8, 0]} />
         <meshBasicMaterial color={c} wireframe toneMapped={false} />

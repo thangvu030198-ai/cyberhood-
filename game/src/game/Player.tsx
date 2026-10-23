@@ -1,4 +1,4 @@
-import { Suspense, use, useEffect, useMemo, useRef } from "react";
+import { Suspense, use, useEffect, useMemo, useRef, useState } from "react";
 import { WornGear } from "../level/wornGear";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -416,6 +416,8 @@ function useDriveInput(ecctrl: React.RefObject<EcctrlHandle | null>) {
 
 export function Player() {
   const ecctrl = useRef<EcctrlHandle>(null);
+  // Chỉ đọc lúc tạo thân vật lý: đổi prop position sau đó sẽ dịch chuyển nhân vật (rapier áp prop mỗi lần vẽ lại)
+  const [spawnAt] = useState(() => handles.lastPlayerPos ?? PLAYER.spawn);
   const model = useRef<THREE.Group>(null);
   const mode = useGame((s) => s.mode);
   const setPosition = useGame((s) => s.setPosition);
@@ -500,7 +502,7 @@ export function Player() {
       <Ecctrl
         ref={ecctrl}
         enable={mode === "foot"}
-        position={handles.lastPlayerPos ?? PLAYER.spawn}
+        position={spawnAt}
         capsuleHalfHeight={PLAYER.capsuleHalfHeight}
         capsuleRadius={PLAYER.capsuleRadius}
         floatHeight={PLAYER.floatHeight}

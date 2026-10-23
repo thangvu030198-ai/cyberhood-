@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CYBERHOOD Design Draft</title>
+<meta name="description" content="CYBERHOOD — a cyberpunk loot-hunting game in the browser. Play the demo, connect an EVM wallet and claim a Genesis Hunter Pass.">
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="assets/css/page.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-brand" viewBox="0 0 30 12"><path fill="currentColor" d="M0 6 6 0h18l6 6-6 6H6zM8 3 5 6l3 3h14l3-3-3-3z"/></symbol></svg>
+
+<div class="top"><div class="wrap">
+  <a class="logo" href="#top" aria-label="CYBERHOOD home"><svg><use href="#i-brand"/></svg><span><span class="c">CYBER</span><span class="p">HOOD</span></span></a>
+  <nav class="nav" aria-label="Sections"><a href="#early">Early access</a><a href="#modes">Game modes</a><a href="#season">Season 0</a><a href="#market">Marketplace</a><a href="#faq">FAQ</a></nav>
+  <div class="acts">
+    <button class="chip" type="button" id="walletChip" hidden><i></i><span id="walletChipT"></span></button>
+    <button class="btn ghost small" type="button" data-flow="ea" id="topEA">Connect wallet</button>
+    <button class="btn primary small" type="button" data-flow="play"><span data-cfg="ctaPlay">Play Demo</span></button>
+  </div>
+</div></div>
+
+<header class="hero" id="top">
+  <div class="bgimg"></div><div class="rain" data-cfg-show="rain"></div>
+  <canvas id="holo" role="img" aria-label="A cyberpunk Hunter holds a tablet that projects a rotating hologram of NFT items"></canvas>
+  <div class="loading" id="holoLoad">LOADING HUNTER…</div>
+  <div class="wrap">
+    <span class="eyebrow" data-cfg="heroEyebrow"></span>
+    <h1><span data-cfg="heroTitle1"></span><br><span class="g" data-cfg="heroTitle2"></span></h1>
+    <p class="sub" data-cfg="heroSub"></p>
+    <div class="ctas">
+      <button class="btn primary" type="button" data-flow="play"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M2 1l11 6-11 6z"/></svg><span data-cfg="ctaPlay"></span></button>
+      <button class="btn ghost" type="button" data-flow="ea"><span data-cfg="ctaEA"></span></button>
+    </div>
+    <div class="facts">
+      <div><b data-cfg="fact1v"></b><span data-cfg="fact1k"></span></div>
+      <div><b data-cfg="fact2v"></b><span data-cfg="fact2k"></span></div>
+      <div><b data-cfg="fact3v"></b><span data-cfg="fact3k"></span></div>
+    </div>
+  </div>
+  <div class="hint">Tap a hologram card to inspect it</div>
+</header>
+
+<div class="ticker" aria-label="Live marketplace feed" data-cfg-show="ticker"><div class="run" id="ticker"></div></div>
+
+<section class="blk" id="early"><div class="wrap">
+  <span class="eyebrow"><b>01</b> · Early access</span>
+  <h2 class="sec" data-cfg="eaTitle"></h2>
+  <p class="lede" data-cfg="eaSub"></p>
+  <div class="steps">
+    <div class="step hud"><span class="n">01</span><h3>Connect wallet</h3><p>MetaMask, Rabby, Coinbase, OKX, Trust and other EVM wallets. You sign one free message to prove the wallet is yours.</p></div>
+    <div class="step hud"><span class="n">02</span><h3>Link X</h3><p>Add your X username so we can credit your posts and send launch news.</p></div>
+    <div class="step hud"><span class="n">03</span><h3>Post the signal</h3><p>We write a promo post for you. Edit it, post it on X and paste the link back.</p></div>
+    <div class="step hud"><span class="n">04</span><h3>Get your Hunter Pass</h3><p>Your account is issued and tied to the wallet. Early rewards are credited to it.</p></div>
+  </div>
+  <div class="rewards" id="rewards"></div>
+  <div class="ea-cta">
+    <button class="btn primary" type="button" data-flow="ea"><span data-cfg="ctaEA"></span></button>
+    <span class="note">Free · no gas · no spending permission</span>
+  </div>
+</div></section>
+
+<section class="blk" id="modes"><div class="wrap">
+  <span class="eyebrow"><b>02</b> · Inside the game</span>
+  <h2 class="sec" data-cfg="modesTitle"></h2>
+  <p class="lede" data-cfg="modesSub"></p>
+  <div class="modes" id="modeGrid"></div>
+</div></section>
+
+<section class="blk season" id="season"><div class="wrap">
+  <span class="eyebrow"><b>03</b> · Season 0 · Genesis</span>
+  <h2 class="sec" data-cfg="seasonTitle"></h2>
+  <p class="lede" data-cfg="seasonSub"></p>
+  <div class="chaps" id="chaps"></div>
+</div></section>
+
+<section class="blk" id="market"><div class="wrap">
+  <span class="eyebrow"><b>04</b> · Marketplace</span>
+  <div class="coll">
+    <div><h2 class="sec">CYBERHOOD Genesis</h2><p class="lede">Pixel-art weapons, armor and relics · Season 0 · ERC-721 · preview</p></div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="bar">
+    <div class="tabs" id="tabs" role="group" aria-label="Category"></div>
+    <div class="rar" id="rar" role="group" aria-label="Rarity"></div>
+    <div class="tools">
+      <label class="sr" for="q">Search</label><input id="q" type="search" placeholder="Search items" autocomplete="off">
+      <label class="sr" for="sort">Sort</label>
+      <select id="sort"><option value="rec">Recently listed</option><option value="lo">Price: low to high</option><option value="hi">Price: high to low</option><option value="rar">Rarity</option></select>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>No items match these filters.</p>
+</div></section>
+
+<section class="blk" id="faq"><div class="wrap">
+  <span class="eyebrow"><b>05</b> · FAQ</span>
+  <h2 class="sec">Before you connect</h2>
+  <div class="faq">
+    <details class="hud"><summary>Is connecting my wallet safe?</summary><p>We only ask for a signature on a plain-text message. It is free: no transaction, no gas, no token approval and no spending permission. We will never ask for your seed phrase or private key — anyone who does is a scam.</p></details>
+    <details class="hud"><summary>Which wallets work?</summary><p>Any EVM wallet that runs in your browser: MetaMask, Rabby, Coinbase Wallet, OKX Wallet, Trust Wallet, Rainbow, Zerion, Phantom, Brave Wallet, Bitget Wallet and more. On a phone, open this page inside your wallet's browser, or paste your address by hand.</p></details>
+    <details class="hud"><summary>What does the Hunter Pass give me?</summary><p>An account ID tied to your wallet. Early-access rewards, referral points and the Founding Hunter badge are credited to it when Season 0 launches.</p></details>
+    <details class="hud"><summary>Do I have to post on X?</summary><p>Yes, the post is how early Hunters spread the word. We draft it for you; you can edit every word before it goes out.</p></details>
+    <details class="hud"><summary>Is the demo free?</summary><p>Yes. The demo runs in the browser on desktop and phone. Your progress is saved to your profile.</p></details>
+  </div>
+</div></section>
+
+<footer><div class="wrap"><span data-cfg="footer"></span><span><a href="#early">Early access</a> · <a href="#market">Marketplace</a> · <a id="footX" href="#" target="_blank" rel="noopener" hidden>X</a></span><span>CYBERHOOD © 2026</span></div></footer>
+
+<!-- Early access / Play Demo flow -->
+<div class="ov" id="flow" hidden role="dialog" aria-modal="true" aria-labelledby="flowT">
+  <div class="dlg hud">
+    <button class="x" type="button" data-close aria-label="Close">✕</button>
+    <h2 id="flowT">Early access</h2>
+    <div class="prog" id="prog"><div>Wallet</div><div>X account</div><div>Post</div><div>Hunter Pass</div></div>
+    <div class="msg" id="flowMsg" hidden></div>
+
+    <div class="pane" data-step="0">
+      <h3>Connect an EVM wallet</h3>
+      <p class="h">Pick your wallet. You will sign one message to prove it is yours. <span class="safe">Free · no transaction · no spending permission</span></p>
+      <div class="wallets" id="wallets"></div>
+      <div class="field"><label for="addrIn">Or paste your EVM address</label>
+        <div class="row"><input id="addrIn" placeholder="0x…" autocomplete="off" spellcheck="false" inputmode="text"><button class="btn ghost small" type="button" id="addrUse">Use address</button></div></div>
+      <div id="addrBox" hidden><div class="msg ok"><span id="addrState"></span><br><span class="addr" id="addrShow"></span></div></div>
+      <div class="acts"><button class="btn ghost small" type="button" id="addrReset" hidden>Change wallet</button><button class="btn primary small" type="button" data-next disabled id="next0">Next</button></div>
+    </div>
+
+    <div class="pane" data-step="1" hidden>
+      <h3>Link your X account</h3>
+      <p class="h">Your X username, without the @. We use it to credit your post and send launch news.</p>
+      <div class="field"><label for="xIn">X username</label><div class="row"><input id="xIn" placeholder="yourname" autocomplete="off" spellcheck="false" maxlength="16"></div></div>
+      <a class="btn ghost small" id="followBtn" href="#" target="_blank" rel="noopener" hidden>Follow <span id="followH"></span> on X ↗</a>
+      <div class="acts"><button class="btn ghost small" type="button" data-back>Back</button><button class="btn primary small" type="button" data-next id="next1" disabled>Next</button></div>
+    </div>
+
+    <div class="pane" data-step="2" hidden>
+      <h3>Post the signal</h3>
+      <p class="h">We drafted a post for you. Edit anything, then post it on X and paste the link of your post below.</p>
+      <div class="field"><label for="postTx">Your post</label><textarea id="postTx" maxlength="600"></textarea></div>
+      <div class="acts"><div class="tabs" id="langTabs" role="group" aria-label="Post language"><button type="button" data-l="en" aria-pressed="true">EN</button><button type="button" data-l="vi" aria-pressed="false">VI</button></div><span class="count" id="postCount"></span></div>
+      <div class="acts" style="justify-content:flex-start"><button class="btn ghost small" type="button" id="genBtn">↻ New draft</button><a class="btn cyan small" id="postBtn" href="#" target="_blank" rel="noopener">Post on X ↗</a></div>
+      <div class="field"><label for="urlIn">Link to your post</label><div class="row"><input id="urlIn" placeholder="https://x.com/yourname/status/…" autocomplete="off" spellcheck="false"></div></div>
+      <div class="acts"><button class="btn ghost small" type="button" data-back>Back</button><button class="btn primary small" type="button" id="finish" disabled>Get my Hunter Pass</button></div>
+    </div>
+
+    <div class="pane" data-step="3" hidden>
+      <div class="pass" id="pass"></div>
+      <div class="msg" id="saveMsg" hidden></div>
+      <div class="field"><label for="refIn">Your referral link</label><div class="row"><input id="refIn" readonly><button class="btn ghost small" type="button" id="refCopy">Copy</button></div></div>
+      <div class="acts"><button class="btn ghost small" type="button" id="restart">Use another wallet</button><a class="btn primary" id="launch" href="#" target="_blank" rel="noopener">▶ Launch demo</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="shName"><div class="sheetbox hud" id="shBox"></div></div>
+<div class="ov lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Screenshot"><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure></div>
+
+<button class="btn cyan small edit-fab" type="button" id="editFab" hidden>✎ Edit site</button>
+<aside class="editor" id="editor" hidden aria-label="Site editor">
+  <header><h2>Site editor</h2><button class="btn ghost small" type="button" id="edClose">Close</button></header>
+  <div class="etabs" id="etabs"></div>
+  <div class="ebody" id="ebody"></div>
+  <footer><button class="btn primary small" type="button" id="edSave">Save &amp; publish</button><button class="btn ghost small" type="button" id="edReset">Reset defaults</button><span class="count" id="edState"></span></footer>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/utils/SkeletonUtils.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.18.1/meshopt_decoder.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/js-sha3@0.8.0/build/sha3.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script defer src="assets/js/holo-hero.js"></script>
+<script defer src="assets/js/site.js"></script>
+</body>
+</html>

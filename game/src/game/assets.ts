@@ -43,9 +43,12 @@ export const loadProgress = { loaded: 0, total: 0, files: 0, done: 0, error: nul
 
 /**
  * Artifact chỉ phục vụ một số đuôi file; .glb không nằm trong đó nên bản build đóng gói model
- * dưới tên "*.glb.wasm" (nội dung giữ nguyên). Khi chạy dev thì đọc thẳng .glb.
+ * dưới tên "*.glb.wasm" (nội dung giữ nguyên), chỉ khi build với VITE_ARTIFACT=1. Dev và server riêng đọc thẳng .glb.
  */
-const MODEL_SUFFIX = import.meta.env.PROD ? ".wasm" : "";
+const MODEL_SUFFIX = import.meta.env.VITE_ARTIFACT === "1" ? ".wasm" : "";
+
+/** Đường dẫn file của một model phụ (dùng cho tải ngầm) */
+export const extraModelUrl = (name: string) => `models/${name}.glb${MODEL_SUFFIX}`;
 
 /** Tải model từ public/models, đếm byte để hiện tiến độ */
 function fetchGlb(name: string, sizeHint: number): Promise<GLTF> {

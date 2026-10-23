@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/gen-preload.mjs && tsc -b && vite build",
+    "build:artifact": "node scripts/gen-preload.mjs && sh scripts/build-artifact.sh",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint .",
     "preview": "vite preview",

@@ -1,0 +1,66 @@
+// Tự sinh bởi scripts/gen-preload.mjs — không sửa tay.
+export const PRELOAD: Record<string, string[]> = {
+  "siege": [
+    "mx_colossus_mech",
+    "mx_dr_golem_walk",
+    "mx_sg_barricade",
+    "mx_sg_cannon",
+    "mx_sg_core",
+    "mx_sg_gate",
+    "mx_sg_generator",
+    "mx_sg_icerock",
+    "mx_sg_keep",
+    "mx_sg_pine",
+    "mx_sg_tent",
+    "mx_sg_tower",
+    "mx_sg_wall",
+    "mx_zmb_brute_attack"
+  ],
+  "raid": [
+    "mx_car_muscle",
+    "mx_car_police",
+    "mx_car_sedan",
+    "mx_car_sports",
+    "mx_car_taxi",
+    "mx_car_truck",
+    "mx_car_van",
+    "mx_pr_dead_tree",
+    "mx_raid_all",
+    "mx_sg_core",
+    "mx_supply_crate",
+    "mx_veh_bus",
+    "mx_vfx_all",
+    "mx_wz_crystal"
+  ],
+  "kart": [
+    "mx_bld_apartment",
+    "mx_bld_capsule_hotel",
+    "mx_bld_hotel",
+    "mx_bld_megacorp",
+    "mx_bld_pagoda",
+    "mx_bld_skyscraper",
+    "mx_bld_tower_round",
+    "mx_car_muscle",
+    "mx_car_police",
+    "mx_car_sports",
+    "mx_car_taxi",
+    "mx_prop_neon_arch",
+    "mx_veh_buggy",
+    "mx_velocity_car"
+  ],
+  "duel": [
+    "mx_ct_guard_walk",
+    "mx_dr_aegis_walk",
+    "mx_dr_goblin_walk",
+    "mx_dr_golem_walk",
+    "mx_dr_knight_walk",
+    "mx_dr_obsidian_walk",
+    "mx_dr_throne",
+    "mx_dr_warlord_walk",
+    "mx_dr_wolfwar_walk",
+    "mx_du_bleachers",
+    "mx_du_floodlight",
+    "mx_du_speaker_stack",
+    "mx_fa_all"
+  ]
+};

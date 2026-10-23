@@ -2,16 +2,27 @@
 // Trong lúc tải, giữ nhân vật đứng yên ở điểm vào trận và báo "Đang tải bản đồ"; tải xong mới thả.
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { handles } from "./refs";
 import { useGame } from "./store";
 
 /** Đặt cuối cùng bên trong Suspense của bản đồ: chỉ gắn khi mọi phần anh em đã tải xong */
 export function WorldReady() {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   useEffect(() => {
-    useGame.setState({ worldReady: true });
-    return () => useGame.setState({ worldReady: false });
-  }, []);
+    let live = true;
+    // Biên dịch shader của bản đồ trong lúc vẫn còn màn "Đang tải", để lúc thả nhân vật không bị khựng
+    const r = gl as unknown as { compileAsync?: (s: unknown, c: unknown) => Promise<unknown> };
+    const done = () => live && useGame.setState({ worldReady: true });
+    if (r.compileAsync) r.compileAsync(scene, camera).then(done, done);
+    else done();
+    return () => {
+      live = false;
+      useGame.setState({ worldReady: false });
+    };
+  }, [gl, scene, camera]);
   return null;
 }
 

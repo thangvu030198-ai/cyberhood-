@@ -30,6 +30,7 @@ import { SiegeGatePortal } from "./siege/SiegeGatePortal";
 import { useSiege } from "./siege/siegeSession";
 import { RaidGround, RaidWorld } from "./raid/RaidWorld";
 import { HoldUntilReady, WorldLoading, WorldReady } from "./game/WorldGate";
+import { ModePrefetch, ShaderWarmup } from "./game/Warmup";
 import { RaidHud, RaidLobby } from "./raid/RaidHud";
 import { RaidGatePortal } from "./raid/RaidGatePortal";
 import { useRaid } from "./raid/raidSession";
@@ -229,6 +230,7 @@ export default function App() {
             <TrafficDebug />
             {!inSiege && <Rain />}
             <DebugHook />
+            <ShaderWarmup />
             {!NO_FX && (
               <EffectComposer multisampling={0}>
                 <Bloom mipmapBlur intensity={1.1} luminanceThreshold={1} luminanceSmoothing={0.2} />
@@ -260,6 +262,7 @@ export default function App() {
           <>
             <Hud />
             <WorldLoading />
+            <ModePrefetch />
             <SiegeHud />
             <SiegeLobby />
             <RaidHud />

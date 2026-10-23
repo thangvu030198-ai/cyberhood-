@@ -28,3 +28,4 @@ dist
 
 # Ảnh xem trước gửi cho người dùng
 game/v*_*.jpg
+game/public/_bake

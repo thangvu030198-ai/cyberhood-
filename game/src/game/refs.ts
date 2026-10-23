@@ -14,4 +14,9 @@ export const handles = {
   aimCamera: null as null | ((azimuth: number, polar?: number) => void),
   /** CameraControls của camera chính (công cụ quay phim / debug điều khiển trực tiếp) */
   camControls: null as unknown,
+  /**
+   * Vị trí thân nhân vật ở frame gần nhất. Khi cây cảnh tạm ẩn vì đang tải (Suspense) rồi hiện lại,
+   * thân vật lý bị tạo lại: đặt nó về đây thay vì điểm xuất phát của sảnh.
+   */
+  lastPlayerPos: null as null | [number, number, number],
 };

@@ -950,6 +950,7 @@ export const DICT: Record<string, string[]> = {
   "Đang mặc: tháo ra trước khi phân rã": ["Equipped: unequip before salvaging", "装備中: 分解する前に外してください", "장착 중: 분해하려면 먼저 해제하세요", "已装备：分解前请先卸下", "Equipado: desequipa antes de desguazar"],
   "Đang tuyển… người chơi đang xin vào": ["Recruiting… players requesting to join", "募集中… 参加申請中のプレイヤー", "모집 중… 가입 신청 중인 플레이어", "招募中… 玩家申请加入", "Reclutando… jugadores solicitando unirse"],
   "Đang tải thành phố · {0} / {1} MB": ["Loading city · {0} / {1} MB", "街を読み込み中 · {0} / {1} MB", "도시 로딩 중 · {0} / {1} MB", "正在加载城市 · {0} / {1} MB", "Cargando ciudad · {0} / {1} MB"],
+  "Đang tải bản đồ…": ["Loading map…", "マップを読み込み中…", "맵 로딩 중…", "正在加载地图…", "Cargando mapa…"],
   "Đi 8 hướng": ["8-Way Movement", "8方向移動", "8방향 이동", "八向移动", "Movimiento en 8 direcciones"],
   "Đi ngang": ["Side-scroll", "横スクロール", "횡스크롤", "横版卷轴", "Scroll lateral"],
   "Điều khiển": ["Controls", "操作", "조작", "操作", "Controles"],

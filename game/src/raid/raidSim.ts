@@ -16,6 +16,9 @@ export type CreatureId = "leviathan" | "phantom" | "titan" | "icedragon";
 export type Difficulty = "normal" | "nightmare" | "legend";
 export type Role = "tank" | "dps" | "healer" | "support";
 export type MemberKind = "player" | "human" | "elite";
+/** Mấy giây mở màn: Leviathan trồi lên trước mặt trại */
+const RAID_INTRO = 5;
+
 export type RaidPhase = "awaken" | "frenzy" | "despair" | "end";
 export type Skill = "grenade" | "missiles" | "orbital" | "role";
 export type PartId = "hornL" | "hornR" | "scale1" | "scale2" | "scale3" | "tail";
@@ -201,7 +204,7 @@ export class RaidSim {
   events: RaidEvent[] = [];
   missiles: { id: number; tgt: number; x0: number; z0: number; at: number; hitAt: number }[] = [];
   /** Đầu rắn và vệt đường đi (thân bám theo vệt) */
-  head = { x: 0, y: 8, z: -30, yaw: 0, pitch: 0, mode: "swim" as "swim" | "rear" | "lunge" | "paralyzed" | "down" | "dead", modeAt: 0, tx: 0, tz: 0 };
+  head = { x: 0, y: 4, z: -6, yaw: 0, pitch: 0, mode: "swim" as "swim" | "rear" | "lunge" | "paralyzed" | "down" | "dead", modeAt: 0, tx: 0, tz: 0 };
   trail: { x: number; y: number; z: number }[] = [];
   body: { x: number; y: number; z: number }[] = [];
   stagger = 0;
@@ -370,6 +373,12 @@ export class RaidSim {
         H.mode = H.mode === "rear" ? "lunge" : "swim";
         H.modeAt = t;
       }
+    } else if (t < RAID_INTRO) {
+      // Mở màn: trồi lên giữa phố ngập, ngóc cao trước mặt trại cho cả đội thấy rõ
+      tx = 0;
+      tz = 16;
+      ty = 14;
+      sp = 8;
     } else {
       // Bơi vòng số 8 quanh các cao ốc, ngụp lặn lên xuống
       this.swimT += dt * (this.phase === "awaken" ? 0.16 : 0.21);
@@ -387,7 +396,11 @@ export class RaidSim {
     H.x += dx * k;
     H.y += dy * k;
     H.z += dz * k;
-    if (Math.hypot(dx, dz) > 0.3) H.yaw += ang(Math.atan2(dx, dz) - H.yaw) * Math.min(1, dt * 4);
+    if (t < RAID_INTRO && H.mode === "swim") {
+      // Mở màn: quay mặt về phía trại
+      const C = RAID.camp;
+      H.yaw += ang(Math.atan2(C.x - H.x, C.z - H.z) - H.yaw) * Math.min(1, dt * 3);
+    } else if (Math.hypot(dx, dz) > 0.3) H.yaw += ang(Math.atan2(dx, dz) - H.yaw) * Math.min(1, dt * 4);
     H.pitch = Math.atan2(dy, Math.hypot(dx, dz) || 1) * 0.6;
     const last = this.trail[0];
     if (!last || Math.hypot(H.x - last.x, H.y - last.y, H.z - last.z) > 0.6) {

@@ -2303,3 +2303,8 @@ canvas {
     animation: none;
   }
 }
+
+/* Đang tải bản đồ Công thành / Raid */
+.world-loading{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;gap:14px;background:radial-gradient(circle at 50% 50%,rgba(8,4,24,.55),rgba(4,2,12,.85));color:#e8f6ff;font:700 20px 'Chakra Petch',sans-serif;letter-spacing:.12em;text-transform:uppercase;pointer-events:none}
+.world-loading__spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(5,217,232,.25);border-top-color:#05d9e8;animation:wl-spin .8s linear infinite}
+@keyframes wl-spin{to{transform:rotate(360deg)}}

@@ -33,7 +33,7 @@ function Atmos({ sim }: { sim: RaidSim }) {
     const bg = scene.background;
     const fog = scene.fog;
     scene.background = new THREE.Color("#060a14");
-    scene.fog = new THREE.FogExp2("#0a1424", 0.0065);
+    scene.fog = new THREE.FogExp2("#0c1830", 0.0048);
     return () => {
       scene.background = bg;
       scene.fog = fog;
@@ -47,12 +47,14 @@ function Atmos({ sim }: { sim: RaidSim }) {
     // Chớp đúp: hai tia loé ngắn ngay trước mốc
     const strike = zap || (next.current - t > 0 && next.current - t < 0.12) || (next.current - t > 0.2 && next.current - t < 0.28);
     if (flashL.current) flashL.current.intensity = strike ? 6 : 0;
-    if (hemi.current) hemi.current.intensity = 0.55 + (strike ? 1.4 : 0);
+    if (hemi.current) hemi.current.intensity = 1.05 + (strike ? 1.4 : 0);
   });
   return (
     <>
-      <hemisphereLight ref={hemi} args={["#5a7ab8", "#081018", 0.55]} />
-      <directionalLight position={[-40, 80, 30]} intensity={0.6} color="#7fa8ff" />
+      <hemisphereLight ref={hemi} args={["#6f8fd0", "#14203a", 1.05]} />
+      {/* Ánh trăng phía trại và đèn viền cyan sau lưng Leviathan để thân nó nổi khỏi nền đêm */}
+      <directionalLight position={[-40, 80, 90]} intensity={1.5} color="#9fbcff" />
+      <directionalLight position={[0, 30, -120]} intensity={1.6} color="#3ff0ff" />
       <directionalLight ref={flashL} position={[20, 120, -40]} intensity={0} color="#cfe8ff" />
     </>
   );
@@ -103,15 +105,6 @@ function Water({ sim }: { sim: RaidSim }) {
         <planeGeometry args={[420, 420]} />
         <meshStandardMaterial color="#0b1118" roughness={0.9} />
       </mesh>
-      <RigidBody type="fixed" colliders={false}>
-        <CuboidCollider args={[200, 0.5, 200]} position={[0, -0.5, 0]} />
-        {/* Tường biên đấu trường */}
-        {[0, 1, 2, 3].map((i) => {
-          const a = (i * Math.PI) / 2;
-          const R = RAID.arena.half + 4;
-          return <CuboidCollider key={i} args={[R + 4, 6, 1]} position={[Math.sin(a) * R, 6, Math.cos(a) * R]} rotation={[0, a, 0]} />;
-        })}
-      </RigidBody>
     </>
   );
 }
@@ -695,13 +688,14 @@ function Camp() {
     <group position={[C.x, 0, C.z]}>
       <mesh position={[0, 0.3, 0]}>
         <cylinderGeometry args={[C.r, C.r + 0.6, 0.6, 32]} />
-        <meshStandardMaterial color="#222a36" metalness={0.4} roughness={0.6} />
+        <meshStandardMaterial color="#3a4a62" metalness={0.5} roughness={0.45} emissive="#0b2a3a" emissiveIntensity={0.6} />
       </mesh>
       <mesh position={[0, 0.62, 0]} rotation-x={-Math.PI / 2}>
         <ringGeometry args={[C.r - 0.8, C.r - 0.4, 48]} />
         <meshBasicMaterial color={[0.4, 2.4, 3]} toneMapped={false} />
       </mesh>
-      <pointLight position={[0, 4, 0]} color="#7fe8ff" intensity={20} distance={20} />
+      <pointLight position={[0, 4, 0]} color="#7fe8ff" intensity={34} distance={26} />
+      <pointLight position={[0, 6, -C.r]} color="#ff2a8a" intensity={18} distance={22} />
       <RigidBody type="fixed" colliders={false}>
         <CylinderCollider args={[0.3, C.r]} position={[0, 0.3, 0]} />
       </RigidBody>
@@ -742,6 +736,23 @@ function Rain() {
     <lineSegments ref={ref} geometry={geo}>
       <lineBasicMaterial color="#9fc4ff" transparent opacity={0.35} />
     </lineSegments>
+  );
+}
+
+/** Mặt nước nông và tường biên đấu trường: gắn ngoài Suspense để có ngay khi vào trận */
+export function RaidGround() {
+  const sim = useRaid((s) => s.sim);
+  if (!sim) return null;
+  return (
+    <RigidBody type="fixed" colliders={false} position={[O.x, 0, O.z]}>
+      <CuboidCollider args={[200, 0.5, 200]} position={[0, -0.5, 0]} />
+      {/* Tường biên đấu trường */}
+      {[0, 1, 2, 3].map((i) => {
+        const a = (i * Math.PI) / 2;
+        const R = RAID.arena.half + 4;
+        return <CuboidCollider key={i} args={[R + 4, 6, 1]} position={[Math.sin(a) * R, 6, Math.cos(a) * R]} rotation={[0, a, 0]} />;
+      })}
+    </RigidBody>
   );
 }
 

@@ -141,6 +141,8 @@ type GameState = {
   inventoryOpen: boolean;
   nearInteract: Interactable | null;
   location: Location;
+  /** Bản đồ Công thành / Raid đã tải xong (mặt đất, model) — trước đó giữ nhân vật đứng yên */
+  worldReady: boolean;
   quality: Quality;
   toast: { text: string; at: number } | null;
 
@@ -223,6 +225,7 @@ export const useGame = create<GameState>((set, get) => ({
   inventoryOpen: false,
   nearInteract: null,
   location: "city",
+  worldReady: false,
   quality: saved?.quality ?? (touchDevice ? "low" : "high"),
   toast: null,
 

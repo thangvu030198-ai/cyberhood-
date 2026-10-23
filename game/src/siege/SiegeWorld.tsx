@@ -202,15 +202,6 @@ function Snowfield() {
           <meshStandardMaterial vertexColors roughness={0.95} flatShading />
         </mesh>
       ))}
-      {/* Mặt đất vật lý của khu giao chiến (mặt trên ở y = 0) */}
-      <RigidBody type="fixed" colliders={false}>
-        <CuboidCollider args={[200, 2, 210]} position={[0, -2, 50]} />
-        {/* Ranh giới khu chơi: vách tuyết vô hình */}
-        <CuboidCollider args={[2, 20, 210]} position={[-172, 18, 50]} />
-        <CuboidCollider args={[2, 20, 210]} position={[172, 18, 50]} />
-        <CuboidCollider args={[175, 20, 2]} position={[0, 18, 252]} />
-        <CuboidCollider args={[175, 20, 2]} position={[0, 18, -140]} />
-      </RigidBody>
     </group>
   );
 }
@@ -744,6 +735,25 @@ function Snowfall() {
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Mặt đất vật lý của khu giao chiến (mặt trên ở y = 0) và vách biên. Không phụ thuộc texture/model nào,
+ * nên gắn ngoài Suspense: có ngay khi vào trận, nhân vật không rơi xuyên đất lúc bản đồ còn đang tải.
+ */
+export function SiegeGround() {
+  const sim = useSiege((s) => s.sim);
+  if (!sim) return null;
+  return (
+    <RigidBody type="fixed" colliders={false} position={[O.x, 0, O.z]}>
+      <CuboidCollider args={[200, 2, 210]} position={[0, -2, 50]} />
+      {/* Ranh giới khu chơi: vách tuyết vô hình */}
+      <CuboidCollider args={[2, 20, 210]} position={[-172, 18, 50]} />
+      <CuboidCollider args={[2, 20, 210]} position={[172, 18, 50]} />
+      <CuboidCollider args={[175, 20, 2]} position={[0, 18, 252]} />
+      <CuboidCollider args={[175, 20, 2]} position={[0, 18, -140]} />
+    </RigidBody>
+  );
+}
 
 /** Toàn bộ bản đồ Công thành (gắn trong <Physics> của Hub khi location = "siege") */
 export function SiegeWorld() {

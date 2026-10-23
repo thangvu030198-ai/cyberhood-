@@ -315,7 +315,7 @@ function NightSky() {
 // Cao ốc bao quanh trường đua (model thành phố của sảnh)
 const KART_TOWERS: ExtraModel[] = ["mx_bld_skyscraper", "mx_bld_megacorp", "mx_bld_tower_round", "mx_bld_apartment", "mx_bld_capsule_hotel", "mx_bld_pagoda", "mx_bld_hotel"];
 
-function Tower({ name, x, z, h, rot }: { name: ExtraModel; x: number; z: number; h: number; rot: number }) {
+function Tower({ name, x, z, h, rot, clear }: { name: ExtraModel; x: number; z: number; h: number; rot: number; clear: number }) {
   const gltf = use(extraModel(name));
   const obj = useMemo(() => {
     const s = gltf.scene.clone(true);
@@ -337,9 +337,11 @@ function Tower({ name, x, z, h, rot }: { name: ExtraModel; x: number; z: number;
     });
     const g = new THREE.Group();
     g.add(s);
-    g.scale.setScalar(h / size.y);
+    // Toà thấp mà rộng (chung cư) phóng theo chiều cao sẽ lấn ra đường: thu nhỏ cho chân toà vừa khoảng trống
+    const halfFoot = (Math.hypot(size.x, size.z) / 2) * (h / size.y);
+    g.scale.setScalar((h / size.y) * Math.min(1, Math.max(clear, 4) / halfFoot));
     return g;
-  }, [gltf, h]);
+  }, [gltf, h, clear]);
   return <primitive object={obj} position={[x, 0, z]} rotation-y={rot} />;
 }
 
@@ -389,21 +391,24 @@ function Scenery({ sim }: { sim: KartSim }) {
         posts.push({ x: p.x, z: p.z, c: side });
       }
     // Cao ốc: rải ngoài đường đua, không quá gần mặt đường
-    const towers: { name: ExtraModel; x: number; z: number; h: number; rot: number }[] = [];
-    const near = (x: number, z: number, d: number) => {
-      for (let s = 0; s < t.length; s += 6) {
+    const towers: { name: ExtraModel; x: number; z: number; h: number; rot: number; clear: number }[] = [];
+    const gap = (x: number, z: number) => {
+      let m = Infinity;
+      for (let s = 0; s < t.length; s += 3) {
         const p = t.at(s, 0);
-        if (Math.hypot(p.x - x, p.z - z) < d) return true;
+        m = Math.min(m, Math.hypot(p.x - x, p.z - z));
       }
-      return false;
+      return m;
     };
+    const near = (x: number, z: number, d: number) => gap(x, z) < d;
     for (let i = 0; i < 70 && towers.length < 34; i++) {
       const a = r() * Math.PI * 2;
       const rad = 60 + r() * 260;
       const x = 30 + Math.cos(a) * rad;
       const z = 70 + Math.sin(a) * rad;
       if (near(x, z, 26)) continue;
-      towers.push({ name: KART_TOWERS[Math.floor(r() * KART_TOWERS.length)], x, z, h: 24 + r() * 46, rot: r() * 6.28 });
+      // clear: bán kính tối đa của chân toà nhà để không lấn mặt đường (camera đuổi theo không xuyên tường)
+      towers.push({ name: KART_TOWERS[Math.floor(r() * KART_TOWERS.length)], x, z, h: 24 + r() * 46, rot: r() * 6.28, clear: gap(x, z) - KART.halfWidth - 7 });
     }
     return { arches, posts, towers };
   }, [sim]);

@@ -463,6 +463,10 @@ export function Player() {
     const state = useGame.getState();
     const driving = state.mode === "drive" && state.carId !== null ? handles.cars.get(state.carId) : null;
     const p = driving ? driving.currPos : ctrl.currPos;
+    if (!driving && ctrl.body) {
+      const b = ctrl.body.translation();
+      handles.lastPlayerPos = [b.x, b.y + 0.05, b.z];
+    }
 
     // Rơi khỏi bản đồ thì đưa về điểm xuất phát.
     if (!driving && p.y < -20 && ctrl.body) {
@@ -496,7 +500,7 @@ export function Player() {
       <Ecctrl
         ref={ecctrl}
         enable={mode === "foot"}
-        position={PLAYER.spawn}
+        position={handles.lastPlayerPos ?? PLAYER.spawn}
         capsuleHalfHeight={PLAYER.capsuleHalfHeight}
         capsuleRadius={PLAYER.capsuleRadius}
         floatHeight={PLAYER.floatHeight}
@@ -512,7 +516,11 @@ export function Player() {
         enabledRotations={[false, true, false]}
       >
         <group ref={model}>
-          <PlayerBody />
+          {/* Model / đồ mặc có thể còn đang tải (đổi lớp, đồ mới, vào Raid): chờ tại đây,
+              không để Suspense ngoài ẩn cả cây và tạo lại thân vật lý của nhân vật */}
+          <Suspense fallback={null}>
+            <PlayerBody />
+          </Suspense>
           <Suspense fallback={null}>
             <MechModel />
           </Suspense>

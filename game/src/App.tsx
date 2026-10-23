@@ -24,11 +24,12 @@ import { TrafficDebug } from "./game/TrafficDebug";
 import { traffic } from "./game/trafficWorld";
 import { Effects } from "./game/Effects";
 import { PlayerCombat, combatDebug } from "./game/Weapons";
-import { SiegeWorld } from "./siege/SiegeWorld";
+import { SiegeGround, SiegeWorld } from "./siege/SiegeWorld";
 import { SiegeHud, SiegeLobby } from "./siege/SiegeHud";
 import { SiegeGatePortal } from "./siege/SiegeGatePortal";
 import { useSiege } from "./siege/siegeSession";
-import { RaidWorld } from "./raid/RaidWorld";
+import { RaidGround, RaidWorld } from "./raid/RaidWorld";
+import { HoldUntilReady, WorldLoading, WorldReady } from "./game/WorldGate";
 import { RaidHud, RaidLobby } from "./raid/RaidHud";
 import { RaidGatePortal } from "./raid/RaidGatePortal";
 import { useRaid } from "./raid/raidSession";
@@ -189,8 +190,16 @@ export default function App() {
                 {featureOn("raid") && <RaidGatePortal />}
               </group>
               <Player />
-              {inSiege && !inRaid && <SiegeWorld />}
-              {inRaid && <RaidWorld />}
+              {inSiege && !inRaid && <SiegeGround />}
+              {inRaid && <RaidGround />}
+              <HoldUntilReady />
+              {/* Bản đồ nặng có Suspense riêng: đang tải thì thành phố/nhân vật không bị ẩn theo */}
+              {inSiege && (
+                <Suspense fallback={null}>
+                  {inRaid ? <RaidWorld /> : <SiegeWorld />}
+                  <WorldReady />
+                </Suspense>
+              )}
             </Physics>
             <group visible={!inSiege}>
               <VaultDoor />
@@ -250,6 +259,7 @@ export default function App() {
         ) : (
           <>
             <Hud />
+            <WorldLoading />
             <SiegeHud />
             <SiegeLobby />
             <RaidHud />

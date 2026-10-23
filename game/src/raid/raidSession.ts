@@ -264,7 +264,8 @@ export const useRaid = create<RaidState>((set, get) => ({
     useGame.getState().setLocation("raid");
     const c = toWorld(RAID.camp.x, RAID.camp.z);
     teleport(c.x, 1.5, c.z, Math.PI);
-    handles.aimCamera?.(0);
+    // Nhìn về giữa phố ngập, hơi ngửa lên để thấy Leviathan trồi lên lúc mở màn
+    handles.aimCamera?.(0, Math.PI * 0.5);
     return null;
   },
   leave: (abandon = false) => {

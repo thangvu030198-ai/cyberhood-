@@ -22,7 +22,7 @@ const DEF = {
   ctaEA: 'Get Early Access',
   fact1v: '6', fact1k: 'Game modes',
   fact2v: '100 v 100', fact2k: 'Citadel siege',
-  fact3v: '33', fact3k: 'Genesis items',
+  fact3v: '444', fact3k: 'Genesis items',
   eaTitle: 'Claim your Hunter Pass before Season 0',
   eaSub: 'Four steps, about two minutes. Your account is tied to your wallet, and early rewards are credited to it at launch.',
   rewards: 'Priority spot on the Genesis allowlist\nFounding Hunter badge in game and on the leaderboard\nBonus starter chest when Season 0 opens\nReferral points for every Hunter who joins with your link',
@@ -80,18 +80,22 @@ const handle = (s) => String(s || '').trim().replace(/^@/, '').replace(/^https?:
 
 /* ---------- Data ---------- */
 const NFT = [
-  ['Thunder Spear', 'Weapon', 'Mythic', 4.2], ['Leviathan Scale', 'Armor', 'Mythic', 3.8], ['Frost Fang Blade', 'Weapon', 'Epic', 0.66],
-  ['Oni Helm', 'Armor', 'Legendary', 1.05], ['Chrono Cube', 'Relic', 'Legendary', 1.33], ['Nova Bomb', 'Relic', 'Epic', 0.58],
-  ['Cosmic Edge', 'Weapon', 'Legendary', 1.48], ['Extra Coin', 'Relic', 'Rare', 0.12], ['Blood Crystal', 'Relic', 'Epic', 0.62],
-  ['Aegis Battery Plate', 'Armor', 'Legendary', 1.4], ['Arcane Skullblade', 'Weapon', 'Epic', 0.72], ['Chitin Gauntlets', 'Armor', 'Rare', 0.24],
-  ['Crystal Starburst', 'Relic', 'Rare', 0.3], ['Cyber Pulse Gauntlets', 'Armor', 'Epic', 0.68], ['Dark Enigma Armor', 'Armor', 'Legendary', 1.25],
-  ['Demonic Bow', 'Weapon', 'Legendary', 1.6], ['Void Crystal', 'Relic', 'Mythic', 3.4], ['Frostbound Scythe', 'Weapon', 'Epic', 0.81],
-  ['Frostbound Warhammer', 'Weapon', 'Legendary', 1.38], ['Neon Supply Crate', 'Relic', 'Common', 0.08], ['Golden Raven Mask', 'Armor', 'Epic', 0.55],
-  ['Iron Beak Helm', 'Armor', 'Legendary', 1.12], ['Solar Lion Medallion', 'Relic', 'Legendary', 1.75], ['Longreach War Axe', 'Weapon', 'Rare', 0.34],
-  ['Molten Inferno Axe', 'Weapon', 'Mythic', 3.9], ['Nebula Rose', 'Relic', 'Epic', 0.49], ['Circuit Core Egg', 'Relic', 'Mythic', 5.6],
-  ['Neon Sniper Elite', 'Weapon', 'Epic', 0.88], ['MPRS Sniper Rifle', 'Weapon', 'Rare', 0.41], ['Aether Revolver', 'Weapon', 'Legendary', 1.22],
-  ['Thorned Scythe', 'Weapon', 'Epic', 0.77], ['Valor Shield', 'Armor', 'Rare', 0.29], ['Winged Crusader Armor', 'Armor', 'Mythic', 2.9],
+  ['Thunder Spear', 'Weapon', 'Mythic', 0.049], ['Leviathan Scale', 'Armor', 'Mythic', 0.046], ['Frost Fang Blade', 'Weapon', 'Epic', 0.026],
+  ['Oni Helm', 'Armor', 'Legendary', 0.032], ['Chrono Cube', 'Relic', 'Legendary', 0.036], ['Nova Bomb', 'Relic', 'Epic', 0.024],
+  ['Cosmic Edge', 'Weapon', 'Legendary', 0.038], ['Extra Coin', 'Relic', 'Rare', 0.015], ['Blood Crystal', 'Relic', 'Epic', 0.025],
+  ['Aegis Battery Plate', 'Armor', 'Legendary', 0.037], ['Arcane Skullblade', 'Weapon', 'Epic', 0.027], ['Chitin Gauntlets', 'Armor', 'Rare', 0.016],
+  ['Crystal Starburst', 'Relic', 'Rare', 0.018], ['Cyber Pulse Gauntlets', 'Armor', 'Epic', 0.026], ['Dark Enigma Armor', 'Armor', 'Legendary', 0.035],
+  ['Demonic Bow', 'Weapon', 'Legendary', 0.039], ['Void Crystal', 'Relic', 'Mythic', 0.045], ['Frostbound Scythe', 'Weapon', 'Epic', 0.029],
+  ['Frostbound Warhammer', 'Weapon', 'Legendary', 0.036], ['Neon Supply Crate', 'Relic', 'Common', 0.01], ['Golden Raven Mask', 'Armor', 'Epic', 0.023],
+  ['Iron Beak Helm', 'Armor', 'Legendary', 0.033], ['Solar Lion Medallion', 'Relic', 'Legendary', 0.04], ['Longreach War Axe', 'Weapon', 'Rare', 0.019],
+  ['Molten Inferno Axe', 'Weapon', 'Mythic', 0.048], ['Nebula Rose', 'Relic', 'Epic', 0.022], ['Circuit Core Egg', 'Relic', 'Mythic', 0.05],
+  ['Neon Sniper Elite', 'Weapon', 'Epic', 0.03], ['MPRS Sniper Rifle', 'Weapon', 'Rare', 0.02], ['Aether Revolver', 'Weapon', 'Legendary', 0.034],
+  ['Thorned Scythe', 'Weapon', 'Epic', 0.028], ['Valor Shield', 'Armor', 'Rare', 0.017], ['Winged Crusader Armor', 'Armor', 'Mythic', 0.044],
 ].map(([name, kind, rarity, price], i) => ({ name, kind, rarity, price, i }));
+/** Số bản mỗi mẫu theo độ hiếm: 6×4 + 10×8 + 10×14 + 6×25 + 1×50 = 444 vật phẩm Genesis */
+const EDITIONS = { Mythic: 4, Legendary: 8, Epic: 14, Rare: 25, Common: 50 };
+const SUPPLY = NFT.reduce((t, n) => t + EDITIONS[n.rarity], 0);
+const eth = (p) => p.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + ' ETH';
 const RC = { Common: '#9aa3b5', Rare: '#3fa9ff', Epic: '#b45cff', Legendary: '#ffb800', Mythic: '#ff2a6d' };
 const RORDER = ['Mythic', 'Legendary', 'Epic', 'Rare', 'Common'];
 const ORIGIN = { Weapon: 'Boss drops and contract chests', Armor: 'Raid and siege rewards', Relic: 'Rare chest and Genesis egg drops' };
@@ -99,7 +103,7 @@ const ROWS = Math.ceil(NFT.length / 6);
 document.documentElement.style.setProperty('--rows-pct', ROWS * 100 + '%');
 let seed = 2077; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const hex = () => { let s = '0x'; for (let k = 0; k < 4; k++) s += Math.floor(rnd() * 16).toString(16); return s + '…' + Math.floor(rnd() * 65536).toString(16).padStart(4, '0'); };
-NFT.forEach((n, i) => { n.id = '#' + String(i + 1).padStart(4, '0'); n.owner = hex(); n.likes = 120 + ((i * 3779) % 2400); n.listed = (i * 37) % 24; });
+NFT.forEach((n, i) => { n.id = '#' + String(i + 1).padStart(3, '0'); n.ed = EDITIONS[n.rarity]; n.owner = hex(); n.likes = 120 + ((i * 3779) % 2400); n.listed = (i * 37) % 24; });
 const usd = (e) => '$' + Math.round(e * 3100).toLocaleString('en-US');
 const pos = (i) => `${(i % 6) * 20}% ${(Math.floor(i / 6) * 100) / (ROWS - 1)}%`;
 
@@ -108,7 +112,7 @@ const pos = (i) => `${(i % 6) * 20}% ${(Math.floor(i / 6) * 100) / (ROWS - 1)}%`
   const ev = [['SALE', 's'], ['LISTED', 'l'], ['OFFER', 'o'], ['MINT', 'm']];
   const row = Array.from({ length: 14 }, (_, k) => {
     const n = NFT[(k * 7 + 3) % NFT.length]; const e = ev[k % 4];
-    return `<span><b class="${e[1]}">${e[0]}</b> ${esc(n.name)} ${n.id} · ${(n.price * (0.9 + ((k * 37) % 30) / 100)).toFixed(2)} ETH</span>`;
+    return `<span><b class="${e[1]}">${e[0]}</b> ${esc(n.name)} ${n.id} · ${eth(n.price * (0.95 + ((k * 37) % 10) / 100))}</span>`;
   }).join('');
   $('#ticker').innerHTML = row + row;
 })();
@@ -155,7 +159,7 @@ $('#chaps').innerHTML = CHAPS.map(([img, wk, t, d]) => `<div class="chap hud"><d
 let fav = store.get('ch.fav', {});
 const st = { kind: 'All', rar: null, q: '', sort: 'rec' };
 const floor = Math.min(...NFT.map((n) => n.price));
-$('#stats').innerHTML = [['Floor', floor.toFixed(2) + ' ETH'], ['Volume', Math.round(NFT.reduce((s, n) => s + n.price, 0) * 53).toLocaleString('en-US') + ' ETH'], ['Items', '10,000'], ['Owners', '4,812']]
+$('#stats').innerHTML = [['Floor', eth(floor)], ['Top', eth(Math.max(...NFT.map((n) => n.price)))], ['Items', SUPPLY.toLocaleString('en-US')], ['Designs', String(NFT.length)]]
   .map(([k, v], i) => `<div><span>${k}</span><strong class="${i === 0 ? 'up' : ''}">${v}</strong></div>`).join('');
 $('#tabs').innerHTML = ['All', 'Weapon', 'Armor', 'Relic'].map((k) => `<button type="button" data-k="${k}" aria-pressed="${k === 'All'}">${k === 'All' ? 'All' : k === 'Armor' ? 'Armor' : k + 's'}</button>`).join('');
 $('#rar').innerHTML = RORDER.map((r) => `<button type="button" data-r="${r}" aria-pressed="false"><i style="background:${RC[r]}"></i>${r}</button>`).join('');
@@ -166,7 +170,7 @@ function render() {
   else if (st.sort === 'hi') list.sort((a, b) => b.price - a.price);
   else if (st.sort === 'rar') list.sort((a, b) => RORDER.indexOf(a.rarity) - RORDER.indexOf(b.rarity) || b.price - a.price);
   else list.sort((a, b) => a.listed - b.listed);
-  $('#grid').innerHTML = list.map((n) => `<button class="card" type="button" data-i="${n.i}" style="--rc:${RC[n.rarity]}">${art(n)}<div class="info"><span class="cl"><i></i>CYBERHOOD Genesis</span><span class="nm">${esc(n.name)} ${n.id}</span><span class="pr"><strong>${n.price.toFixed(2)} ETH</strong><span>${usd(n.price)}</span></span></div></button>`).join('');
+  $('#grid').innerHTML = list.map((n) => `<button class="card" type="button" data-i="${n.i}" style="--rc:${RC[n.rarity]}">${art(n)}<div class="info"><span class="cl"><i></i>CYBERHOOD Genesis · ${n.ed} editions</span><span class="nm">${esc(n.name)} ${n.id}</span><span class="pr"><strong>${eth(n.price)}</strong><span>${usd(n.price)}</span></span></div></button>`).join('');
   $('#empty').hidden = list.length > 0;
 }
 $('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.kind = b.dataset.k; $$('#tabs button').forEach((x) => x.setAttribute('aria-pressed', x === b)); render(); });
@@ -178,8 +182,8 @@ let curItem = 0;
 function openItem(i) {
   const n = NFT[i]; curItem = i;
   $('#shBox').innerHTML = `${art(n)}<div class="body"><span class="eyebrow">CYBERHOOD Genesis ✓</span><h3 id="shName">${esc(n.name)} ${n.id}</h3><p class="count">Owned by ${n.owner}</p>
-  <div class="traits"><div><span>Type</span><b>${n.kind}</b></div><div><span>Rarity</span><b style="color:${RC[n.rarity]}">${n.rarity}</b></div><div><span>Season</span><b>0</b></div></div>
-  <div class="price"><span>Current price</span><div><strong>${n.price.toFixed(2)} ETH</strong><small>${usd(n.price)}</small></div>
+  <div class="traits"><div><span>Type</span><b>${n.kind}</b></div><div><span>Rarity</span><b style="color:${RC[n.rarity]}">${n.rarity}</b></div><div><span>Editions</span><b>${n.ed} of ${SUPPLY}</b></div><div><span>Season</span><b>0</b></div></div>
+  <div class="price"><span>Current price</span><div><strong>${eth(n.price)}</strong><small>${usd(n.price)}</small></div>
   <div class="acts" style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn primary small" type="button" data-a="buy">Buy now</button><button class="btn ghost small" type="button" data-a="buy">Make offer</button><button class="btn ghost small" type="button" data-a="fav" aria-pressed="${!!fav[i]}">${fav[i] ? '♥ Saved' : '♡ Save'}</button></div></div>
   <div class="msg warn" id="shNote" hidden>Trading opens with the Season 0 launch. Hunters with an Early Access pass get first pick. <button class="btn cyan small" type="button" data-a="ea" style="margin-top:8px">Get Early Access</button></div>
   <p class="count">Where it comes from: ${ORIGIN[n.kind]}</p></div><button class="x" type="button" data-close aria-label="Close">✕</button>`;

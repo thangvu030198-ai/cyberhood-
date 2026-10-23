@@ -299,3 +299,27 @@ footer a:hover{color:var(--cyan)}
 @media (max-width:899px){#holo{height:min(112vw,560px)}}
 @media (max-width:560px){.wallets{grid-template-columns:repeat(2,minmax(0,1fr))}.wallet{padding:9px 10px;gap:9px}.wallet b{font-size:13px}}
 .hint{text-shadow:0 0 8px #000}
+
+/* ---------- Motion layer (motion.js adds html.mo) ---------- */
+.mo .hero{perspective:1100px}
+.mo .hero h1{perspective:700px}
+.mo .hero h1>span{display:inline-block;will-change:transform}
+.mo .hero .wrap{transform-style:preserve-3d}
+.mo #modes .wrap,.mo .steps,.mo #modeGrid,.mo #chaps,.mo #grid,.mo .faq,.mo #stats{perspective:1200px}
+.mo .card:hover{transform:none}
+.mo .card,.mo .mode,.mo .chap,.mo .step{position:relative;transition:border-color .3s,box-shadow .3s;transform-style:preserve-3d}
+.blk{position:relative}
+.mo-wipe{position:absolute;left:0;right:0;top:0;height:2px;transform-origin:0 50%;pointer-events:none;background:linear-gradient(90deg,transparent,var(--cyan) 20%,#fff 50%,var(--pink) 80%,transparent);box-shadow:0 0 18px var(--cyan),0 0 36px var(--pink);opacity:0}
+.mo-glare{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .2s;mix-blend-mode:screen;background:radial-gradient(circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.18),rgba(34,230,255,.07) 28%,transparent 58%)}
+.glare .mo-glare{opacity:1}
+.glare{box-shadow:0 24px 60px -24px rgba(255,42,138,.45),0 0 0 1px rgba(34,230,255,.25)}
+/* Details: HUD corners extend on hover, reel gets a scanline sheen */
+.hud::before,.hud::after{transition:width .3s var(--ease),height .3s var(--ease),border-color .3s}
+.hud:hover::before,.hud:hover::after{width:28px;height:28px;border-color:var(--pink)}
+.reel{box-shadow:0 40px 120px -40px rgba(34,230,255,.35),0 0 0 1px rgba(255,42,138,.15)}
+.reel::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
+@media (prefers-reduced-motion:reduce){.hud::before,.hud::after{transition:none}}
+/* Lenis smooth scroll */
+html.lenis,html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+.lenis.lenis-stopped{overflow:hidden}

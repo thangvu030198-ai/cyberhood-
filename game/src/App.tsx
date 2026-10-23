@@ -11,6 +11,7 @@ import * as THREE from "three";
 import { Component, Suspense, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { KeyboardControls } from "@react-three/drei";
+import { useButtonStore } from "ecctrl/input";
 import { Physics, useRapier } from "@react-three/rapier";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { City } from "./game/City";
@@ -143,6 +144,7 @@ function DebugHook() {
       __combat: combatDebug,
       __quests: { questProgress },
       __hunter: useHunter,
+      __buttons: useButtonStore,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
       __level: { dbg: { talkTo: talkToDbg, chooseDialogue: chooseDbg, QUESTS: QUESTS_DBG, NPCS: NPCS_DBG, LEVELS: LEVELS_DBG, useGear: useGearDbg, GEAR: GEAR_DBG, ITEMS: ITEMS_DBG }, useService, useMissions: useMissionsDbg, useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid, autoplay: (on: boolean) => { const sim = useLevel.getState().sim; levelInput.auto = on && sim ? createAutoplay(sim) : null; } },

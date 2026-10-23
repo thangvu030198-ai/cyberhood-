@@ -66,6 +66,7 @@ import { useDuel } from "./level/duelSession";
 import { KartCanvas, KartHud, useKart } from "./level/KartScene";
 import { enterLevel, playLevel, useLevel } from "./level/session";
 import { levelInput } from "./level/levelInput";
+import { createAutoplay } from "./level/autoplay";
 import { fxDebug } from "./level/combatFx";
 
 const KEYMAP = [
@@ -144,7 +145,7 @@ function DebugHook() {
       __hunter: useHunter,
       __contract: { runtime, startNewContract },
       __traffic: traffic,
-      __level: { dbg: { talkTo: talkToDbg, chooseDialogue: chooseDbg, QUESTS: QUESTS_DBG, NPCS: NPCS_DBG, LEVELS: LEVELS_DBG, useGear: useGearDbg, GEAR: GEAR_DBG, ITEMS: ITEMS_DBG }, useService, useMissions: useMissionsDbg, useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid },
+      __level: { dbg: { talkTo: talkToDbg, chooseDialogue: chooseDbg, QUESTS: QUESTS_DBG, NPCS: NPCS_DBG, LEVELS: LEVELS_DBG, useGear: useGearDbg, GEAR: GEAR_DBG, ITEMS: ITEMS_DBG }, useService, useMissions: useMissionsDbg, useLevel, enterLevel, playLevel, levelInput, fxDebug, useKart, useDuel, THREE, useSiege, vfxDebug, useLang, useRaid, autoplay: (on: boolean) => { const sim = useLevel.getState().sim; levelInput.auto = on && sim ? createAutoplay(sim) : null; } },
     });
   }
   return null;

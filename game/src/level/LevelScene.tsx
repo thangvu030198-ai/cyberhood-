@@ -195,11 +195,12 @@ function SimDriver({ sim }: { sim: PlatformerSim }) {
   useFrame(({ clock }, dt) => {
     const now = clock.elapsedTime;
     if (!levelInput.paused && now >= feel.stopUntil) {
-      const i = levelInput.state();
+      const i = levelInput.auto ? levelInput.auto() : levelInput.state();
       // Nhìn từ trên: lên màn hình = tiến (x mô phỏng), trái/phải màn hình = trục y mô phỏng
       const v = viewById(levelById(sim.def.id).view);
       let input = i;
-      if (v.iso) {
+      // Bot tự chơi đã cho thao tác theo toạ độ mô phỏng: không đổi trục theo góc nhìn
+      if (v.iso && !levelInput.auto) {
         // Sa bàn xoay 45°: lên màn hình = (-x, +y) mô phỏng, phải màn hình = (+x, +y)
         const sx = (i.right ? 1 : 0) - (i.left ? 1 : 0);
         const sy = (i.up || i.jump ? 1 : 0) - (i.down ? 1 : 0);

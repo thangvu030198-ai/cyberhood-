@@ -19,6 +19,8 @@ const touch: Input = { left: false, right: false, up: false, down: false, jump: 
 
 export const levelInput = {
   paused: false,
+  /** Tự chơi (chỉ bật qua công cụ debug / quay phim): trả thao tác theo toạ độ mô phỏng, bỏ qua bàn phím */
+  auto: null as null | (() => Input),
   state(): Input {
     const k = (name: keyof Input) => touch[name] || KEYS[name].some((c) => down.has(c));
     return { left: k("left"), right: k("right"), up: k("up"), down: k("down"), jump: k("jump"), shoot: k("shoot"), dash: k("dash"), melee: k("melee") };
@@ -28,6 +30,7 @@ export const levelInput = {
   },
   clear() {
     down.clear();
+    this.auto = null;
     for (const k of Object.keys(touch) as (keyof Input)[]) touch[k] = false;
   },
 };

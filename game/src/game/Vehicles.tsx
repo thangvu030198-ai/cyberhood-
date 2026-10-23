@@ -333,6 +333,11 @@ function Car({ spec }: { spec: CarSpec }) {
   const [wheelsOn, setWheelsOn] = useState(false);
   const flippedFor = useRef(0);
   const park = useRef<AutoPark>({ since: 0, from: new THREE.Vector3(), fromYaw: 0, bay: null, t: 0 });
+  /** Thời gian đã đứng yên, và xe đang ở chế độ đỗ (lực cản cao) */
+  const rest = useRef(0);
+  const restY = useRef(spec.position[1]);
+  const locked = useRef(false);
+  const pinned = useRef(false);
 
   useFrame((_, dt) => {
     const car = ref.current;
@@ -344,6 +349,34 @@ function Car({ spec }: { spec: CarSpec }) {
     if (!active) {
       car.setMovement({ forward: false, backward: false, steerLeft: false, steerRight: false, brake: true });
       autoPark(spec.id, car, park.current, dt);
+      // Xe đỗ: hệ treo tính lực theo độ dài bước vật lý của frame trước, nên khi FPS dao động (máy yếu, cảnh nặng)
+      // xe đứng yên vẫn nảy tưng tưng. Xe không ai lái, không trôi ngang thì tăng lực cản cho dao động tắt hẳn.
+      const body = car.body;
+      if (body) {
+        const v = car.currLinVel;
+        const still = Math.hypot(v.x, v.z) < 0.4 && !park.current.bay;
+        rest.current = still ? rest.current + dt : 0;
+        // Độ cao trung bình của thân xe (tâm dao động) để đặt xe khi khoá
+        restY.current += (car.currPos.y - restY.current) * Math.min(1, dt * 3);
+        if (!locked.current && rest.current > 0.5) {
+          // Bước 1: lực cản lớn dập dao động
+          body.setLinearDamping(PARKED_DAMPING);
+          body.setAngularDamping(PARKED_DAMPING);
+          locked.current = true;
+        } else if (locked.current && !pinned.current && rest.current > 1.5 && car.bodyYAxis.y > 0.9) {
+          // Bước 2: đặt xe thẳng đứng ở độ cao trung bình, khoá trục dọc và độ nghiêng (vẫn đẩy ngang được)
+          const p = car.currPos;
+          const yaw = Math.atan2(car.bodyZAxis.x, car.bodyZAxis.z);
+          _yawQ.setFromAxisAngle(_Y, yaw);
+          body.setTranslation({ x: p.x, y: restY.current, z: p.z }, true);
+          body.setRotation({ x: _yawQ.x, y: _yawQ.y, z: _yawQ.z, w: _yawQ.w }, true);
+          body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+          body.setEnabledTranslations(true, false, true, true);
+          body.setEnabledRotations(false, true, false, true);
+          pinned.current = true;
+        } else if (locked.current && !still) unlockCar(body, locked, pinned);
+      }
       // Xe bỏ lại trong tư thế lật thì tự lật lại sau một lúc, tránh nằm chắn đường
       if (car.bodyYAxis.y < 0.4) {
         flippedFor.current += 1 / 60;
@@ -356,6 +389,8 @@ function Car({ spec }: { spec: CarSpec }) {
     }
     park.current.since = 0;
     park.current.bay = null;
+    if (locked.current && car.body) unlockCar(car.body, locked, pinned);
+    rest.current = 0;
     const keys = getKeys() as Record<string, boolean>;
     const stick = Object.values(useJoystickStore.getState().joysticks).find((j) => j.active);
     const sy = stick?.y ?? 0;
@@ -383,8 +418,8 @@ function Car({ spec }: { spec: CarSpec }) {
         gearRatios: [12],
         maxSteerAngle: Math.PI / 5,
       }}
-      linearDamping={0.05}
-      angularDamping={0.6}
+      linearDamping={DRIVE_LIN_DAMPING}
+      angularDamping={DRIVE_ANG_DAMPING}
     >
       {/* Khối lượng dồn vào thân dưới, cabin gần như không nặng: trọng tâm thấp, xe không bốc đầu */}
       <CuboidCollider args={[1.1, 0.3, 2.1]} position={[0, 0.02, 0]} density={1.0} />
@@ -417,6 +452,23 @@ function Car({ spec }: { spec: CarSpec }) {
       ))}
     </EcctrlVehicle>
   );
+}
+
+/** Lực cản khi xe đỗ (đủ lớn để dập dao động hệ treo trong vài frame) */
+const PARKED_DAMPING = 8;
+/** Lực cản khi chạy, khớp với prop của EcctrlVehicle */
+const DRIVE_LIN_DAMPING = 0.05;
+const DRIVE_ANG_DAMPING = 0.6;
+
+function unlockCar(body: NonNullable<EcctrlVehicleHandle["body"]>, locked: { current: boolean }, pinned: { current: boolean }) {
+  body.setLinearDamping(DRIVE_LIN_DAMPING);
+  body.setAngularDamping(DRIVE_ANG_DAMPING);
+  if (pinned.current) {
+    body.setEnabledTranslations(true, true, true, true);
+    body.setEnabledRotations(true, true, true, true);
+  }
+  locked.current = false;
+  pinned.current = false;
 }
 
 export function Vehicles() {

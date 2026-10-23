@@ -157,7 +157,13 @@ $('#chaps').innerHTML = CHAPS.map(([img, wk, t, d]) => `<div class="chap hud"><d
 
 /* ---------- Marketplace ---------- */
 let fav = store.get('ch.fav', {});
-const st = { kind: 'All', rar: null, q: '', sort: 'rec' };
+const st = { kind: 'All', rar: null, q: '', sort: 'rec', page: 0 };
+/* Pagination: every page shows whole rows (3 rows × the grid's current column count); leftovers go to the next page */
+const COLS_MQ = [[matchMedia('(min-width:1100px)'), 4], [matchMedia('(min-width:760px)'), 3]];
+const cols = () => (COLS_MQ.find(([m]) => m.matches) || [0, 2])[1];
+const perPage = () => cols() * (cols() === 2 ? 4 : 3);
+const pager = document.createElement('nav'); pager.className = 'pager'; pager.id = 'pager'; pager.setAttribute('aria-label', 'Marketplace pages');
+$('#empty').before(pager);
 const floor = Math.min(...NFT.map((n) => n.price));
 $('#stats').innerHTML = [['Floor', eth(floor)], ['Top', eth(Math.max(...NFT.map((n) => n.price)))], ['Items', SUPPLY.toLocaleString('en-US')], ['Designs', String(NFT.length)]]
   .map(([k, v], i) => `<div><span>${k}</span><strong class="${i === 0 ? 'up' : ''}">${v}</strong></div>`).join('');
@@ -170,13 +176,31 @@ function render() {
   else if (st.sort === 'hi') list.sort((a, b) => b.price - a.price);
   else if (st.sort === 'rar') list.sort((a, b) => RORDER.indexOf(a.rarity) - RORDER.indexOf(b.rarity) || b.price - a.price);
   else list.sort((a, b) => a.listed - b.listed);
-  $('#grid').innerHTML = list.map((n) => `<button class="card" type="button" data-i="${n.i}" style="--rc:${RC[n.rarity]}">${art(n)}<div class="info"><span class="cl"><i></i>CYBERHOOD Genesis · ${n.ed} editions</span><span class="nm">${esc(n.name)} ${n.id}</span><span class="pr"><strong>${eth(n.price)}</strong><span>${usd(n.price)}</span></span></div></button>`).join('');
+  const per = perPage(), pages = Math.max(1, Math.ceil(list.length / per));
+  st.page = Math.min(st.page, pages - 1);
+  const from = st.page * per, shown = list.slice(from, from + per);
+  pager.hidden = pages < 1 || list.length === 0;
+  pager.innerHTML = `<span class="count">${list.length ? `${from + 1}–${from + shown.length} of ${list.length}` : ''}</span><div class="pages">`
+    + `<button type="button" data-p="${st.page - 1}" aria-label="Previous page" ${st.page === 0 ? 'disabled' : ''}>‹</button>`
+    + Array.from({ length: pages }, (_, k) => `<button type="button" data-p="${k}" aria-label="Page ${k + 1}" aria-current="${k === st.page ? 'page' : 'false'}">${k + 1}</button>`).join('')
+    + `<button type="button" data-p="${st.page + 1}" aria-label="Next page" ${st.page >= pages - 1 ? 'disabled' : ''}>›</button></div>`;
+  $('#grid').innerHTML = shown.map((n) => `<button class="card" type="button" data-i="${n.i}" style="--rc:${RC[n.rarity]}">${art(n)}<div class="info"><span class="cl"><i></i>CYBERHOOD Genesis · ${n.ed} editions</span><span class="nm">${esc(n.name)} ${n.id}</span><span class="pr"><strong>${eth(n.price)}</strong><span>${usd(n.price)}</span></span></div></button>`).join('');
+  // A short last row sits centred (grid has 2 tracks per card), never stranded on the left
+  const c = cols(), rem = shown.length % c;
+  if (rem) $('#grid').children[shown.length - rem].style.gridColumnStart = c - rem + 1;
   $('#empty').hidden = list.length > 0;
 }
-$('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.kind = b.dataset.k; $$('#tabs button').forEach((x) => x.setAttribute('aria-pressed', x === b)); render(); });
-$('#rar').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.rar = st.rar === b.dataset.r ? null : b.dataset.r; $$('#rar button').forEach((x) => x.setAttribute('aria-pressed', x.dataset.r === st.rar)); render(); });
-$('#q').addEventListener('input', (e) => { st.q = e.target.value.trim().toLowerCase(); render(); });
-$('#sort').addEventListener('change', (e) => { st.sort = e.target.value; render(); });
+$('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.kind = b.dataset.k; st.page = 0; $$('#tabs button').forEach((x) => x.setAttribute('aria-pressed', x === b)); render(); });
+$('#rar').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; st.rar = st.rar === b.dataset.r ? null : b.dataset.r; st.page = 0; $$('#rar button').forEach((x) => x.setAttribute('aria-pressed', x.dataset.r === st.rar)); render(); });
+$('#q').addEventListener('input', (e) => { st.q = e.target.value.trim().toLowerCase(); st.page = 0; render(); });
+$('#sort').addEventListener('change', (e) => { st.sort = e.target.value; st.page = 0; render(); });
+pager.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-p]'); if (!b || b.disabled) return;
+  st.page = +b.dataset.p; render();
+  const top = $('#market .bar');
+  if (top.getBoundingClientRect().top < 0) window.__lenis ? window.__lenis.scrollTo(top, { offset: -80 }) : top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+COLS_MQ.forEach(([m]) => m.addEventListener('change', () => render()));
 render();
 let curItem = 0;
 function openItem(i) {

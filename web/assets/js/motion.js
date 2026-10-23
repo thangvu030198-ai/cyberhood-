@@ -28,6 +28,7 @@
       let lenis = null;
       if (fine && window.Lenis) {
         lenis = new window.Lenis({ duration: 1.1, smoothWheel: true });
+        window.__lenis = lenis;
         lenis.on('scroll', ScrollTrigger.update);
         const raf = (t) => lenis.raf(t * 1000);
         gsap.ticker.add(raf);
@@ -42,7 +43,7 @@
           lenis.scrollTo(t, { offset: -64, duration: 1.4 });
         };
         document.addEventListener('click', onNav);
-        ctx.add(() => () => { gsap.ticker.remove(raf); document.removeEventListener('click', onNav); lenis.destroy(); });
+        ctx.add(() => () => { gsap.ticker.remove(raf); document.removeEventListener('click', onNav); lenis.destroy(); window.__lenis = null; });
       }
 
       /* ---------- Hero: intro, then sinks into depth as you scroll ---------- */

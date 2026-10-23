@@ -164,9 +164,10 @@ section.blk{padding-block:96px}
 .tools input,.tools select,.field input,.field textarea,.field select{background:#0b0718;border:1px solid var(--line2);padding:10px 12px;font-size:13px;min-width:0}
 .tools input{width:180px;max-width:100%}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.grid{margin-top:26px;display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (min-width:760px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (min-width:1100px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.grid{margin-top:26px;display:grid;gap:14px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid>.card{grid-column-end:span 2}
+@media (min-width:760px){.grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media (min-width:1100px){.grid{grid-template-columns:repeat(8,minmax(0,1fr))}}
 .card{display:flex;flex-direction:column;text-align:left;background:var(--panel);border:1px solid var(--line);overflow:hidden;transition:transform .3s var(--ease),border-color .3s,box-shadow .3s}
 .card:hover{transform:translateY(-3px);border-color:var(--rc);box-shadow:0 0 24px color-mix(in srgb,var(--rc) 35%,transparent)}
 .art{position:relative;aspect-ratio:1;max-width:100%;overflow:hidden;background:radial-gradient(120% 90% at 50% 100%,var(--rc,#444) 0%,transparent 55%),linear-gradient(180deg,#14092c,#06030e)}
@@ -323,3 +324,13 @@ footer a:hover{color:var(--cyan)}
 html.lenis,html.lenis body{height:auto}
 .lenis.lenis-smooth{scroll-behavior:auto!important}
 .lenis.lenis-stopped{overflow:hidden}
+/* Marketplace pager */
+.pager{margin-top:22px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.pager[hidden]{display:none}
+.pager .count{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pager .pages{display:flex;gap:6px}
+.pager button{min-width:40px;height:40px;padding:0 10px;font-family:var(--display);font-size:15px;color:var(--text);background:var(--panel);border:1px solid var(--line);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);transition:border-color .2s,background .2s,color .2s}
+.pager button:hover:not(:disabled){border-color:var(--cyan);color:var(--cyan)}
+.pager button[aria-current=page]{background:var(--pink);border-color:var(--pink);color:#fff}
+.pager button:disabled{opacity:.35;cursor:default}
+.pager button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}

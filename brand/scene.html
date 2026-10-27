@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CYBERHOOD brand scene</title>
+<!-- Fully rendered brand art (no game footage): ?kind=avatar | banner | og.
+     Glossy clear-coated towers with neon edge tubes and lit windows, a mirror-gold arrow, reflective neon floor,
+     procedural skyline and synthwave sun, bloom. HTML text overlay stays razor sharp. Rendered by brand/render.mjs. -->
+<style>
+@font-face{font-family:'Chakra Petch';src:url(fonts/Chakra+Petch.ttf);font-weight:700}
+@font-face{font-family:'JetBrains Mono';src:url(fonts/JetBrains+Mono.ttf)}
+@font-face{font-family:Inter;src:url(/web/assets/fonts/inter-latin-600-normal.woff2);font-weight:600}
+*{box-sizing:border-box;margin:0}
+html,body{background:#05020c;overflow:hidden}
+#stage{position:relative;overflow:hidden}
+canvas{display:block}
+.ov{position:absolute;inset:0;pointer-events:none;font-family:Inter,sans-serif;color:#fff}
+.eyebrow{font-family:'JetBrains Mono',monospace;letter-spacing:.3em;text-transform:uppercase;color:#7ff4ff;text-shadow:0 0 12px rgba(34,230,255,.6)}
+.eyebrow b{color:#ff4fb0;font-weight:400}
+.title{font-family:'Chakra Petch',sans-serif;font-weight:700;letter-spacing:.035em;line-height:.86;position:relative;white-space:nowrap}
+/* faux-3D extruded title: stacked offsets + glow, gradient face */
+.title .face{background:linear-gradient(180deg,#ffffff 0%,#bff9ff 30%,#22e6ff 52%,#ff2a8a 53%,#ff7ac4 100%);-webkit-background-clip:text;background-clip:text;color:transparent;position:relative;z-index:2}
+.title .depth{position:absolute;left:0;top:0;color:#2a0b3d;z-index:1;
+  text-shadow:1px 1px 0 #3a0f52,2px 2px 0 #3a0f52,3px 3px 0 #330c49,4px 4px 0 #2c0a40,5px 5px 0 #260837,6px 6px 0 #20072f,7px 7px 0 #1a0526,8px 8px 0 #140420,0 0 40px rgba(255,42,138,.55),0 0 80px rgba(34,230,255,.35)}
+.tag{font-family:'Chakra Petch',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#fff;text-shadow:0 0 18px rgba(255,79,176,.6)}
+.chips{display:flex;flex-wrap:wrap}
+.chip{font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:#f2eeff;display:flex;align-items:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.26);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 30px rgba(0,0,0,.45);backdrop-filter:blur(6px)}
+.chip i{display:inline-block;transform:rotate(45deg);box-shadow:0 0 10px currentColor}
+.c1 i{background:#ffc400;color:#ffc400}.c2 i{background:#ff2a8a;color:#ff2a8a}.c3 i{background:#22e6ff;color:#22e6ff}.c4 i{background:#2fe38a;color:#2fe38a}
+.foot{position:absolute;font-family:'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#cfc6f2}
+.foot b{color:#ffc400;font-weight:400}
+
+.banner .txt{position:absolute;left:270px;top:80px;width:760px}
+.banner .eyebrow{font-size:15px}
+.banner .title{font-size:114px;margin-top:16px}
+.banner .tag{font-size:28px;margin-top:20px}
+.banner .chips{gap:10px;margin-top:24px;max-width:740px}
+.banner .chip{font-size:13px;padding:10px 14px;gap:10px}
+.banner .chip i{width:8px;height:8px}
+.banner .foot{right:44px;bottom:24px;font-size:13px}
+
+.og .txt{position:absolute;left:60px;top:92px;width:700px}
+.og .eyebrow{font-size:15px}
+.og .title{font-size:112px;margin-top:18px}
+.og .tag{font-size:28px;margin-top:18px}
+.og .chips{gap:10px;margin-top:28px;max-width:640px}
+.og .chip{font-size:13px;padding:10px 14px;gap:10px}
+.og .chip i{width:8px;height:8px}
+.og .foot{left:60px;bottom:38px;font-size:14px}
+</style>
+<script type="importmap">{"imports":{"three":"/game/node_modules/three/build/three.module.js","three/addons/":"/game/node_modules/three/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="stage"></div>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const q = new URLSearchParams(location.search);
+const KIND = q.get('kind') || 'avatar';
+const SIZES = { avatar: [1024, 1024], banner: [1500, 500], og: [1200, 630] };
+const [W, H] = SIZES[KIND];
+const PR = +(q.get('pr') || 2);
+const stage = document.getElementById('stage');
+stage.style.width = W + 'px'; stage.style.height = H + 'px';
+stage.className = KIND;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(PR);
+renderer.setSize(W, H);
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.0;
+stage.append(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+/* ---------- shared bits ---------- */
+const CYAN = new THREE.Color(0x00d9ff), PINK = new THREE.Color(0xff1fb4), GOLD = new THREE.Color(0xffb81c);
+const glow = (c, k) => new THREE.MeshBasicMaterial({ color: c.clone().multiplyScalar(k), toneMapped: false });
+function canvasTex(w, h, draw, repeat) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  draw(cv.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); }
+  return t;
+}
+const radial = (inner, outer) => canvasTex(512, 512, (g, w) => { const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); r.addColorStop(0, inner); r.addColorStop(1, outer); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+
+/* ---------- the logo: towers + arrow, in the 400×400 design space ---------- */
+const P = (x, y) => new THREE.Vector2(x - 200, 200 - y);
+const winGrid = (cols, rows, x0, y0, dx, dy) => rows.flatMap((r) => cols.map((c) => [x0 + c * dx, y0 + r * dy, 8, 10]));
+const PARTS = [
+  { c: CYAN, out: [[130, 135], [147, 118], [170, 118], [170, 188], [130, 188]], win: winGrid([0, 1], [0, 1], 138, 146, 16, 21) },
+  { c: CYAN, out: [[130, 222], [170, 222], [170, 288], [130, 288]], win: winGrid([0, 1], [0, 1], 138, 233, 16, 21) },
+  { c: PINK, out: [[230, 103], [255, 103], [270, 118], [270, 188], [230, 188]], win: winGrid([0, 1], [0, 1, 2], 238, 131, 16, 20) },
+  { c: PINK, out: [[230, 222], [270, 222], [270, 288], [230, 288]], win: winGrid([0, 1], [0, 1, 2], 238, 231, 16, 19) },
+  { c: PINK, out: [[237, 80], [242, 80], [242, 104], [237, 104]], win: [], thin: true },
+];
+const ARROW = [[84, 188], [101, 188], [112, 199], [276, 199], [276, 183], [312, 205], [276, 227], [276, 211], [112, 211], [101, 222], [84, 222], [95, 205]];
+
+function edgeTube(pts, z, color, k, r = 1.25) {
+  const path = new THREE.CurvePath();
+  const v = pts.map(([x, y]) => { const p = P(x, y); return new THREE.Vector3(p.x, p.y, z); });
+  for (let i = 0; i < v.length; i++) path.add(new THREE.LineCurve3(v[i], v[(i + 1) % v.length]));
+  return new THREE.Mesh(new THREE.TubeGeometry(path, v.length * 12, r, 8, false), glow(color, k));
+}
+
+function makeLogo() {
+  const g = new THREE.Group();
+  const D = 30; // tower depth
+  for (const part of PARTS) {
+    const s = new THREE.Shape(part.out.map(([x, y]) => P(x, y)));
+    for (const [x, y, w, h] of part.win) s.holes.push(new THREE.Path([P(x, y), P(x, y + h), P(x + w, y + h), P(x + w, y)]));
+    const depth = part.thin ? 10 : D;
+    const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: 2.4, bevelSize: 1.6, bevelSegments: 4, curveSegments: 6 });
+    geo.translate(0, 0, -depth / 2);
+    const face = new THREE.MeshPhysicalMaterial({ color: part.c, metalness: 0.15, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.06, emissive: part.c, emissiveIntensity: part.c === CYAN ? 0.08 : 0.18 });
+    const side = new THREE.MeshPhysicalMaterial({ color: part.c.clone().multiplyScalar(0.42), metalness: 0.3, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.1, emissive: part.c, emissiveIntensity: 0.06 });
+    g.add(new THREE.Mesh(geo, [face, side]));
+    // lit windows sit inside the holes
+    for (const [x, y, w, h] of part.win) {
+      const p = P(x + w / 2, y + h / 2);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glow(new THREE.Color(part.c === CYAN ? 0xcffcff : 0xffd6f4), 1.9));
+      m.position.set(p.x, p.y, -2);
+      g.add(m);
+    }
+    g.add(edgeTube(part.out, depth / 2 + 2.6, part.c, 3.2, part.thin ? 0.8 : 1.15));
+  }
+  // arrow: mirror gold with a hot rim, in front of the gap
+  const as = new THREE.Shape(ARROW.map(([x, y]) => P(x, y)));
+  const ag = new THREE.ExtrudeGeometry(as, { depth: 36, bevelEnabled: true, bevelThickness: 3.2, bevelSize: 2.2, bevelSegments: 5, curveSegments: 6 });
+  ag.translate(0, 0, -18 + 24);
+  // brushed gold: a little roughness spreads the env highlights so the face reads gold instead of a black mirror
+  const gold = new THREE.MeshPhysicalMaterial({ color: GOLD, metalness: 0.9, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08, emissive: 0xffa21a, emissiveIntensity: 0.16, envMapIntensity: 3 });
+  g.add(new THREE.Mesh(ag, gold));
+  g.add(edgeTube(ARROW, 24 + 18 + 3.4, GOLD, 1.5, 0.8));
+  return g;
+}
+
+/* ---------- reflective neon floor ---------- */
+function floor(y, size, gridRepeat, tint = 0x0a0614) {
+  const mirror = new Reflector(new THREE.PlaneGeometry(size, size), { textureWidth: W * PR, textureHeight: H * PR, color: 0x5a5872 });
+  mirror.rotation.x = -Math.PI / 2; mirror.position.y = y; scene.add(mirror);
+  const grid = canvasTex(256, 256, (g, w) => {
+    g.fillStyle = 'rgba(0,0,0,0)'; g.clearRect(0, 0, w, w);
+    g.strokeStyle = 'rgba(255,60,190,0.95)'; g.lineWidth = 3; g.strokeRect(0, 0, w, w);
+    g.strokeStyle = 'rgba(40,230,255,0.55)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, w); g.moveTo(0, w / 2); g.lineTo(w, w / 2); g.stroke();
+  }, gridRepeat);
+  const over = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.8, depthWrite: false }));
+  over.rotation.x = -Math.PI / 2; over.position.y = y + 0.4; scene.add(over);
+  const lines = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: grid, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  lines.rotation.x = -Math.PI / 2; lines.position.y = y + 0.8; scene.add(lines);
+}
+
+/* ---------- procedural skyline ---------- */
+function skyline(z0, spread, count, hMin, hMax, seed) {
+  let s = seed; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const winTex = canvasTex(64, 128, (g) => {
+    g.fillStyle = '#05030b'; g.fillRect(0, 0, 64, 128);
+    for (let y = 6; y < 128; y += 10) for (let x = 5; x < 64; x += 10) {
+      const r = rnd(); if (r < 0.55) continue;
+      g.fillStyle = r < 0.75 ? '#5de9ff' : r < 0.9 ? '#ff5cc8' : '#ffd36e'; g.globalAlpha = 0.45 + rnd() * 0.55; g.fillRect(x, y, 5, 5);
+    }
+    g.globalAlpha = 1;
+  });
+  const grp = new THREE.Group();
+  for (let i = 0; i < count; i++) {
+    const w = 40 + rnd() * 90, h = hMin + rnd() * (hMax - hMin), d = 40 + rnd() * 60;
+    const t = winTex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(Math.max(1, Math.round(w / 40)), Math.max(1, Math.round(h / 70)));
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0x0b0718, roughness: 0.6, metalness: 0.4, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 1.1 }));
+    m.position.set((rnd() - 0.5) * spread, h / 2 - 1, z0 - rnd() * 300);
+    grp.add(m);
+    if (rnd() < 0.5) { // rooftop neon strip
+      const c = rnd() < 0.5 ? CYAN : PINK;
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(w + 2, 2.5, d + 2), glow(c, 2.4));
+      strip.position.set(m.position.x, h - 1, m.position.z); grp.add(strip);
+    }
+  }
+  scene.add(grp);
+}
+
+/* ---------- synthwave sun ---------- */
+function sun(pos, r) {
+  const t = canvasTex(1024, 1024, (g, w) => {
+    const lg = g.createLinearGradient(0, 0, 0, w); lg.addColorStop(0, '#ffe37a'); lg.addColorStop(0.45, '#ff8a3d'); lg.addColorStop(1, '#ff1f9b');
+    g.fillStyle = lg; g.beginPath(); g.arc(w / 2, w / 2, w / 2 - 2, 0, Math.PI * 2); g.fill();
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 9; i++) { const y = w * (0.56 + i * 0.05); g.fillRect(0, y, w, 4 + i * 2.6); }
+  });
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 128), new THREE.MeshBasicMaterial({ map: t, transparent: true, toneMapped: false, fog: false, color: new THREE.Color(1.25, 1.25, 1.25) }));
+  m.position.copy(pos); scene.add(m);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(r * 2.2, 64), new THREE.MeshBasicMaterial({ map: radial('rgba(255,70,170,0.55)', 'rgba(255,70,170,0)'), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+  halo.position.copy(pos).add(new THREE.Vector3(0, 0, -5)); scene.add(halo);
+}
+
+function sparks(n, box, seed) {
+  let s = seed; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    pos.set([(rnd() - 0.5) * box[0], (rnd() - 0.2) * box[1], (rnd() - 0.5) * box[2]], i * 3);
+    const c = rnd() < 0.5 ? CYAN : PINK; col.set([c.r * 2.2, c.g * 2.2, c.b * 2.2], i * 3);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const dot = radial('rgba(255,255,255,1)', 'rgba(255,255,255,0)');
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 5, map: dot, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })));
+}
+
+let cam;
+const logo = makeLogo();
+scene.add(new THREE.HemisphereLight(0x8fd8ff, 0x1a0628, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-250, 420, 520); scene.add(key);
+const front = new THREE.DirectionalLight(0xfff0d6, 1.3); front.position.set(120, 60, 900); scene.add(front);
+const lc = new THREE.PointLight(0x00e5ff, 5, 0, 0.9), lp = new THREE.PointLight(0xff2fd0, 9, 0, 0.9);
+
+if (KIND === 'avatar') {
+  scene.background = canvasTex(1024, 1024, (g, w) => { const r = g.createRadialGradient(w / 2, w * 0.46, 0, w / 2, w / 2, w * 0.72); r.addColorStop(0, '#2a0b45'); r.addColorStop(0.55, '#0d0520'); r.addColorStop(1, '#030108'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+  // Avatar is cropped to a circle on X: one bold, centred logo, no floor reflections
+  cam = new THREE.PerspectiveCamera(30, 1, 1, 6000); cam.position.set(0, 30, 900); cam.lookAt(0, 6, 0);
+  logo.rotation.set(0.06, -0.48, 0); logo.scale.setScalar(1.12); logo.position.set(0, 4, 0); scene.add(logo);
+  // rings behind
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(232, 2.6, 16, 256), glow(CYAN, 1.6)); ring.position.set(0, 8, -200); scene.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(252, 1.2, 12, 256), glow(PINK, 2.0)); ring2.position.set(0, 8, -210); scene.add(ring2);
+  // perspective grid disc inside the ring, like a holo-floor seen from above
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(226, 128), new THREE.MeshBasicMaterial({ map: canvasTex(512, 512, (g, w) => { g.fillStyle = '#0b0520'; g.fillRect(0, 0, w, w); g.strokeStyle = 'rgba(255,60,190,0.35)'; g.lineWidth = 1; for (let i = 0; i <= w; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, w); g.moveTo(0, i); g.lineTo(w, i); g.stroke(); } }), transparent: true, opacity: 0.9 }));
+  disc.position.set(0, 8, -206); scene.add(disc);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(300, 96), new THREE.MeshBasicMaterial({ map: radial('rgba(150,40,220,0.5)', 'rgba(150,40,220,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.position.set(0, 8, -204); scene.add(halo);
+  lc.position.set(-260, 80, 220); lp.position.set(260, 60, 200); scene.add(lc, lp);
+  sparks(160, [900, 600, 300], 7);
+} else {
+  const wide = KIND === 'banner';
+  scene.background = canvasTex(16, 512, (g) => { const lg = g.createLinearGradient(0, 0, 0, 512); lg.addColorStop(0, '#020008'); lg.addColorStop(0.55, '#14062a'); lg.addColorStop(0.78, '#3b0b4f'); lg.addColorStop(1, '#5c1258'); g.fillStyle = lg; g.fillRect(0, 0, 16, 512); });
+  scene.fog = new THREE.Fog(0x1a0630, 900, 2600);
+  cam = new THREE.PerspectiveCamera(wide ? 26 : 34, W / H, 1, 8000);
+  cam.position.set(0, 70, 980); cam.lookAt(0, 70, 0);
+  floor(-150, 9000, [140, 140], 0x07030f);
+  // sun sits behind the logo, so the copy on the left keeps a calm dark backdrop
+  sun(new THREE.Vector3(wide ? 1120 : 820, -10, -2200), wide ? 360 : 400);
+  skyline(-1500, 4200, 60, 100, 560, 11);
+  skyline(-1100, 4200, 34, 70, 320, 23);
+  logo.rotation.set(0.06, -0.38, 0);
+  logo.scale.setScalar(wide ? 0.98 : 1.1);
+  logo.position.set(wide ? 418 : 312, 72, 120);
+  scene.add(logo);
+  lc.position.set(logo.position.x - 260, 120, 360); lp.position.set(logo.position.x + 260, 80, 320); scene.add(lc, lp);
+  sparks(220, [3200, 700, 900], 5);
+}
+
+const rt = new THREE.WebGLRenderTarget(W * PR, H * PR, { samples: 4, type: THREE.HalfFloatType });
+const composer = new EffectComposer(renderer, rt);
+composer.setPixelRatio(PR);
+composer.setSize(W, H);
+composer.addPass(new RenderPass(scene, cam));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(W * PR, H * PR), 0.6, 0.42, 0.86));
+composer.addPass(new OutputPass());
+composer.render();
+
+/* ---------- crisp HTML type over the render ---------- */
+if (KIND !== 'avatar') {
+  const ov = document.createElement('div'); ov.className = 'ov';
+  ov.innerHTML = `<div class="txt">
+    <div class="eyebrow">Season 0 <b>·</b> Genesis <b>·</b> Early access open</div>
+    <div class="title"><span class="depth">CYBERHOOD</span><span class="face">CYBERHOOD</span></div>
+    <div class="tag">Hunt the Neon City</div>
+    <div class="chips">
+      <span class="chip c1"><i></i>NFT · 444 Genesis items</span>
+      <span class="chip c2"><i></i>GameFi · loot you earn by playing</span>
+      <span class="chip c3"><i></i>Uniswap v4 Hook economy</span>
+      <span class="chip c4"><i></i>Browser game · no download</span>
+    </div></div>
+    <div class="foot">@Cyberhoodlabs <b>·</b> cyberhood.xyz</div>`;
+  stage.append(ov);
+}
+window.__ready = document.fonts.ready.then(() => true);
+</script>
+</body>
+</html>

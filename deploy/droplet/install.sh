@@ -183,6 +183,10 @@ chown -R www-data:www-data /opt/cyberhood-postai
 chmod 700 /etc/cyberhood
 if [[ -f "$DIR/secrets.env" ]]; then
   grep -E '^(OPENAI_API_KEY|OPENAI_MODEL)=' "$DIR/secrets.env" > /etc/cyberhood/post-ai.env || true
+elif ! grep -q '^OPENAI_API_KEY=.' /etc/cyberhood/post-ai.env 2>/dev/null && [[ -t 0 ]]; then
+  # Gói tải từ GitHub không chứa key: hỏi một lần (gõ ẩn), lưu vào file chỉ root đọc được
+  read -rsp "  Dán key OpenAI (sk-...) cho máy viết bài X, Enter để bỏ qua: " KEY; echo
+  [[ -n "$KEY" ]] && printf 'OPENAI_API_KEY=%s\nOPENAI_MODEL=gpt-4o-mini\n' "$KEY" > /etc/cyberhood/post-ai.env
 fi
 touch /etc/cyberhood/post-ai.env
 chmod 600 /etc/cyberhood/post-ai.env

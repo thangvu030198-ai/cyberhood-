@@ -2,6 +2,7 @@
 # Đóng gói CYBERHOOD để tải lên droplet: build game + chép website, server realtime, post-ai, install.sh → một file zip.
 #   bash deploy/droplet/make-bundle.sh [thư-mục-ra]
 # deploy/secrets.env (nếu có, không nằm trong git) được đưa vào gói để post-ai có key OpenAI.
+# NOSECRETS=1: gói công khai (GitHub Release) không có key; install.sh sẽ hỏi key khi cài.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="${1:-$ROOT/final}"
@@ -21,7 +22,7 @@ cp "$ROOT/server/server.mjs" "$ROOT/server/package.json" "$ROOT/server/package-l
 cp "$ROOT/deploy/post-ai/server.mjs" "$STAGE/post-ai/"
 mkdir -p "$STAGE/signups" && cp "$ROOT/deploy/signups/server.mjs" "$ROOT/deploy/signups/ethsig.mjs" "$STAGE/signups/"
 cp "$ROOT/deploy/droplet/install.sh" "$ROOT/deploy/droplet/HUONG_DAN.txt" "$STAGE/"
-if [[ -f "$ROOT/deploy/secrets.env" ]]; then cp "$ROOT/deploy/secrets.env" "$STAGE/secrets.env"; chmod 600 "$STAGE/secrets.env"; else echo "  (không có deploy/secrets.env: post-ai sẽ dùng văn mẫu)"; fi
+if [[ -z "${NOSECRETS:-}" && -f "$ROOT/deploy/secrets.env" ]]; then cp "$ROOT/deploy/secrets.env" "$STAGE/secrets.env"; chmod 600 "$STAGE/secrets.env"; else echo "  (không có deploy/secrets.env: post-ai sẽ dùng văn mẫu)"; fi
 
 echo "== Nén"
 rm -f "$OUT/$NAME.zip"

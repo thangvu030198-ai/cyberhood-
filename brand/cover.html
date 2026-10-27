@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CYBERHOOD cover</title>
+<!-- X header (?kind=x, 1500×500) and link preview (?kind=og, 1200×630). Rendered to PNG by brand/render.mjs. -->
+<style>
+@font-face{font-family:'Chakra Petch';src:url(fonts/Chakra+Petch.ttf);font-weight:700}
+@font-face{font-family:'JetBrains Mono';src:url(fonts/JetBrains+Mono.ttf)}
+@font-face{font-family:Inter;src:url(/web/assets/fonts/inter-latin-500-normal.woff2);font-weight:500}
+:root{--cyan:#22e6ff;--pink:#ff2a8a;--gold:#ffc400;--ink:#07040f}
+*{box-sizing:border-box;margin:0}
+html,body{background:var(--ink)}
+.c{position:relative;overflow:hidden;background:var(--ink);font-family:Inter,sans-serif;color:#ece8f8}
+.bg{position:absolute;inset:0;background:url(/web/assets/img/reel.webp) center 42%/cover no-repeat;filter:saturate(1.25) contrast(1.05)}
+.shade{position:absolute;inset:0;background:
+  linear-gradient(90deg,rgba(7,4,15,.15) 0%,rgba(7,4,15,.82) 30%,rgba(7,4,15,.9) 62%,rgba(7,4,15,.55) 100%),
+  linear-gradient(0deg,rgba(7,4,15,.85) 0%,transparent 40%)}
+.scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
+.grid{position:absolute;left:-10%;right:-10%;bottom:-2px;height:42%;background:
+  repeating-linear-gradient(90deg,transparent 0 58px,rgba(34,230,255,.35) 58px 60px),
+  repeating-linear-gradient(0deg,transparent 0 30px,rgba(255,42,138,.32) 30px 32px);
+  transform:perspective(380px) rotateX(62deg);transform-origin:bottom;opacity:.45;mask-image:linear-gradient(0deg,#000 10%,transparent 90%)}
+.logo{position:absolute;filter:drop-shadow(0 0 30px rgba(255,42,138,.35)) drop-shadow(0 0 60px rgba(34,230,255,.25))}
+.txt{position:absolute}
+.eyebrow{font-family:'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:var(--cyan)}
+.eyebrow b{color:var(--pink);font-weight:400}
+h1{font-family:'Chakra Petch',sans-serif;font-weight:700;letter-spacing:.04em;line-height:.9}
+h1 .cy{color:var(--cyan);text-shadow:0 0 28px rgba(34,230,255,.55)}
+h1 .pk{color:var(--pink);text-shadow:0 0 28px rgba(255,42,138,.55)}
+.tag{font-family:'Chakra Petch',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff}
+.chips{display:flex;flex-wrap:wrap}
+.chip{font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em;border:1px solid rgba(255,255,255,.22);background:rgba(13,8,25,.72);color:#e9e4fa;display:flex;align-items:center}
+.chip i{display:inline-block;transform:rotate(45deg)}
+.chip.nft i{background:var(--gold)} .chip.gf i{background:var(--pink)} .chip.hk i{background:var(--cyan)} .chip.br i{background:#2fe38a}
+.foot{position:absolute;font-family:'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#a49cc8}
+.foot b{color:var(--gold);font-weight:400}
+.bar{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--cyan),#fff 50%,var(--pink));box-shadow:0 0 18px var(--cyan)}
+
+/* ---- X header 1500×500: X's avatar covers the bottom-left, so the copy sits centre and the logo right ---- */
+.x{width:1500px;height:500px}
+.x .logo{right:46px;top:36px;width:430px}
+.x .txt{left:330px;top:70px;width:760px}
+.x .eyebrow{font-size:15px}
+.x h1{font-size:118px;margin-top:14px}
+.x .tag{font-size:30px;margin-top:10px}
+.x .chips{gap:10px;margin-top:26px}
+.x .chip{font-size:14px;padding:10px 14px;gap:10px}
+.x .chip i{width:9px;height:9px}
+.x .foot{right:48px;bottom:26px;font-size:14px}
+.x .bar{bottom:0}
+
+/* ---- link preview 1200×630 ---- */
+.og{width:1200px;height:630px}
+.og .logo{right:24px;top:70px;width:470px}
+.og .txt{left:64px;top:84px;width:700px}
+.og .eyebrow{font-size:15px}
+.og h1{font-size:112px;margin-top:16px}
+.og .tag{font-size:30px;margin-top:12px}
+.og .chips{gap:10px;margin-top:30px;max-width:640px}
+.og .chip{font-size:14px;padding:10px 14px;gap:10px}
+.og .chip i{width:9px;height:9px}
+.og .foot{left:64px;bottom:40px;font-size:15px}
+.og .bar{bottom:0}
+.og .shade{background:linear-gradient(90deg,rgba(7,4,15,.92) 0%,rgba(7,4,15,.86) 52%,rgba(7,4,15,.45) 100%),linear-gradient(0deg,rgba(7,4,15,.85) 0%,transparent 40%)}
+</style>
+</head>
+<body>
+<div id="c" class="c">
+  <div class="bg"></div><div class="grid"></div><div class="shade"></div><div class="scan"></div>
+  <img class="logo" src="out/logo3d_transparent.png" alt="">
+  <div class="txt">
+    <div class="eyebrow">Season 0 <b>·</b> Genesis <b>·</b> Early access open</div>
+    <h1><span class="cy">CYBER</span><span class="pk">HOOD</span></h1>
+    <div class="tag">Hunt the Neon City</div>
+    <div class="chips">
+      <span class="chip nft"><i></i>NFT · 444 Genesis items</span>
+      <span class="chip gf"><i></i>GameFi · loot you earn by playing</span>
+      <span class="chip hk"><i></i>Uniswap v4 Hook economy</span>
+      <span class="chip br"><i></i>Browser game · no download</span>
+    </div>
+  </div>
+  <div class="foot">@Cyberhoodlabs <b>·</b> cyberhood.xyz</div>
+  <div class="bar"></div>
+</div>
+<script>
+const kind = new URLSearchParams(location.search).get('kind') || 'x';
+document.getElementById('c').classList.add(kind);
+window.__ready = Promise.all([document.fonts.ready, ...[...document.images].map((i) => i.decode().catch(() => {}))]).then(() => true);
+</script>
+</body>
+</html>

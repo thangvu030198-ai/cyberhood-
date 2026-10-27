@@ -11,6 +11,16 @@ Không cần cài gì trên máy Windows của bạn ngoài trình duyệt và P
    - Authentication: Password (dễ nhất) hoặc SSH key
    - Create → ghi lại địa chỉ IP, ví dụ 164.90.1.2
 
+2) CÁCH DỄ NHẤT — CÀI THẲNG TỪ GITHUB (không cần tải file zip về Windows)
+   Trên droplet (mở Console trong trang DigitalOcean, hoặc ssh root@IP):
+     apt-get update && apt-get install -y git
+     git clone --depth 1 https://github.com/thangvu030198-ai/cyberhood-.git
+     cd cyberhood- && sudo bash deploy/droplet/from-git.sh
+   Script hỏi key OpenAI (dán vào, chữ không hiện ra là bình thường), tự build game (5–10 phút) rồi cài.
+   Cập nhật bản mới: cd cyberhood- && git pull && sudo bash deploy/droplet/from-git.sh
+   Có tên miền: thêm  --domain tenmien.com --email ban@gmail.com  vào cuối lệnh from-git.sh
+
+   (Cách cũ, nếu bạn có file zip:)
 2) TẢI GÓI LÊN SERVER (PowerShell trên Windows, ở thư mục chứa file zip)
    scp cyberhood-droplet.zip root@164.90.1.2:/root/
 

@@ -100,6 +100,7 @@
       flipIn('#chaps .chap', { x: 40 * k, rotateY: -38, z: -80, transformOrigin: '0% 50%' });
       flipIn('#stats > div', { y: 20, rotateX: -60, transformOrigin: '50% 0%' });
       flipIn('#grid .card', { y: 50 * k, rotateY: 24, rotateX: 10, z: -120, transformOrigin: '50% 100%' });
+      flipIn('.hooks .hk', { y: 50 * k, rotateX: 26, z: -100, transformOrigin: '50% 100%' });
       flipIn('.faq details', { y: 24, rotateX: -24, transformOrigin: '50% 0%' });
       flipIn('.rewards > div', { x: -24, autoAlpha: 0 });
 
@@ -151,6 +152,7 @@
         tilt('#chaps .chap', 8);
         tilt('#grid .card', 10);
         tilt('.step', 5);
+        tilt('.hooks .hk', 6);
       }
     },
   );

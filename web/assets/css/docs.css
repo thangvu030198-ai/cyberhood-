@@ -1,0 +1,43 @@
+/* Litepaper page (docs.html), built from docs/whitepaper/content.mjs */
+.d-hero{position:relative;overflow:hidden;padding:72px 0 56px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(7,4,15,.97) 0,rgba(7,4,15,.75) 55%,rgba(7,4,15,.4)),url(../img/reel.webp) center/cover no-repeat}
+.d-hero h1{font-family:var(--display);font-weight:700;font-size:clamp(2.4rem,6vw,4.6rem);line-height:.95;text-transform:uppercase;margin-top:16px;max-width:820px;text-wrap:balance}
+.d-hero .sub{margin-top:16px;max-width:620px;color:#cfc8ea;font-size:17px}
+.d-hero .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.d-status{margin-top:22px;max-width:640px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.d-layout{display:grid;gap:48px;grid-template-columns:minmax(0,1fr);padding-top:48px;padding-bottom:96px}
+@media (min-width:1000px){.d-layout{grid-template-columns:240px minmax(0,1fr)}}
+.d-toc{display:none}
+@media (min-width:1000px){.d-toc{display:block;position:sticky;top:86px;align-self:start;max-height:calc(100vh - 110px);overflow:auto;padding-right:8px}}
+.d-toc nav{display:grid;gap:2px;margin-top:14px;border-left:1px solid var(--line)}
+.d-toc a{display:block;padding:7px 0 7px 14px;margin-left:-1px;border-left:2px solid transparent;font-size:13px;color:var(--muted);line-height:1.35;transition:color .2s,border-color .2s}
+.d-toc a.sub{padding-left:26px;font-size:12px}
+.d-toc a:hover{color:var(--text)}
+.d-toc a.on{color:var(--cyan);border-left-color:var(--cyan)}
+.d-body{max-width:820px;min-width:0;font-size:16px;line-height:1.7;color:#d9d3ee}
+.d-body>*+*{margin-top:16px}
+.d-h1{font-family:var(--display);font-weight:700;font-size:clamp(1.7rem,3.4vw,2.4rem);line-height:1.1;text-transform:uppercase;color:var(--text);margin-top:64px!important;padding-top:18px;border-top:1px solid var(--line);scroll-margin-top:80px}
+.d-h1:first-child{margin-top:0!important;border-top:0;padding-top:0}
+.d-h2{font-family:var(--display);font-weight:600;font-size:22px;color:var(--text);margin-top:40px!important;scroll-margin-top:80px}
+.d-h3{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-top:28px!important}
+.d-body b{color:var(--text);font-weight:600}
+.d-body code{font-family:var(--mono);font-size:.86em;color:var(--pink);background:rgba(255,42,138,.08);padding:1px 5px}
+.d-list{padding-left:22px;display:grid;gap:8px}
+.d-list li::marker{color:var(--pink)}
+ol.d-list li::marker{font-family:var(--mono);font-weight:500}
+.d-note{padding:14px 18px;border-left:3px solid var(--pink);background:rgba(255,42,138,.07);color:#e8e2f8;font-size:15px}
+.d-tbl{overflow-x:auto;border:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.d-tbl table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.5;min-width:520px}
+.d-tbl th{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);text-align:left;padding:12px 14px;background:var(--panel);border-bottom:1px solid var(--line2)}
+.d-tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+.d-tbl tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
+.d-tbl td:first-child{color:var(--text);font-weight:500}
+.d-code{border:1px solid var(--line2);background:#0b0718}
+.d-code figcaption{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);padding:10px 14px;border-bottom:1px solid var(--line)}
+.d-code pre{margin:0;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#d7d0f2;tab-size:4}
+.d-code code{background:none;color:inherit;padding:0;font-size:inherit}
+.d-kpis{display:grid;gap:1px;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));background:var(--line);border:1px solid var(--line)}
+.d-kpis div{background:var(--panel);padding:16px 18px;display:grid;gap:4px}
+.d-kpis b{font-family:var(--display);font-size:26px;color:var(--text);font-weight:700;line-height:1.1}
+.d-kpis span{font-size:13px;color:var(--muted);line-height:1.4}
+.d-end{display:flex;flex-wrap:wrap;gap:12px;margin-top:56px!important;padding-top:28px;border-top:1px solid var(--line)}
+body.docs .nav a[aria-current=page]{color:var(--cyan)}

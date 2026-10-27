@@ -15,7 +15,7 @@
 
 <div class="top"><div class="wrap">
   <a class="logo" href="#top" aria-label="CYBERHOOD home"><svg><use href="#i-brand"/></svg><span><span class="c">CYBER</span><span class="p">HOOD</span></span></a>
-  <nav class="nav" aria-label="Sections"><a href="#early">Early access</a><a href="#modes">Game modes</a><a href="#season">Season 0</a><a href="#market">Marketplace</a><a href="#faq">FAQ</a></nav>
+  <nav class="nav" aria-label="Sections"><a href="#early">Early access</a><a href="#modes">Game modes</a><a href="#season">Season 0</a><a href="#market">Marketplace</a><a href="#hook">Hook</a><a href="docs.html">Litepaper</a><a href="#faq">FAQ</a></nav>
   <div class="acts">
     <button class="chip" type="button" id="walletChip" hidden><i></i><span id="walletChipT"></span></button>
     <button class="btn ghost small" type="button" data-flow="ea" id="topEA">Connect wallet</button>
@@ -97,8 +97,23 @@
   <p class="empty" id="empty" hidden>No items match these filters.</p>
 </div></section>
 
+<section class="blk hookblk" id="hook"><div class="wrap">
+  <span class="eyebrow"><b>05</b> · Litepaper · Uniswap v4</span>
+  <h2 class="sec">One pool, one hook, rewards that follow play</h2>
+  <p class="lede">Every $CYBERHOOD trade runs through the HoodHook on Uniswap v4. It sets a fair dynamic fee, sends 40% of its fee to the Player Reward Pool and gives Genesis holders a discount. Users can always exit: the hook can tune fees within hard caps, never block a swap.</p>
+  <div class="hooks">
+    <div class="hk hud"><span class="n">0.30%</span><h3>Dynamic LP fee</h3><p>Starts high on launch sells and decays over 72 hours. A short surcharge on sharp in-block moves makes sandwich attacks costly. Hard cap 10%.</p></div>
+    <div class="hk hud"><span class="n">40%</span><h3>To players</h3><p>A 0.20% hook fee is split 40% Player Reward Pool, 30% buyback &amp; burn, 20% to in-range LPs, 10% operations.</p></div>
+    <div class="hk hud"><span class="n">−50%</span><h3>Genesis discount</h3><p>Hold a Genesis NFT and pay up to half the hook fee: Common 10% up to Mythic 50%. LP fees stay untouched.</p></div>
+    <div class="hk hud"><span class="n">+XP</span><h3>Swap XP</h3><p>Verified Hunters earn a small, capped Hunter Score bonus from swaps. Never a random reward, never a payout by itself.</p></div>
+    <div class="hk hud"><span class="n">10%</span><h3>Referral rebate</h3><p>Bring a Hunter and receive 10% of the hook fee from their swaps for 180 days, taken from the protocol share.</p></div>
+    <div class="hk hud"><span class="n">12 mo</span><h3>Launch guard</h3><p>Anti-snipe limits for the first 30 blocks, protocol liquidity locked for 12 months, no blacklist function.</p></div>
+  </div>
+  <div class="ea-cta"><a class="btn primary" href="docs.html">Read the litepaper</a><a class="btn ghost" href="assets/docs/CYBERHOOD_Genesis_Economy_UniswapV4_Hook.pdf" download>Download PDF</a><a class="btn ghost dl-docx" href="assets/docs/CYBERHOOD_Genesis_Economy_UniswapV4_Hook.docx" download>Word .docx</a><span class="note">Draft v2.0 · not audited · not financial advice</span></div>
+</div></section>
+
 <section class="blk" id="faq"><div class="wrap">
-  <span class="eyebrow"><b>05</b> · FAQ</span>
+  <span class="eyebrow"><b>06</b> · FAQ</span>
   <h2 class="sec">Before you connect</h2>
   <div class="faq">
     <details class="hud"><summary>Is connecting my wallet safe?</summary><p>We only ask for a signature on a plain-text message. It is free: no transaction, no gas, no token approval and no spending permission. We will never ask for your seed phrase or private key — anyone who does is a scam.</p></details>
@@ -109,7 +124,7 @@
   </div>
 </div></section>
 
-<footer><div class="wrap"><span data-cfg="footer"></span><span><a href="#early">Early access</a> · <a href="#market">Marketplace</a> · <a id="footX" href="#" target="_blank" rel="noopener" hidden>X</a></span><span>CYBERHOOD © 2026</span></div></footer>
+<footer><div class="wrap"><span data-cfg="footer"></span><span class="flinks"><a href="#early">Early access</a><a href="#market">Marketplace</a><a href="docs.html">Litepaper</a><a id="footX" href="#" target="_blank" rel="noopener" hidden>X</a></span><span>CYBERHOOD © 2026</span></div></footer>
 
 <!-- Early access / Play Demo flow -->
 <div class="ov" id="flow" hidden role="dialog" aria-modal="true" aria-labelledby="flowT">

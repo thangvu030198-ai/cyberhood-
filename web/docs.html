@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CYBERHOOD Litepaper</title>
+<meta name="description" content="CYBERHOOD Genesis Economy: The $CYBERHOOD token, the Genesis NFTs and the HoodHook on Uniswap v4.">
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="assets/css/page.css">
+<link rel="stylesheet" href="assets/css/docs.css">
+</head>
+<body class="docs">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-brand" viewBox="0 0 30 12"><path fill="currentColor" d="M0 6 6 0h18l6 6-6 6H6zM8 3 5 6l3 3h14l3-3-3-3z"/></symbol></svg>
+<div class="top"><div class="wrap">
+  <a class="logo" href="index.html" aria-label="CYBERHOOD home"><svg><use href="#i-brand"/></svg><span><span class="c">CYBER</span><span class="p">HOOD</span></span></a>
+  <nav class="nav" aria-label="Site"><a href="index.html#modes">Game modes</a><a href="index.html#season">Season 0</a><a href="index.html#market">Marketplace</a><a href="docs.html" aria-current="page">Litepaper</a></nav>
+  <div class="acts"><a class="btn primary small" href="assets/docs/CYBERHOOD_Genesis_Economy_UniswapV4_Hook.pdf" download>Download PDF</a></div>
+</div></div>
+
+<header class="d-hero" id="top"><div class="wrap">
+  <span class="eyebrow"><b>Docs</b> · Litepaper v2.0 · Draft for review</span>
+  <h1>CYBERHOOD Genesis Economy</h1>
+  <p class="sub">The $CYBERHOOD token, the Genesis NFTs and the HoodHook on Uniswap v4</p>
+  <div class="ctas"><a class="btn primary" href="assets/docs/CYBERHOOD_Genesis_Economy_UniswapV4_Hook.pdf" download>Download PDF</a><a class="btn ghost dl-docx" href="assets/docs/CYBERHOOD_Genesis_Economy_UniswapV4_Hook.docx" download>Word .docx · 192 KB</a><a class="btn ghost" href="index.html">Back to the site</a></div>
+  <p class="d-status">October 2026 · Not audited. Parameters are proposals and will change after testnet data, audit and legal review.</p>
+</div></header>
+
+<div class="wrap d-layout">
+  <aside class="d-toc" aria-label="Contents"><span class="eyebrow">Contents</span><nav><a href="#summary" class="">1. Summary</a><a href="#principles" class="">2. Design principles</a><a href="#architecture" class="">3. Architecture</a><a href="#v4" class="">4. Why a Uniswap v4 hook</a><a href="#hook" class="">5. The HoodHook</a><a href="#fee" class="sub">5.1 Dynamic LP fee</a><a href="#protocol" class="sub">5.2 Protocol fee and where it goes</a><a href="#discount" class="sub">5.3 Genesis holder discount</a><a href="#xp" class="sub">5.4 Swap XP (Hunter Score)</a><a href="#referral" class="sub">5.5 Referral rebate</a><a href="#guard" class="sub">5.6 Launch guard and liquidity lock</a><a href="#oracle" class="sub">5.7 Price oracle for in-game prices</a><a href="#guilds" class="sub">5.8 Guild liquidity vaults</a><a href="#genesis" class="">6. Genesis NFT collection</a><a href="#token" class="">7. $CYBERHOOD token</a><a href="#rewards" class="">8. Player Reward Pool</a><a href="#launchpad" class="">9. Season launchpad on Uniswap v4</a><a href="#flows" class="">10. Key flows</a><a href="#security" class="">11. Security and governance</a><a href="#roadmap" class="">12. Roadmap</a><a href="#parameters" class="">13. Parameter sheet</a><a href="#appendix" class="">Appendix · HoodHook interface sketch</a></nav></aside>
+  <article class="d-body">
+<h2 class="d-h1" id="summary">1. Summary</h2>
+<p>CYBERHOOD is a cyberpunk loot-hunting game that runs in the browser. Hunters meet in Neon City, a 3D co-op hub, then step through gates into side-scrolling contracts, a 100 v 100 siege, a 4–10 player raid, kart races and 1 v 1 duels. The game drops <b>loot, not tokens</b>: value moves between players through the marketplace, and rewards come from real platform revenue.</p>
+<p>Version 2 moves the whole on-chain economy onto <b>one Uniswap v4 pool with one custom hook, the HoodHook</b>. Every swap of $CYBERHOOD runs through the hook, which sets a dynamic fee, takes a small protocol fee, and routes it to the Player Reward Pool, buyback and burn, and the pool's own liquidity providers. The same hook gives Genesis NFT holders a fee discount, pays referrers, records swap activity for the Hunter Score and protects the launch from snipers.</p>
+<div class="d-kpis"><div><b>1</b><span>Uniswap v4 pool · ETH / $CYBERHOOD</span></div><div><b>0.30%</b><span>Base LP fee, dynamic</span></div><div><b>0.20%</b><span>HoodHook protocol fee</span></div><div><b>40%</b><span>of hook fees to the Player Reward Pool</span></div><div><b>444</b><span>Genesis NFTs · 33 designs</span></div><div><b>0.01–0.05 ETH</b><span>Genesis mint price by rarity</span></div></div>
+<p class="d-note">Rewards follow play activity, never token holdings. Nothing in this document is an offer of securities, a promise of profit or financial advice.</p>
+<h2 class="d-h1" id="principles">2. Design principles</h2>
+<ul class="d-list"><li><b>Loot, not tokens.</b> Contracts, raids and sieges drop items. Tokens circulate between players through trades and sinks.</li><li><b>Revenue funds rewards.</b> The Player Reward Pool is paid from swap fees, marketplace fees, launchpad fees and sponsorship. No reward depends on minting new tokens.</li><li><b>Activity, not holding.</b> Weekly rewards are shared by Hunter Score (square-root weighted, capped per account). Holding $CYBERHOOD earns nothing by itself.</li><li><b>No paid randomness.</b> No loot box is sold for money or tokens. Drop rates are public. Nothing random is granted for a swap.</li><li><b>Users can always exit.</b> The hook can change fees within hard-coded caps. It can never block a swap or freeze user liquidity.</li><li><b>Server-authoritative game.</b> Damage, drops and scores run on the game server. The chain holds ownership, trades and fee flows.</li></ul>
+<h2 class="d-h1" id="architecture">3. Architecture</h2>
+<p>The game server stays off-chain. Ownership, trading and fee routing live in a small set of contracts around a single Uniswap v4 pool. The launch chain is any EVM chain where the Uniswap v4 PoolManager is deployed (for example Unichain, Base, Arbitrum or Ethereum). Robinhood Chain remains an option if Uniswap v4 is live there at launch; this must be verified against the official deployment list before going to mainnet.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Contract</th><th scope="col">Standard</th><th scope="col">Role</th></tr></thead><tbody><tr><td>CyberhoodToken</td><td>ERC-20</td><td>$CYBERHOOD. Fixed supply of 1,000,000,000. Burnable.</td></tr><tr><td>HoodHook</td><td>Uniswap v4 hook</td><td>Attached to the ETH / $CYBERHOOD pool. Dynamic fee, protocol fee, discounts, referrals, swap XP, launch guard, LP lock, TWAP oracle.</td></tr><tr><td>GenesisItems</td><td>ERC-721 + ERC-2981</td><td>444 Genesis items in 33 designs. 5% royalty.</td></tr><tr><td>GameItems</td><td>ERC-1155</td><td>Mech parts, armor, skins minted on demand from server-signed EIP-712 vouchers.</td></tr><tr><td>Marketplace</td><td>—</td><td>Fixed-price listings and 24 h auctions in ETH or $CYBERHOOD. 5% fee.</td></tr><tr><td>RewardPool</td><td>—</td><td>Collects the player share of every fee stream and pays weekly Merkle claims.</td></tr><tr><td>GuildVault</td><td>—</td><td>Holds guild liquidity positions in the pool and reports time-weighted liquidity.</td></tr><tr><td>SeasonLaunch</td><td>Uniswap v4 hook</td><td>Variant of HoodHook used for partner token launches each season.</td></tr><tr><td>Treasury</td><td>Safe 3/5 + 48 h timelock</td><td>Owns protocol liquidity and the only keys that can tune parameters.</td></tr></tbody></table></div>
+<figure class="d-code"><figcaption>Data flow</figcaption><pre><code>OFF-CHAIN (game server)                 ON-CHAIN
+- Matches, drops, Hunter Score          - PoolManager (Uniswap v4 singleton)
+- Unminted inventory                    - ETH / $CYBERHOOD pool  ──►  HoodHook
+- Weekly reward Merkle root      ──►    - RewardPool.claim(proof)
+- EIP-712 mint vouchers          ──►    - GameItems.mint(voucher)
+- Indexer reads hook events      ◄──    - SwapXP, Referral, FeeRouted, Burn</code></pre></figure>
+<h2 class="d-h1" id="v4">4. Why a Uniswap v4 hook</h2>
+<p>Uniswap v4 keeps every pool inside one singleton contract, the PoolManager, and lets a pool attach a hook contract that runs before and after pool actions. That makes it possible to put game-economy rules directly in the trade path instead of wrapping the token in transfer taxes.</p>
+<ul class="d-list"><li><b>Hooks by address.</b> The callbacks a hook may use are encoded in the low 14 bits of its address, so the HoodHook is deployed with CREATE2 to a mined salt that matches its permissions.</li><li><b>Dynamic fees.</b> A pool created with the dynamic-fee flag lets the hook return a per-swap LP fee from beforeSwap (with the override flag set). Fees are in hundredths of a basis point: 3000 = 0.30%.</li><li><b>Return deltas.</b> With afterSwapReturnDelta, the hook can take a share of the swap output as its own fee and settle it with the PoolManager in the same transaction.</li><li><b>Flash accounting and ERC-6909.</b> Balances net out at the end of the unlock, and the hook can hold claims as ERC-6909 tokens inside the PoolManager instead of moving ERC-20s on every swap.</li><li><b>donate().</b> The hook can give fees straight to the liquidity providers who are in range, which deepens the pool over time.</li><li><b>Plain ERC-20.</b> $CYBERHOOD stays a standard token with no transfer tax, so wallets, bridges and other DEXs work normally. Only trades through this pool pay the hook fee.</li></ul>
+<h2 class="d-h1" id="hook">5. The HoodHook</h2>
+<p>The HoodHook is attached to a single pool: native ETH / $CYBERHOOD, dynamic fee, tick spacing 60. The table lists the callbacks it enables and what each one does.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Callback</th><th scope="col">Enabled</th><th scope="col">Purpose</th></tr></thead><tbody><tr><td>beforeInitialize</td><td>Yes</td><td>Accept only the ETH / $CYBERHOOD key with the dynamic-fee flag, once.</td></tr><tr><td>afterInitialize</td><td>Yes</td><td>Record the launch block and start the price oracle.</td></tr><tr><td>beforeAddLiquidity</td><td>Yes</td><td>Launch window: only the Treasury may add liquidity. Register GuildVault positions.</td></tr><tr><td>afterAddLiquidity</td><td>Yes</td><td>Start the time-weighted liquidity clock for guild positions.</td></tr><tr><td>beforeRemoveLiquidity</td><td>Yes</td><td>Block removal of locked protocol positions until the unlock time.</td></tr><tr><td>beforeSwap</td><td>Yes</td><td>Compute the dynamic LP fee, apply the launch guard and the holder discount.</td></tr><tr><td>afterSwap</td><td>Yes</td><td>Take the protocol fee, route it, record swap XP and referral credit, update the oracle.</td></tr><tr><td>afterSwapReturnDelta</td><td>Yes</td><td>Lets afterSwap keep the protocol fee from the unspecified currency.</td></tr><tr><td>beforeDonate / afterDonate</td><td>No</td><td>Not used.</td></tr><tr><td>Other return-delta flags</td><td>No</td><td>Not used. Liquidity providers are never charged by the hook.</td></tr></tbody></table></div>
+<p class="d-note">Who is the trader? Inside a hook, msg.sender is the router, not the user. The HoodHook only grants discounts, referral credit and XP when the swap comes through an allowlisted router that exposes msgSender() (the v4 periphery routers and the Universal Router do), or when the user signs the hookData. Swaps from any other router still work at the normal fee.</p>
+<h3 class="d-h2" id="fee">5.1 Dynamic LP fee</h3>
+<p>The LP fee is recalculated on every swap. It starts high on sells during launch, falls to the base fee, and rises briefly when the price moves sharply inside one block.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Component</th><th scope="col">Value</th><th scope="col">Rule</th></tr></thead><tbody><tr><td>Base fee</td><td>0.30%</td><td>Normal trading, both directions.</td></tr><tr><td>Launch sell fee</td><td>8% → 0.30%</td><td>Falls linearly over the first 72 hours after liquidity opens.</td></tr><tr><td>Launch buy fee</td><td>1% → 0.30%</td><td>Falls linearly over the first 24 hours.</td></tr><tr><td>Volatility surcharge</td><td>+0.20%</td><td>When the pool tick has moved more than 100 ticks (about 1%) in the same block. Makes sandwich attacks costly.</td></tr><tr><td>Circuit breaker</td><td>+2% on sells</td><td>For 30 minutes when the 1-hour TWAP falls more than 25%. Never blocks a sell.</td></tr><tr><td>Hard cap</td><td>10%</td><td>MAX_LP_FEE is a constant. No parameter or owner can exceed it.</td></tr></tbody></table></div>
+<h3 class="d-h2" id="protocol">5.2 Protocol fee and where it goes</h3>
+<p>On top of the LP fee, the hook keeps 0.20% of each swap's output through afterSwapReturnDelta. The fee is held as ERC-6909 claims and swept once per epoch (about one hour) to keep each swap cheap.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Destination</th><th scope="col">Share</th><th scope="col">What happens</th></tr></thead><tbody><tr><td>Player Reward Pool</td><td>40%</td><td>Paid out weekly by Hunter Score (section 8).</td></tr><tr><td>Buyback &amp; burn</td><td>30%</td><td>ETH share buys $CYBERHOOD in the pool and burns it; the token share is burned directly.</td></tr><tr><td>LP boost</td><td>20%</td><td>Given to in-range liquidity providers with donate().</td></tr><tr><td>Operations</td><td>10%</td><td>Servers, audits and bounties, held by the Treasury.</td></tr></tbody></table></div>
+<p>The protocol fee is capped at 0.50% in code. Governance can lower it or change the split between the four destinations, but the Player Reward Pool share cannot go below 30%.</p>
+<h3 class="d-h2" id="discount">5.3 Genesis holder discount</h3>
+<p>A trader who owns a Genesis NFT pays less protocol fee. The router passes the tokenId in hookData and the hook checks ownerOf against the verified trader. Only the best discount applies; discounts never reduce the LP fee, so liquidity providers are not affected.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Holding</th><th scope="col">Protocol fee discount</th><th scope="col">Effective protocol fee</th></tr></thead><tbody><tr><td>Verified Hunter Pass (no NFT)</td><td>10%</td><td>0.18%</td></tr><tr><td>Common Genesis</td><td>10%</td><td>0.18%</td></tr><tr><td>Rare Genesis</td><td>20%</td><td>0.16%</td></tr><tr><td>Epic Genesis</td><td>30%</td><td>0.14%</td></tr><tr><td>Legendary Genesis</td><td>40%</td><td>0.12%</td></tr><tr><td>Mythic Genesis</td><td>50%</td><td>0.10%</td></tr></tbody></table></div>
+<h3 class="d-h2" id="xp">5.4 Swap XP (Hunter Score)</h3>
+<p>Swaps from a verified Hunter Pass wallet emit a SwapXP event. The game server indexes it and adds points to the weekly Hunter Score. Gameplay stays the main source of score; swap XP is a small, capped bonus.</p>
+<ul class="d-list"><li>1 Hunter Score point for each 0.01 ETH of swap volume.</li><li>Counted volume is capped at 0.3 ETH per account per day and swap points at 200 per week, a tenth of the 2,000-point weekly cap.</li><li>A buy and sell that reverse each other within 10 minutes count once (wash-trade filter).</li><li>XP is never paid out directly and never triggers a random reward. It only feeds the activity share of the weekly pool.</li></ul>
+<h3 class="d-h2" id="referral">5.5 Referral rebate</h3>
+<p>A new Hunter can join with a referral code. For 180 days, 10% of the protocol fee from that Hunter's swaps is credited to the referrer as claimable ERC-6909 balance. The rebate comes from the protocol fee, never from the new player's trade.</p>
+<h3 class="d-h2" id="guard">5.6 Launch guard and liquidity lock</h3>
+<ul class="d-list"><li><b>Launch window.</b> For the first 30 blocks after liquidity opens, a swap may buy at most 0.1% of supply and each verified trader can swap once per block.</li><li><b>Router allowlist.</b> During the window only allowlisted routers can trade; afterwards the pool is open to every router.</li><li><b>Protocol liquidity lock.</b> The Treasury seeds the pool with 10% of supply. Its positions (identified by the PositionManager salt) cannot be removed for 12 months.</li><li><b>No blacklist.</b> The hook has no function to block an address, freeze a balance or stop swaps.</li></ul>
+<h3 class="d-h2" id="oracle">5.7 Price oracle for in-game prices</h3>
+<p>The hook keeps a ring buffer of price observations and exposes a time-weighted average price. In-game services such as Mech repair are quoted in US dollars; the GameBank converts them to $CYBERHOOD using the 30-minute TWAP, so one large trade cannot change what players pay.</p>
+<h3 class="d-h2" id="guilds">5.8 Guild liquidity vaults</h3>
+<p>Guilds can provide liquidity through a GuildVault. The hook records the liquidity and how long it stays. Each guild earns territory influence equal to the square root of its time-weighted liquidity, and that bonus is capped at +10% of a territory-war score, so liquidity helps a guild but cannot replace winning battles.</p>
+<h2 class="d-h1" id="genesis">6. Genesis NFT collection</h2>
+<p>444 pixel-art weapons, armor and relics in 33 designs, minted once for Season 0 as ERC-721 tokens with a 5% ERC-2981 royalty. Rarer designs have fewer editions and a higher mint price.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Rarity</th><th scope="col">Designs</th><th scope="col">Editions each</th><th scope="col">Items</th><th scope="col">Mint price</th></tr></thead><tbody><tr><td>Mythic</td><td>6</td><td>4</td><td>24</td><td>0.044–0.050 ETH</td></tr><tr><td>Legendary</td><td>10</td><td>8</td><td>80</td><td>0.032–0.040 ETH</td></tr><tr><td>Epic</td><td>10</td><td>14</td><td>140</td><td>0.022–0.030 ETH</td></tr><tr><td>Rare</td><td>6</td><td>25</td><td>150</td><td>0.015–0.020 ETH</td></tr><tr><td>Common</td><td>1</td><td>50</td><td>50</td><td>0.010 ETH</td></tr><tr><td>Total</td><td>33</td><td>—</td><td>444</td><td>—</td></tr></tbody></table></div>
+<ul class="d-list"><li><b>Utility:</b> the HoodHook fee discount, a cosmetic version of the item in game, and the Founding Hunter badge. Genesis NFTs give no yield and no share of revenue.</li><li><b>Mint:</b> Hunter Pass holders get a 24-hour allowlist window, then a public window. Maximum 3 per wallet.</li><li><b>Proceeds (proposal):</b> 50% paired with $CYBERHOOD as pool liquidity, 30% to the Season 0 Player Reward Pool, 20% to development.</li><li><b>Royalty split:</b> 2.5% Player Reward Pool, 2.5% studio.</li></ul>
+<h2 class="d-h1" id="token">7. $CYBERHOOD token</h2>
+<p>Fixed supply of 1,000,000,000 $CYBERHOOD. No mint function after deployment. The allocation below is the draft from the game design document and must be reviewed by a tokenomics specialist.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Allocation</th><th scope="col">Share</th><th scope="col">Unlock</th></tr></thead><tbody><tr><td>Community &amp; players</td><td>40%</td><td>Season 0 airdrop 8% (50% at launch, 50% over 6 months) · season reward fund 22% (decreasing over 4 years) · ecosystem &amp; launchpad 10%</td></tr><tr><td>Team</td><td>15%</td><td>12-month cliff, then 36 months linear</td></tr><tr><td>Investors</td><td>15%</td><td>6–12-month cliff, then 24 months linear</td></tr><tr><td>Liquidity</td><td>10%</td><td>Seeded into the v4 pool, locked 12 months by the HoodHook</td></tr><tr><td>Treasury</td><td>15%</td><td>Safe multisig with timelock</td></tr><tr><td>Marketing</td><td>5%</td><td>24 months linear</td></tr></tbody></table></div>
+<h4 class="d-h3">Sinks</h4>
+<ul class="d-list"><li>Mech repair, the largest sink: paid in $CYBERHOOD at the TWAP price; 50% burned, 50% to the Player Reward Pool.</li><li>Marketplace and auction fee of 5%: 2% Player Reward Pool, 2% burned, 1% to the guild that holds the territory.</li><li>Crafting, guild creation (100, burned), siege registration (50, burned), name changes and skins.</li><li>The HoodHook buyback &amp; burn (30% of the protocol fee).</li></ul>
+<h2 class="d-h1" id="rewards">8. Player Reward Pool</h2>
+<p>All player shares of fees land in the RewardPool contract, a public on-chain address. Each week the game server computes Hunter Scores, publishes a Merkle root and players claim. The pool is split as in the game design document.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Weekly share</th><th scope="col">Portion</th><th scope="col">Who receives it</th></tr></thead><tbody><tr><td>Activity fund</td><td>50%</td><td>Every Hunter, by the square root of weekly Hunter Score, capped per account</td></tr><tr><td>Challenge fund</td><td>20%</td><td>Top 500 of the weekly solo challenge (normalised gear, pure skill)</td></tr><tr><td>PvP fund</td><td>15%</td><td>Arena, contested maps and siege</td></tr><tr><td>Guild fund</td><td>15%</td><td>Top 50 guilds, shared by contribution</td></tr></tbody></table></div>
+<p>Square-root weighting means a Hunter who plays four times as much earns twice as much, not four times. Together with the 2,000-point weekly cap and account verification, this keeps bots and whales from draining the pool.</p>
+<div class="d-tbl"><table><thead><tr><th scope="col">Revenue stream</th><th scope="col">Share to the Player Reward Pool</th></tr></thead><tbody><tr><td>HoodHook protocol fee</td><td>40%</td></tr><tr><td>Marketplace and auction fee (5%)</td><td>40% of the fee (2% of the sale)</td></tr><tr><td>Launchpad listing fee and raise share</td><td>50%</td></tr><tr><td>Sponsorship: Hub billboards, branded stages, events</td><td>40%</td></tr><tr><td>Cosmetics, name changes, effects</td><td>30%</td></tr><tr><td>Genesis royalties (5%)</td><td>50% of the royalty</td></tr></tbody></table></div>
+<h2 class="d-h1" id="launchpad">9. Season launchpad on Uniswap v4</h2>
+<p>Partner projects launch their tokens each season in their own v4 pool with the SeasonLaunch hook, a variant of the HoodHook.</p>
+<ul class="d-list"><li><b>Tiered allowlist.</b> For the first 2 hours only wallets in the season Merkle tree can buy: Bronze, Silver, Gold and Diamond key holders plus guild tickets, each with a per-wallet cap.</li><li><b>Players first.</b> 30% of every public sale is reserved for CYBERHOOD players through these tiers.</li><li><b>Fair price discovery.</b> The launch fee falls from 5% to 0.30% over 6 hours, which discourages snipers without a fixed price.</li><li><b>Airdrop condition.</b> Each project airdrops 1–3% of its supply to Hunters who earned keys that season.</li><li><b>Refunds.</b> If a sale is cancelled or fails a technical check, contributions held in escrow are refunded in full.</li></ul>
+<h2 class="d-h1" id="flows">10. Key flows</h2>
+<h4 class="d-h3">A swap through the HoodHook</h4>
+<ol class="d-list"><li>The Hunter swaps ETH for $CYBERHOOD in the CYBERHOOD app. The router adds hookData: Genesis tokenId (optional) and referral code (optional).</li><li>beforeSwap reads the verified trader from the router, applies the launch guard, and returns the dynamic LP fee with the override flag.</li><li>The PoolManager executes the swap at that fee; liquidity providers earn the LP fee as usual.</li><li>afterSwap takes the protocol fee (after any holder discount) from the output, credits the referrer, emits SwapXP and updates the oracle.</li><li>Once per epoch, anyone can call sweep(): fees move to the RewardPool, the burn, the LP donate and operations.</li></ol>
+<h4 class="d-h3">Minting a game item</h4>
+<ol class="d-list"><li>A drop lands in the Hunter's off-chain inventory.</li><li>To mint it, the Hunter asks the server for an EIP-712 voucher. The server locks the off-chain copy so it cannot be duplicated.</li><li>The Hunter calls GameItems.mint(voucher). Bringing an item back into the game burns it or locks it in escrow.</li></ol>
+<h4 class="d-h3">Weekly rewards</h4>
+<ol class="d-list"><li>At the end of each week the server computes Hunter Scores with the square-root rule and caps.</li><li>It publishes the Merkle root to the RewardPool through the Treasury timelock.</li><li>Hunters claim at any time; unclaimed rewards roll into the next season after 90 days.</li></ol>
+<h2 class="d-h1" id="security">11. Security and governance</h2>
+<ul class="d-list"><li><b>Immutable core.</b> The HoodHook logic is not upgradeable. Parameters can only move inside ranges written as constants: LP fee at most 10%, protocol fee at most 0.50%, Player Reward Pool share at least 30%.</li><li><b>Timelock.</b> Parameter changes go through a 3-of-5 Safe and a 48-hour timelock, so traders see every change before it applies.</li><li><b>Pause scope.</b> The emergency pause only turns off discounts, XP and referral accounting. Swaps and liquidity exits keep working.</li><li><b>Delta accounting.</b> Every callback must leave the hook's balance with the PoolManager settled. Invariant and fuzz tests cover every return-delta path.</li><li><b>Gas budget.</b> Each callback is kept small (no loops over users, no external calls except ownerOf and msgSender) so swaps stay affordable.</li><li><b>Audits.</b> Two independent audits of the hook and the RewardPool before mainnet, plus a public bug bounty.</li><li><b>Oracle safety.</b> In-game prices use a 30-minute TWAP; the circuit breaker uses a 1-hour TWAP.</li><li><b>Legal.</b> No profit promises. Rewards follow activity, not holdings. The reward pool, rentals and launchpad need legal review in each target market before launch.</li></ul>
+<h2 class="d-h1" id="roadmap">12. Roadmap</h2>
+<div class="d-tbl"><table><thead><tr><th scope="col">Phase</th><th scope="col">Target</th><th scope="col">Deliverables</th></tr></thead><tbody><tr><td>Season 0 · Early access</td><td>Now</td><td>Browser demo, Hunter Pass, Genesis preview, Season 0 points</td></tr><tr><td>Hook testnet</td><td>Q4 2026</td><td>HoodHook and RewardPool on a v4 testnet, public fee dashboard, bug bounty</td></tr><tr><td>Audit</td><td>Q1 2027</td><td>Two audits, invariant test suite, parameter review with testnet data</td></tr><tr><td>Genesis mint</td><td>Q1 2027</td><td>444 Genesis NFTs, allowlist then public</td></tr><tr><td>Token &amp; pool launch</td><td>Q2 2027</td><td>$CYBERHOOD, ETH / $CYBERHOOD pool with HoodHook, Season 0 airdrop</td></tr><tr><td>Season 1</td><td>Q2 2027</td><td>Weekly reward claims, guild vaults, first SeasonLaunch partner</td></tr></tbody></table></div>
+<h2 class="d-h1" id="parameters">13. Parameter sheet</h2>
+<div class="d-tbl"><table><thead><tr><th scope="col">Parameter</th><th scope="col">Value</th><th scope="col">Range allowed by code</th></tr></thead><tbody><tr><td>Pool</td><td>Native ETH / $CYBERHOOD, dynamic fee, tick spacing 60</td><td>Fixed</td></tr><tr><td>Base LP fee</td><td>3000 (0.30%)</td><td>500 – 10,000</td></tr><tr><td>Launch sell fee / decay</td><td>80,000 (8%) over 72 h</td><td>≤ 100,000</td></tr><tr><td>Launch buy fee / decay</td><td>10,000 (1%) over 24 h</td><td>≤ 100,000</td></tr><tr><td>Volatility surcharge</td><td>+2000 when &gt; 100 ticks per block</td><td>0 – 10,000</td></tr><tr><td>Circuit breaker</td><td>+20,000 on sells for 30 min after −25% TWAP 1 h</td><td>0 – 30,000</td></tr><tr><td>Protocol fee</td><td>2000 (0.20%)</td><td>0 – 5000</td></tr><tr><td>Protocol fee split</td><td>40 / 30 / 20 / 10</td><td>Player share ≥ 30%</td></tr><tr><td>Holder discount</td><td>10 – 50% by rarity</td><td>0 – 50%</td></tr><tr><td>Swap XP</td><td>1 point per 0.01 ETH · 0.3 ETH per day · 200 per week</td><td>Off-chain</td></tr><tr><td>Referral rebate</td><td>10% of protocol fee, 180 days</td><td>0 – 20%</td></tr><tr><td>Launch guard</td><td>30 blocks, 0.1% of supply per swap</td><td>Fixed at deploy</td></tr><tr><td>Protocol LP lock</td><td>12 months</td><td>Fixed at deploy</td></tr><tr><td>Governance</td><td>Safe 3/5 + 48 h timelock</td><td>—</td></tr></tbody></table></div>
+<p>Fees in this sheet are in Uniswap units of hundredths of a basis point (1,000,000 = 100%).</p>
+<h2 class="d-h1" id="appendix">Appendix · HoodHook interface sketch</h2>
+<figure class="d-code"><figcaption>Solidity (sketch, not audited)</figcaption><pre><code>contract HoodHook is BaseHook {
+    uint24 public constant MAX_LP_FEE = 100_000;        // 10%
+    uint24 public constant MAX_PROTOCOL_FEE = 5_000;    // 0.50%
+
+    function getHookPermissions() public pure override
+        returns (Hooks.Permissions memory p)
+    {
+        p.beforeInitialize = true;      p.afterInitialize = true;
+        p.beforeAddLiquidity = true;    p.afterAddLiquidity = true;
+        p.beforeRemoveLiquidity = true;
+        p.beforeSwap = true;            p.afterSwap = true;
+        p.afterSwapReturnDelta = true;
+    }
+
+    function _beforeSwap(address router, PoolKey calldata key,
+        SwapParams calldata params, bytes calldata hookData)
+        internal override returns (bytes4, BeforeSwapDelta, uint24)
+    {
+        // trader = allowlisted router's msgSender() or a signed hookData
+        address trader = _verifiedTrader(router, hookData);
+        _launchGuard(trader, params);
+        // base + launch decay + surcharges, never above MAX_LP_FEE
+        uint24 fee = _dynamicFee(key, params.zeroForOne);
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA,
+                fee | LPFeeLibrary.OVERRIDE_FEE_FLAG);
+    }
+
+    function _afterSwap(address router, PoolKey calldata key,
+        SwapParams calldata params, BalanceDelta delta,
+        bytes calldata hookData)
+        internal override returns (bytes4, int128)
+    {
+        (Currency feeCcy, uint256 out) = _unspecified(key, params, delta);
+        // protocol fee after the holder discount, kept as ERC-6909 claims
+        uint256 fee = out * _protocolFee(router, hookData) / 1_000_000;
+        poolManager.mint(address(this), feeCcy.toId(), fee);
+        _creditReferrer(router, hookData, feeCcy, fee);
+        _emitSwapXP(router, hookData, key, delta);
+        _observe(key);
+        return (this.afterSwap.selector, int128(int256(fee)));
+    }
+}</code></pre></figure>
+    <div class="d-end"><a class="btn primary" href="assets/docs/CYBERHOOD_Genesis_Economy_UniswapV4_Hook.pdf" download>Download PDF</a><a class="btn ghost dl-docx" href="assets/docs/CYBERHOOD_Genesis_Economy_UniswapV4_Hook.docx" download>Word .docx</a><a class="btn ghost" href="#top">Back to top</a></div>
+  </article>
+</div>
+
+<footer><div class="wrap"><span>We don't drop tokens. We drop loot.</span><span><a href="index.html">Home</a> · <a href="docs.html">Litepaper</a></span><span>CYBERHOOD © 2026</span></div></footer>
+<script src="assets/js/docs.js" defer></script>
+</body>
+</html>

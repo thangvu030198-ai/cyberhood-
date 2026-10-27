@@ -391,7 +391,7 @@ $('#xIn').addEventListener('input', checkX);
 $('#next1').addEventListener('click', () => { const v = checkX(); if (v) { if (ea.x !== v) { ea.postText = ''; ea.postUrl = ''; } ea.x = v; saveEa(); } }, true);
 
 /* Promo post */
-let lang = 'en';
+const lang = 'en';
 const tags = () => String(cfg.hashtags || '').split(/[,\s]+/).map((t) => t.replace(/^#/, '')).filter(Boolean).map((t) => '#' + t).join(' ');
 function refCode() { if (!ea.ref) { ea.ref = 'H' + ((ea.address || '').slice(-4) + Math.random().toString(36).slice(2, 6)).toUpperCase(); saveEa(); } return ea.ref; }
 function refLink() { const u = cfg.siteUrl || location.href.split('#')[0]; return u + (u.includes('?') ? '&' : '?') + 'ref=' + refCode(); }
@@ -401,42 +401,28 @@ const TPL = {
     (p) => `Neon City is waking up. I'm in early for ${p.at}CYBERHOOD — co-op hub, Leviathan raids and Genesis loot you earn by playing. Grab your Hunter Pass before Season 0 ⚡`,
     (p) => `Found my next grind: ${p.at}CYBERHOOD. Run contracts, break the Citadel gate with 100 players, drift through Neon Kart. Demo is live, early access is open 🎮`,
   ],
-  vi: [
-    (p) => `Vừa nhận Hunter Pass của ${p.at}CYBERHOOD Season 0 🌆 Game săn đồ cyberpunk chơi ngay trên trình duyệt: nhiệm vụ, công thành 100 v 100, raid trùm, đua kart, đấu võ đài. Early access đã mở!`,
-    (p) => `Thành phố Neon đã thức giấc. Mình vào sớm ${p.at}CYBERHOOD — sảnh chơi chung, raid Leviathan, đồ Genesis kiếm bằng cách chơi. Nhận Hunter Pass trước Season 0 nào ⚡`,
-    (p) => `Game mới để cày: ${p.at}CYBERHOOD. Chạy nhiệm vụ, phá cổng thành cùng 100 người, drift trong Neon Kart. Demo đã chạy, early access đang mở 🎮`,
-  ],
 };
 let tplIx = Math.floor(Math.random() * 3);
 /* Post topics: the AI writes about the one the Hunter picks; each has a hand-written fallback */
 const TOPICS = [
   ['season', 'Season 0', 'Season 0 early access and the Hunter Pass tied to the player wallet',
-    (p) => `Got my Hunter Pass for ${p.at}CYBERHOOD Season 0 before the gates open. See you in Neon City 🌆`,
-    (p) => `Đã có Hunter Pass ${p.at}CYBERHOOD Season 0 trước giờ mở cổng. Hẹn gặp ở Neon City 🌆`],
+    (p) => `Got my Hunter Pass for ${p.at}CYBERHOOD Season 0 before the gates open. See you in Neon City 🌆`],
   ['hub', 'Neon City', 'Neon City, the 3D co-op hub where Hunters meet, trade and watch drops on giant LED screens',
-    (p) => `Neon City in ${p.at}CYBERHOOD is unreal: rain, LED towers and every rare drop lighting up the street ⚡`,
-    (p) => `Neon City trong ${p.at}CYBERHOOD đẹp thật sự: mưa neon, tháp LED, đồ hiếm rơi là sáng cả phố ⚡`],
+    (p) => `Neon City in ${p.at}CYBERHOOD is unreal: rain, LED towers and every rare drop lighting up the street ⚡`],
   ['contracts', 'Contracts', 'side-scrolling contract stages with a boss at the end of every map',
-    (p) => `Six side-scrolling maps in ${p.at}CYBERHOOD and every boss has its own trick. Hooked already 🎮`,
-    (p) => `Sáu map màn ngang trong ${p.at}CYBERHOOD, mỗi trùm một mẹo riêng. Nghiện rồi 🎮`],
+    (p) => `Six side-scrolling maps in ${p.at}CYBERHOOD and every boss has its own trick. Hooked already 🎮`],
   ['siege', 'Siege 100v100', 'the 100 v 100 siege of the IXO Ice Citadel: break three shield generators, ram the gate, hold the core',
-    (p) => `100 v 100 at the IXO Ice Citadel in ${p.at}CYBERHOOD. Shields down, gate next 🧊⚔️`,
-    (p) => `Công thành 100 v 100 ở Thành Băng IXO trong ${p.at}CYBERHOOD. Phá khiên xong, tới cổng thành 🧊⚔️`],
+    (p) => `100 v 100 at the IXO Ice Citadel in ${p.at}CYBERHOOD. Shields down, gate next 🧊⚔️`],
   ['raid', 'Leviathan raid', 'the 4-10 player raid on the Electric Leviathan, breaking its scales from the rooftops',
-    (p) => `Squad up for the Electric Leviathan in ${p.at}CYBERHOOD. Rooftops, lightning and scales to break 🐉`,
-    (p) => `Lập đội săn Leviathan Điện trong ${p.at}CYBERHOOD. Trên mái nhà, giữa sấm sét, phá vảy nó 🐉`],
+    (p) => `Squad up for the Electric Leviathan in ${p.at}CYBERHOOD. Rooftops, lightning and scales to break 🐉`],
   ['kart', 'Neon Kart', 'Neon Kart racing: drift until the sparks turn orange, release for turbo, fire items',
-    (p) => `Drift till the sparks go orange, then turbo. Neon Kart in ${p.at}CYBERHOOD is my new favorite 🏎️`,
-    (p) => `Drift tới khi tia lửa chuyển cam rồi tăng tốc. Neon Kart của ${p.at}CYBERHOOD cuốn thật 🏎️`],
+    (p) => `Drift till the sparks go orange, then turbo. Neon Kart in ${p.at}CYBERHOOD is my new favorite 🏎️`],
   ['duel', 'Arena duel', '1 v 1 arena duels up eight rival ranks with jab, hook, roundhouse and sweep combos',
-    (p) => `Eight rivals, one ring. Climbing the arena ladder in ${p.at}CYBERHOOD one roundhouse at a time 🥊`,
-    (p) => `Tám đối thủ, một võ đài. Leo hạng đối kháng ${p.at}CYBERHOOD bằng từng cú đá vòng cầu 🥊`],
+    (p) => `Eight rivals, one ring. Climbing the arena ladder in ${p.at}CYBERHOOD one roundhouse at a time 🥊`],
   ['genesis', 'Genesis loot', 'Genesis pixel-art weapons, armor and relics earned by playing, 444 items in Season 0',
-    (p) => `444 Genesis items in ${p.at}CYBERHOOD Season 0 and you earn them by playing. Hunting a Mythic 🗡️`,
-    (p) => `444 món Genesis trong ${p.at}CYBERHOOD Season 0, kiếm bằng cách chơi. Đi săn đồ Mythic thôi 🗡️`],
+    (p) => `444 Genesis items in ${p.at}CYBERHOOD Season 0 and you earn them by playing. Hunting a Mythic 🗡️`],
   ['hook', 'Uniswap v4 hook', 'the on-chain economy built on a Uniswap v4 hook where rewards follow play activity, not holdings',
-    (p) => `${p.at}CYBERHOOD runs its economy on a Uniswap v4 hook and rewards follow play, not bags. Read the litepaper 📜`,
-    (p) => `${p.at}CYBERHOOD chạy kinh tế trên Uniswap v4 hook, thưởng theo người chơi chứ không theo ví to. Đọc litepaper nhé 📜`],
+    (p) => `${p.at}CYBERHOOD runs its economy on a Uniswap v4 hook and rewards follow play, not bags. Read the litepaper 📜`],
 ];
 let topic = 'season';
 const topicOf = (id) => TOPICS.find((t) => t[0] === id) || TOPICS[0];
@@ -452,7 +438,7 @@ function finishPost(body) {
 const PROMPT = (p) => `Write one post for X (Twitter) by a player who just joined early access for CYBERHOOD.
 Game facts: a cyberpunk loot-hunting game that runs in the browser on desktop and phone. A co-op hub called Neon City where players meet. Six modes: side-scrolling contract stages, a 100 v 100 siege on the IXO Ice Citadel, a 4-10 player raid on the Electric Leviathan, Neon Kart racing, and 1 v 1 arena duels. Genesis pixel-art items are earned by playing. Early access for Season 0 is open now and gives a Hunter Pass tied to the player's wallet.
 Rules:
-- Language: ${p.lang === 'vi' ? 'Vietnamese with full diacritics' : 'English'}.
+- Language: English.
 - At most 200 characters. First person, excited gamer voice, at most 2 emoji.
 ${p.at ? `- Mention ${p.at.trim()} exactly once.\n` : ''}- Do not include hashtags or links (they are added after).
 - Never promise money, profit, prices, token amounts or airdrops.
@@ -464,7 +450,7 @@ async function genPost() {
   const p = { lang, topic, at: handle(cfg.xHandle) ? '@' + handle(cfg.xHandle) + ' ' : '' };
   tplIx = (tplIx + 1) % 3;
   // Fallback: the topic's own line; the generic templates only for the Season 0 topic
-  const fallback = finishPost(topic === 'season' && tplIx ? TPL[lang][tplIx](p) : topicOf(topic)[lang === 'vi' ? 4 : 3](p));
+  const fallback = finishPost(topic === 'season' && tplIx ? TPL[lang][tplIx](p) : topicOf(topic)[3](p));
   if (genBusy) genBusy.abort();
   const ctl = new AbortController(); genBusy = ctl;
   ta.value = 'Writing your post…'; $('#genBtn').disabled = true; ta.readOnly = true;
@@ -491,7 +477,6 @@ function postUpd() {
 }
 $('#postTx').addEventListener('input', postUpd);
 $('#genBtn').addEventListener('click', genPost);
-$('#langTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-l]'); if (!b || b.dataset.l === lang) return; lang = b.dataset.l; $$('#langTabs button').forEach((x) => x.setAttribute('aria-pressed', x === b)); genPost(); });
 $('#postBtn').addEventListener('click', (e) => { if (xLen($('#postTx').value) > 280) { e.preventDefault(); msg('The post is over 280 characters. Shorten it first.', 'err'); } else setTimeout(() => $('#urlIn').focus({ preventScroll: true }), 400); });
 const URL_RE = /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d{5,25})/i;
 function checkUrl() {

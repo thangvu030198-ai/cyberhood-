@@ -31,13 +31,12 @@ export const TOPICS = {
 
 const GAME = 'CYBERHOOD is a cyberpunk loot-hunting game that runs in the browser on desktop and phone. Hunters meet in Neon City, a co-op hub, then step through gates into contracts, a 100 v 100 siege, a raid boss, kart races and arena duels. The game drops loot, not tokens. Early access for Season 0 is open and gives a Hunter Pass tied to the wallet.';
 
-export function buildMessages({ topic, lang, handle }) {
-  const vi = lang === 'vi';
+export function buildMessages({ topic, handle }) {
   return [
     { role: 'system', content: `You write short, natural posts for X (Twitter) for gamers. ${GAME}` },
     { role: 'user', content: [
       `Write one X post by a player who just joined CYBERHOOD early access. Topic: ${TOPICS[topic]}.`,
-      `Language: ${vi ? 'Vietnamese with full diacritics' : 'English'}.`,
+      'Language: English.',
       'At most 200 characters. First person, excited but genuine, at most 2 emoji.',
       handle ? `Mention @${handle} exactly once.` : 'Do not mention any account.',
       'No hashtags and no links (they are added after).',
@@ -101,7 +100,6 @@ export const server = http.createServer((req, res) => {
     try { b = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'json' }, origin); }
     const body = {
       topic: Object.hasOwn(TOPICS, b.topic) ? b.topic : 'season',
-      lang: b.lang === 'vi' ? 'vi' : 'en',
       handle: String(b.handle || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 15),
     };
     if (!KEY) return send(res, 503, { error: 'not configured' }, origin);

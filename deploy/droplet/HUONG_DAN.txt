@@ -1,0 +1,49 @@
+CYBERHOOD — CÀI LÊN DIGITALOCEAN (UBUNTU) TRONG 10 PHÚT
+=======================================================
+
+Gói này có sẵn: website, game đã build, server chơi chung, máy viết bài X (post-ai) và key OpenAI (secrets.env).
+Không cần cài gì trên máy Windows của bạn ngoài trình duyệt và PowerShell (có sẵn trong Windows).
+
+1) TẠO DROPLET
+   - DigitalOcean → Create → Droplets
+   - Image: Ubuntu 24.04 (LTS) x64
+   - Size: tối thiểu 2 GB RAM / 1 CPU (Basic, Regular)
+   - Authentication: Password (dễ nhất) hoặc SSH key
+   - Create → ghi lại địa chỉ IP, ví dụ 164.90.1.2
+
+2) TẢI GÓI LÊN SERVER (PowerShell trên Windows, ở thư mục chứa file zip)
+   scp cyberhood-droplet.zip root@164.90.1.2:/root/
+
+   (hoặc dùng WinSCP: kéo thả file zip vào thư mục /root)
+
+3) ĐĂNG NHẬP SERVER VÀ CÀI
+   ssh root@164.90.1.2
+   apt-get update && apt-get install -y unzip
+   unzip -o cyberhood-droplet.zip
+   cd cyberhood-droplet
+   sudo bash install.sh
+
+   Xong là mở:  http://164.90.1.2        (website)
+                http://164.90.1.2:8080   (game)
+
+4) CÓ TÊN MIỀN (tuỳ chọn, ví dụ cyberhood.xyz)
+   - Ở nơi mua tên miền, tạo 3 bản ghi A trỏ về IP droplet:  @   www   play
+   - Đợi DNS cập nhật (vài phút đến vài giờ), rồi trên server:
+       cd /root/cyberhood-droplet
+       sudo bash install.sh --domain cyberhood.xyz --email ban@gmail.com
+   - Có HTTPS miễn phí:  https://cyberhood.xyz  ·  https://play.cyberhood.xyz
+
+5) CẬP NHẬT BẢN MỚI
+   Tải gói zip mới lên, giải nén đè (unzip -o), chạy lại đúng lệnh install.sh như lần trước.
+
+6) KIỂM TRA / SỬA LỖI
+   systemctl status cyberhood-rt cyberhood-postai nginx
+   curl -s http://127.0.0.1:8790/api/post/health      → "key":true là key OpenAI đã nạp
+   journalctl -u cyberhood-postai -n 50                → xem lỗi gọi OpenAI
+   Nếu bật Firewall của DigitalOcean: mở cổng 22, 80, 443 (và 8080 khi chưa có tên miền).
+
+7) ĐỔI KEY OPENAI
+   nano /etc/cyberhood/post-ai.env      (dòng OPENAI_API_KEY=...)
+   systemctl restart cyberhood-postai
+
+Lưu ý: secrets.env chứa key OpenAI — không gửi gói zip này cho người khác, không đưa lên GitHub.

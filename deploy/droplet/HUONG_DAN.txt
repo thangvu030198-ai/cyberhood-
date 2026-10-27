@@ -30,14 +30,21 @@ Không cần cài gì trên máy Windows của bạn ngoài trình duyệt và P
    - Ở nơi mua tên miền, tạo 3 bản ghi A trỏ về IP droplet:  @   www   play
    - Đợi DNS cập nhật (vài phút đến vài giờ), rồi trên server:
        cd /root/cyberhood-droplet
-       sudo bash install.sh --domain cyberhood.xyz --email ban@gmail.com
+       sudo bash install.sh --domain cyberhood.xyz --email ban@gmail.com --discord https://discord.gg/xxxx
    - Có HTTPS miễn phí:  https://cyberhood.xyz  ·  https://play.cyberhood.xyz
 
 5) CẬP NHẬT BẢN MỚI
    Tải gói zip mới lên, giải nén đè (unzip -o), chạy lại đúng lệnh install.sh như lần trước.
 
+5b) XEM DANH SÁCH ĐĂNG KÝ EARLY ACCESS
+   Mở  http://IP/admin  (hoặc https://tenmien/admin), tài khoản: admin
+   Mật khẩu in ra ở cuối lúc chạy install.sh, xem lại bằng:  sudo cat /etc/cyberhood/signups.env
+   Trang này liệt kê ví (✓ = server đã tự kiểm tra chữ ký ví), tài khoản X, link bài đăng, mã giới thiệu,
+   số người mỗi Hunter mời được, và nút tải CSV. Dữ liệu nằm ở /var/lib/cyberhood/signups.jsonl
+   Nên dùng tên miền + HTTPS trước khi đăng nhập /admin qua mạng công cộng.
+
 6) KIỂM TRA / SỬA LỖI
-   systemctl status cyberhood-rt cyberhood-postai nginx
+   systemctl status cyberhood-rt cyberhood-postai cyberhood-signups nginx
    curl -s http://127.0.0.1:8790/api/post/health      → "key":true là key OpenAI đã nạp
    journalctl -u cyberhood-postai -n 50                → xem lỗi gọi OpenAI
    Nếu bật Firewall của DigitalOcean: mở cổng 22, 80, 443 (và 8080 khi chưa có tên miền).

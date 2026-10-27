@@ -10,7 +10,7 @@
 # Gói gồm: web/ (website) · play/ (game đã build) · server/ (realtime) · post-ai/ (viết bài X) · secrets.env (key OpenAI)
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-DOMAIN="" EMAIL="" XH="" DISCORD=""
+DOMAIN="" EMAIL="" XH="CyberhoodHQ" DISCORD=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --domain) DOMAIN="${2:-}"; shift 2 ;;

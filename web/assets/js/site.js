@@ -33,7 +33,7 @@ const DEF = {
   footer: 'We don’t drop tokens. We drop loot.',
   gameUrl: 'https://claude.ai/artifact/KxxQ7gNmSDB2hFEEUHdvVQ',
   siteUrl: 'https://claude.ai/artifact/KkhfuzczuPsUBR3kU8FraN',
-  xHandle: '',
+  xHandle: 'CyberhoodHQ',
   discordUrl: '',
   hashtags: 'CYBERHOOD, Web3Gaming, NFTGaming',
   aiEndpoint: '',
@@ -402,32 +402,32 @@ function refCode() { if (!ea.ref) { ea.ref = 'H' + ((ea.address || '').slice(-4)
 function refLink() { const u = cfg.siteUrl || location.href.split('#')[0]; return u + (u.includes('?') ? '&' : '?') + 'ref=' + refCode(); }
 const TPL = {
   en: [
-    (p) => `Just claimed my Hunter Pass for ${p.at}CYBERHOOD Season 0 🌆 A cyberpunk loot hunter in the browser: contracts, a 100 v 100 siege, raid bosses, kart races and arena duels. Early access is open.`,
-    (p) => `Neon City is waking up. I'm in early for ${p.at}CYBERHOOD — co-op hub, Leviathan raids and Genesis loot you earn by playing. Grab your Hunter Pass before Season 0 ⚡`,
-    (p) => `Found my next grind: ${p.at}CYBERHOOD. Run contracts, break the Citadel gate with 100 players, drift through Neon Kart. Demo is live, early access is open 🎮`,
+    (p) => `Just claimed my Hunter Pass for ${p.game} Season 0 🌆 A cyberpunk loot hunter in the browser: contracts, a 100 v 100 siege, raid bosses, kart races and arena duels. Early access is open.`,
+    (p) => `Neon City is waking up. I'm in early for ${p.game} — co-op hub, Leviathan raids and Genesis loot you earn by playing. Grab your Hunter Pass before Season 0 ⚡`,
+    (p) => `Found my next grind: ${p.game}. Run contracts, break the Citadel gate with 100 players, drift through Neon Kart. Demo is live, early access is open 🎮`,
   ],
 };
 let tplIx = Math.floor(Math.random() * 3);
 /* Post topics: the AI writes about the one the Hunter picks; each has a hand-written fallback */
 const TOPICS = [
   ['season', 'Season 0', 'Season 0 early access and the Hunter Pass tied to the player wallet',
-    (p) => `Got my Hunter Pass for ${p.at}CYBERHOOD Season 0 before the gates open. See you in Neon City 🌆`],
+    (p) => `Got my Hunter Pass for ${p.game} Season 0 before the gates open. See you in Neon City 🌆`],
   ['hub', 'Neon City', 'Neon City, the 3D co-op hub where Hunters meet, trade and watch drops on giant LED screens',
-    (p) => `Neon City in ${p.at}CYBERHOOD is unreal: rain, LED towers and every rare drop lighting up the street ⚡`],
+    (p) => `Neon City in ${p.game} is unreal: rain, LED towers and every rare drop lighting up the street ⚡`],
   ['contracts', 'Contracts', 'side-scrolling contract stages with a boss at the end of every map',
-    (p) => `Six side-scrolling maps in ${p.at}CYBERHOOD and every boss has its own trick. Hooked already 🎮`],
+    (p) => `Six side-scrolling maps in ${p.game} and every boss has its own trick. Hooked already 🎮`],
   ['siege', 'Siege 100v100', 'the 100 v 100 siege of the IXO Ice Citadel: break three shield generators, ram the gate, hold the core',
-    (p) => `100 v 100 at the IXO Ice Citadel in ${p.at}CYBERHOOD. Shields down, gate next 🧊⚔️`],
+    (p) => `100 v 100 at the IXO Ice Citadel in ${p.game}. Shields down, gate next 🧊⚔️`],
   ['raid', 'Leviathan raid', 'the 4-10 player raid on the Electric Leviathan, breaking its scales from the rooftops',
-    (p) => `Squad up for the Electric Leviathan in ${p.at}CYBERHOOD. Rooftops, lightning and scales to break 🐉`],
+    (p) => `Squad up for the Electric Leviathan in ${p.game}. Rooftops, lightning and scales to break 🐉`],
   ['kart', 'Neon Kart', 'Neon Kart racing: drift until the sparks turn orange, release for turbo, fire items',
-    (p) => `Drift till the sparks go orange, then turbo. Neon Kart in ${p.at}CYBERHOOD is my new favorite 🏎️`],
+    (p) => `Drift till the sparks go orange, then turbo. Neon Kart in ${p.game} is my new favorite 🏎️`],
   ['duel', 'Arena duel', '1 v 1 arena duels up eight rival ranks with jab, hook, roundhouse and sweep combos',
-    (p) => `Eight rivals, one ring. Climbing the arena ladder in ${p.at}CYBERHOOD one roundhouse at a time 🥊`],
+    (p) => `Eight rivals, one ring. Climbing the arena ladder in ${p.game} one roundhouse at a time 🥊`],
   ['genesis', 'Genesis loot', 'Genesis pixel-art weapons, armor and relics earned by playing, 444 items in Season 0',
-    (p) => `444 Genesis items in ${p.at}CYBERHOOD Season 0 and you earn them by playing. Hunting a Mythic 🗡️`],
+    (p) => `444 Genesis items in ${p.game} Season 0 and you earn them by playing. Hunting a Mythic 🗡️`],
   ['hook', 'Uniswap v4 hook', 'the on-chain economy built on a Uniswap v4 hook where rewards follow play activity, not holdings',
-    (p) => `${p.at}CYBERHOOD runs its economy on a Uniswap v4 hook and rewards follow play, not bags. Read the litepaper 📜`],
+    (p) => `${p.game} runs its economy on a Uniswap v4 hook and rewards follow play, not bags. Read the litepaper 📜`],
 ];
 let topic = 'season';
 const topicOf = (id) => TOPICS.find((t) => t[0] === id) || TOPICS[0];
@@ -452,7 +452,9 @@ Reply with only the post text.`;
 let genBusy = null;
 async function genPost() {
   const ta = $('#postTx');
-  const p = { lang, topic, at: handle(cfg.xHandle) ? '@' + handle(cfg.xHandle) + ' ' : '' };
+  const h = handle(cfg.xHandle);
+  // p.game names the project once: the @handle when set ("@CyberhoodHQ"), else the plain name
+  const p = { lang, topic, at: h ? '@' + h + ' ' : '', game: h ? '@' + h : 'CYBERHOOD' };
   tplIx = (tplIx + 1) % 3;
   // Fallback: the topic's own line; the generic templates only for the Season 0 topic
   const fallback = finishPost(topic === 'season' && tplIx ? TPL[lang][tplIx](p) : topicOf(topic)[3](p));

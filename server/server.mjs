@@ -9,7 +9,7 @@ import { WebSocketServer } from "ws";
 import { randomUUID } from "node:crypto";
 
 const PORT = Number(process.env.PORT ?? 8787);
-const VERIFY_URL = process.env.VERIFY_URL ?? ""; // ví dụ https://api.cyberhood.xyz/v1/auth/verify
+const VERIFY_URL = process.env.VERIFY_URL ?? ""; // ví dụ https://api.cyberhood.space/v1/auth/verify
 const ORIGINS = (process.env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const MAX_PER_ROOM = Number(process.env.MAX_PER_ROOM ?? 100);
 const TICK_MS = 100;

@@ -2,8 +2,8 @@
 # CYBERHOOD — cài toàn bộ lên một droplet Ubuntu (DigitalOcean) bằng một lệnh, chạy NGAY TRÊN SERVER.
 #
 #   sudo bash install.sh                                   # chưa có tên miền: web http://IP  ·  game http://IP:8080
-#   sudo bash install.sh --domain cyberhood.xyz            # có tên miền (đã trỏ DNS): web + www + play.<domain>
-#   sudo bash install.sh --domain cyberhood.xyz --email you@mail.com   # thêm HTTPS miễn phí (Let's Encrypt)
+#   sudo bash install.sh --domain cyberhood.space            # có tên miền (đã trỏ DNS): web + www + play.<domain>
+#   sudo bash install.sh --domain cyberhood.space --email you@mail.com   # thêm HTTPS miễn phí (Let's Encrypt)
 #   Thêm --x TenX --discord https://discord.gg/xxxx để hiện link X và Discord trên website
 #
 # Chạy lại bao nhiêu lần cũng được (cập nhật bản mới: giải nén gói mới rồi chạy lại).

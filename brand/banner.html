@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CYBERHOOD banner</title>
+<!-- X header (?kind=banner 1500×500) and link preview (?kind=og 1200×630).
+     The site's hero Hunter holds the tablet and projects the Genesis NFT hologram; game Hunters flank it;
+     the CYBERHOOD title is real 3D type with a smooth rounded bevel. Rendered by brand/render.mjs. -->
+<style>
+@font-face{font-family:'Chakra Petch';src:url(fonts/Chakra+Petch.ttf);font-weight:700}
+@font-face{font-family:'JetBrains Mono';src:url(fonts/JetBrains+Mono.ttf)}
+*{box-sizing:border-box;margin:0}
+html,body{background:#05020c;overflow:hidden}
+#stage{position:relative;overflow:hidden}
+canvas{display:block}
+.ov{position:absolute;inset:0;pointer-events:none;color:#fff}
+.eyebrow{position:absolute;font-family:'JetBrains Mono',monospace;letter-spacing:.3em;text-transform:uppercase;color:#7ff4ff;text-shadow:0 0 12px rgba(34,230,255,.7)}
+.eyebrow b{color:#ff4fb0;font-weight:400}
+.low{position:absolute}
+.tag{font-family:'Chakra Petch',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:#fff;text-shadow:0 0 18px rgba(255,79,176,.7),0 2px 0 rgba(0,0,0,.4)}
+.chips{display:flex;flex-wrap:wrap}
+.chip{font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em;color:#f2eeff;display:flex;align-items:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.28);border-radius:3px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 30px rgba(0,0,0,.5)}
+.chip i{display:inline-block;transform:rotate(45deg);box-shadow:0 0 10px currentColor}
+.c1 i{background:#ffc400;color:#ffc400}.c2 i{background:#ff2a8a;color:#ff2a8a}.c3 i{background:#22e6ff;color:#22e6ff}.c4 i{background:#2fe38a;color:#2fe38a}
+.foot{position:absolute;font-family:'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:#d8d0f6;text-shadow:0 1px 6px #000}
+.foot b{color:#ffc400;font-weight:400}
+
+.banner .eyebrow{left:214px;top:34px;font-size:14px}
+.banner .low{left:214px;top:236px;width:640px}
+.banner .tag{font-size:26px}
+.banner .chips{gap:9px;margin-top:18px}
+.banner .chip{font-size:12.5px;padding:9px 13px;gap:9px}
+.banner .chip i{width:8px;height:8px}
+.banner .foot{right:40px;bottom:20px;font-size:12px}
+
+.og .eyebrow{left:56px;top:56px;font-size:14px}
+.og .low{left:56px;top:300px;width:620px}
+.og .tag{font-size:28px}
+.og .chips{gap:10px;margin-top:22px}
+.og .chip{font-size:13px;padding:10px 14px;gap:10px}
+.og .chip i{width:8px;height:8px}
+.og .foot{left:56px;bottom:34px;font-size:13px}
+</style>
+<script type="importmap">{"imports":{"three":"/game/node_modules/three/build/three.module.js","three/addons/":"/game/node_modules/three/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="stage"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const q = new URLSearchParams(location.search);
+const KIND = q.get('kind') || 'banner';
+const [W, H] = KIND === 'og' ? [1200, 630] : [1500, 500];
+const PR = +(q.get('pr') || 2);
+const stage = document.getElementById('stage');
+stage.style.width = W + 'px'; stage.style.height = H + 'px'; stage.className = KIND;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(PR); renderer.setSize(W, H);
+renderer.toneMapping = THREE.NeutralToneMapping;
+stage.append(renderer.domElement);
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.5;
+
+const CYAN = new THREE.Color(0x00d9ff), PINK = new THREE.Color(0xff1fb4), GOLD = new THREE.Color(0xffb81c);
+const glow = (c, k) => new THREE.MeshBasicMaterial({ color: c.clone().multiplyScalar(k), toneMapped: false });
+function canvasTex(w, h, draw, repeat) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); }
+  return t;
+}
+const radial = (a, b) => canvasTex(256, 256, (g, w) => { const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); r.addColorStop(0, a); r.addColorStop(1, b); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+const load = (url) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
+const loadImg = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+
+/* ================= camera & world (metres; Hunters are 1.75 m) ================= */
+const wide = KIND === 'banner';
+const cam = new THREE.PerspectiveCamera(wide ? 30 : 36, W / H, 0.05, 400);
+cam.position.set(0, 1.45, wide ? 5.4 : 5.6);
+cam.lookAt(0, wide ? 1.42 : 1.3, 0);
+// x of the hero group on screen
+const HERO_X = wide ? 2.05 : 1.15;
+
+scene.background = canvasTex(16, 512, (g) => { const lg = g.createLinearGradient(0, 0, 0, 512); lg.addColorStop(0, '#020008'); lg.addColorStop(0.5, '#120528'); lg.addColorStop(0.78, '#36093f'); lg.addColorStop(1, '#4a0f49'); g.fillStyle = lg; g.fillRect(0, 0, 16, 512); });
+scene.fog = new THREE.Fog(0x16052a, 14, 60);
+
+/* reflective neon floor */
+{
+  const mirror = new Reflector(new THREE.PlaneGeometry(200, 200), { textureWidth: W * PR, textureHeight: H * PR, color: 0x6a6684 });
+  mirror.rotation.x = -Math.PI / 2; scene.add(mirror);
+  const over = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ color: 0x08030f, transparent: true, opacity: 0.72, depthWrite: false }));
+  over.rotation.x = -Math.PI / 2; over.position.y = 0.002; scene.add(over);
+  const grid = canvasTex(256, 256, (g, w) => { g.clearRect(0, 0, w, w); g.strokeStyle = 'rgba(255,60,190,0.95)'; g.lineWidth = 3; g.strokeRect(0, 0, w, w); g.strokeStyle = 'rgba(40,230,255,0.5)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, w); g.moveTo(0, w / 2); g.lineTo(w, w / 2); g.stroke(); }, [200, 200]);
+  const lines = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ map: grid, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  lines.rotation.x = -Math.PI / 2; lines.position.y = 0.004; scene.add(lines);
+}
+
+/* procedural skyline far behind */
+function skyline(z0, spread, count, hMin, hMax, seed) {
+  let s = seed; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const tex = canvasTex(64, 128, (g) => { g.fillStyle = '#05030b'; g.fillRect(0, 0, 64, 128); for (let y = 6; y < 128; y += 10) for (let x = 5; x < 64; x += 10) { const r = rnd(); if (r < 0.6) continue; g.fillStyle = r < 0.78 ? '#5de9ff' : r < 0.92 ? '#ff5cc8' : '#ffd36e'; g.globalAlpha = 0.4 + rnd() * 0.6; g.fillRect(x, y, 5, 5); } g.globalAlpha = 1; });
+  for (let i = 0; i < count; i++) {
+    const w = 1.2 + rnd() * 2.6, h = hMin + rnd() * (hMax - hMin), d = 1.5 + rnd() * 2;
+    const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(Math.max(1, Math.round(w / 1.2)), Math.max(1, Math.round(h / 2)));
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0x0b0718, roughness: 0.6, metalness: 0.4, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 1.0 }));
+    m.position.set((rnd() - 0.5) * spread, h / 2, z0 - rnd() * 10); scene.add(m);
+    if (rnd() < 0.45) { const strip = new THREE.Mesh(new THREE.BoxGeometry(w + 0.05, 0.08, d + 0.05), glow(rnd() < 0.5 ? CYAN : PINK, 2.2)); strip.position.set(m.position.x, h, m.position.z); scene.add(strip); }
+  }
+}
+skyline(-34, 120, 60, 3, 19, 11);
+skyline(-24, 90, 34, 2, 9, 23);
+// synthwave sun behind the hero
+{
+  const t = canvasTex(1024, 1024, (g, w) => { const lg = g.createLinearGradient(0, 0, 0, w); lg.addColorStop(0, '#ffe37a'); lg.addColorStop(0.45, '#ff8a3d'); lg.addColorStop(1, '#ff1f9b'); g.fillStyle = lg; g.beginPath(); g.arc(w / 2, w / 2, w / 2 - 2, 0, Math.PI * 2); g.fill(); g.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 5; i++) g.fillRect(0, w * (0.5 + i * 0.05), w, 4 + i * 3.4); g.fillRect(0, w * 0.74, w, w); });
+  const sun = new THREE.Mesh(new THREE.CircleGeometry(8, 128), new THREE.MeshBasicMaterial({ map: t, transparent: true, toneMapped: false, fog: false, color: new THREE.Color(1.1, 1.1, 1.1) }));
+  sun.position.set(HERO_X * 9, 11, -55); sun.userData.noReflect = true; scene.add(sun);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(22, 64), new THREE.MeshBasicMaterial({ map: radial('rgba(255,70,170,0.5)', 'rgba(255,70,170,0)'), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+  halo.position.set(HERO_X * 9, 11, -56); halo.userData.noReflect = true; scene.add(halo);
+}
+
+/* lights */
+scene.add(new THREE.HemisphereLight(0x9a7dff, 0x0a0420, 0.7));
+const key = new THREE.DirectionalLight(0xffe2f4, 1.9); key.position.set(-3, 4, 4); scene.add(key);
+const rimC = new THREE.DirectionalLight(0x22e6ff, 3.2); rimC.position.set(3.5, 2.4, -2.5); scene.add(rimC);
+const rimM = new THREE.DirectionalLight(0xff2a8a, 2.8); rimM.position.set(-3.5, 1.6, -2.4); scene.add(rimM);
+
+/* ================= 3D title: smooth rounded bevel, glossy gradient + neon backing ================= */
+async function title() {
+  const font = new FontLoader().parse(await (await fetch('fonts/chakra-petch-bold.typeface.json')).json());
+  const size = wide ? 0.4 : 0.36;
+  const geo = new TextGeometry('CYBERHOOD', { font, size, depth: size * 0.32, curveSegments: 16, bevelEnabled: true, bevelThickness: size * 0.07, bevelSize: size * 0.045, bevelOffset: 0, bevelSegments: 12 });
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  geo.translate(-bb.min.x, -bb.min.y, -(bb.max.z + bb.min.z) / 2);
+  // vertical gradient on the face: white-cyan top → hot pink bottom
+  const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), h = bb.max.y - bb.min.y;
+  const top = new THREE.Color(0x8ff3ff), mid = new THREE.Color(0x14b8ff), bot = new THREE.Color(0xff1f9a), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const t = THREE.MathUtils.clamp(pos.getY(i) / h, 0, 1);
+    if (t > 0.5) c.copy(mid).lerp(top, (t - 0.5) / 0.5); else c.copy(bot).lerp(mid, t / 0.5);
+    col.set([c.r, c.g, c.b], i * 3);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshPhysicalMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, iridescence: 0.3, iridescenceIOR: 1.4, envMapIntensity: 0.7, emissive: 0x2a0a40, emissiveIntensity: 0.12 });
+  const mesh = new THREE.Mesh(geo, mat);
+  // soft neon backing: same letters, fatter and further back, glowing pink → blooms into a halo
+  const back = new TextGeometry('CYBERHOOD', { font, size, depth: 0.01, curveSegments: 12, bevelEnabled: true, bevelThickness: 0.004, bevelSize: size * 0.06, bevelSegments: 2 });
+  back.translate(-bb.min.x, -bb.min.y, -(bb.max.z + bb.min.z) / 2 - size * 0.35);
+  const halo = new THREE.Mesh(back, glow(PINK, 1.3));
+  const g = new THREE.Group(); g.add(halo, mesh);
+  const textW = bb.max.x - bb.min.x;
+  return { g, textW };
+}
+
+/* ================= Hunters ================= */
+function fit(model, height) {
+  model.updateMatrixWorld(true);
+  let minY = Infinity, headY = -Infinity; const v = new THREE.Vector3();
+  model.traverse((o) => { if (o.isBone) { o.getWorldPosition(v); minY = Math.min(minY, v.y); if (/^Head$|Head$/.test(o.name)) headY = Math.max(headY, v.y); } });
+  if (!isFinite(headY)) { const b = new THREE.Box3().setFromObject(model); minY = b.min.y; headY = b.min.y + (b.max.y - b.min.y) * 0.89; }
+  const s = height / ((headY - minY) / 0.89);
+  model.scale.multiplyScalar(s); model.position.y = -minY * s;
+  model.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; if (o.material && o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0xffffff); o.material.emissiveIntensity = 0.1; } } });
+}
+async function hunter(base, x, z, ry, t = 1.2) {
+  // Meshy class rigs: the mesh lives in *_walk.glb, *_idle.glb carries only the idle clip
+  const [g, idle] = await Promise.all([load(base + '_walk.glb'), load(base + '_idle.glb')]);
+  const m = g.scene; m.position.set(x, 0, z); m.rotation.y = ry; scene.add(m);
+  const clip = idle.animations[0];
+  if (clip) { clip.tracks = clip.tracks.filter((tr) => !/Hips\.position/.test(tr.name)); const mx = new THREE.AnimationMixer(m); mx.clipAction(clip).play(); mx.update(t); }
+  m.position.set(0, 0, 0); fit(m, 1.75); m.position.x = x; m.position.z = z;
+  return m;
+}
+
+/* the site's hero: hands on a tablet that projects a ring of Genesis cards */
+const RARITY = { Common: '#9aa3b5', Rare: '#3fa9ff', Epic: '#b45cff', Legendary: '#ffb800', Mythic: '#ff2a6d' };
+const ITEMS = [['Thunder Spear', 'Mythic', 0.049, 0], ['Leviathan Scale', 'Mythic', 0.046, 1], ['Oni Helm', 'Legendary', 0.032, 3], ['Chrono Cube', 'Legendary', 0.036, 4], ['Cosmic Edge', 'Legendary', 0.038, 6], ['Demonic Bow', 'Legendary', 0.039, 15], ['Void Crystal', 'Mythic', 0.045, 16], ['Circuit Core Egg', 'Mythic', 0.05, 26]];
+function card(atlas, [name, rarity, price, i]) {
+  const col = RARITY[rarity];
+  return canvasTex(512, 704, (g, w, h) => {
+    g.fillStyle = 'rgba(6,4,20,0.86)'; g.fillRect(0, 0, w, h);
+    const grd = g.createRadialGradient(w / 2, 460, 20, w / 2, 460, 400); grd.addColorStop(0, col + 'cc'); grd.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = grd; g.fillRect(0, 0, w, 520);
+    g.imageSmoothingEnabled = false;
+    if (atlas) { const cs = atlas.width / 6; g.drawImage(atlas, (i % 6) * cs, Math.floor(i / 6) * cs, cs, cs, 64, 48, 384, 384); }
+    g.strokeStyle = col; g.lineWidth = 8; g.strokeRect(8, 8, w - 16, h - 16);
+    g.fillStyle = col; g.fillRect(8, 8, 150, 40); g.fillStyle = '#05020c'; g.font = '700 26px "JetBrains Mono"'; g.textBaseline = 'middle'; g.fillText(rarity.toUpperCase(), 20, 29);
+    g.fillStyle = '#fff'; g.font = '700 44px "Chakra Petch"'; g.fillText(name, 32, 504, w - 64);
+    g.fillStyle = col; g.font = '700 52px "Chakra Petch"'; g.fillText(price + ' ETH', 32, 584);
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.font = '500 26px "JetBrains Mono"'; g.fillText('#' + String(i + 1).padStart(3, '0') + ' · GENESIS', 32, 650);
+  });
+}
+const beamMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false,
+  uniforms: { color: { value: new THREE.Color(0.25, 1.6, 2.0) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'uniform vec3 color; varying vec2 vUv; void main(){ float fade = smoothstep(0.0,0.2,vUv.y) * (1.0 - vUv.y); float scan = 0.6 + 0.4 * sin(vUv.y * 70.0); float st = 0.55 + 0.45 * step(0.5, fract(vUv.x * 28.0)); gl_FragColor = vec4(color * scan * st, fade * 0.11); }',
+});
+function ringTex(seg, color) { return canvasTex(512, 16, (g) => { for (let i = 0; i < seg; i++) { g.fillStyle = color; g.globalAlpha = i % 5 === 0 ? 1 : 0.55; g.fillRect((i / seg) * 512, 0, (512 / seg) * (i % 3 === 0 ? 0.8 : 0.45), 16); } }); }
+
+async function hero() {
+  await Promise.all(['700 44px "Chakra Petch"', '500 26px "JetBrains Mono"'].map((f) => document.fonts.load(f)));
+  const [g, idle, atlas] = await Promise.all([load('/web/assets/models/vex.glb.wasm'), load('/web/assets/models/idle.glb.wasm'), loadImg('/web/assets/img/nft-atlas.png')]);
+  const root = new THREE.Group(); root.position.set(HERO_X, 0, 0.2); root.rotation.y = -0.26; scene.add(root);
+  const model = g.scene; fit(model, 1.75); root.add(model);
+  const bones = {}; model.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+  const clip = idle.animations[0] || g.animations[0];
+  clip.tracks = clip.tracks.filter((t) => !/Hips\.position/.test(t.name));
+  const mx = new THREE.AnimationMixer(model); mx.clipAction(clip).play(); mx.update(0.8);
+  // two-bone aim so both hands meet on the tablet (same targets as the website hero)
+  const tmp = { a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion(), q2: new THREE.Quaternion(), d1: new THREE.Vector3(), d2: new THREE.Vector3() };
+  function aim(bone, child, target) {
+    bone.getWorldPosition(tmp.a); child.getWorldPosition(tmp.b);
+    tmp.d1.subVectors(tmp.b, tmp.a).normalize(); tmp.d2.subVectors(target, tmp.a).normalize();
+    tmp.q.setFromUnitVectors(tmp.d1, tmp.d2); bone.getWorldQuaternion(tmp.q2); tmp.q2.premultiply(tmp.q);
+    const pq = new THREE.Quaternion(); bone.parent.getWorldQuaternion(pq); bone.quaternion.copy(pq.invert().multiply(tmp.q2)); bone.updateMatrixWorld(true);
+  }
+  const L = (x, y, z) => root.localToWorld(new THREE.Vector3(x, y, z));
+  root.updateMatrixWorld(true); model.updateMatrixWorld(true);
+  const b = bones;
+  if (b.LeftArm) { aim(b.LeftArm, b.LeftForeArm, L(0.25, 1.06, 0.12)); aim(b.LeftForeArm, b.LeftHand, L(0.15, 1.06, 0.36)); }
+  if (b.RightArm) { aim(b.RightArm, b.RightForeArm, L(-0.25, 1.06, 0.12)); aim(b.RightForeArm, b.RightHand, L(-0.15, 1.06, 0.36)); }
+  if (b.Head) { b.Head.rotation.x += 0.28; b.Head.updateMatrixWorld(true); }
+  // tablet
+  const tablet = new THREE.Group(); tablet.position.set(0, 1.07, 0.38); tablet.rotation.x = -0.42; root.add(tablet);
+  tablet.add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.016, 0.23), new THREE.MeshStandardMaterial({ color: 0x15131f, metalness: 0.8, roughness: 0.35 })));
+  const scr = canvasTex(256, 170, (g) => { g.fillStyle = '#04121e'; g.fillRect(0, 0, 256, 170); g.strokeStyle = '#22e6ff'; g.lineWidth = 2; for (let r = 0; r < 4; r++) { g.beginPath(); g.arc(128, 85, 18 + r * 16, 0, 6.3); g.globalAlpha = 0.85 - r * 0.18; g.stroke(); } g.globalAlpha = 1; g.fillStyle = '#ff2a8a'; g.font = '700 16px "Chakra Petch"'; g.fillText('GENESIS', 10, 22); g.fillStyle = '#7dffb0'; g.font = '600 12px "JetBrains Mono"'; g.fillText('● PROJECTING', 150, 22); });
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.31, 0.2), new THREE.MeshBasicMaterial({ map: scr, toneMapped: false, color: new THREE.Color(1.6, 1.6, 1.6) }));
+  screen.rotation.x = -Math.PI / 2; screen.position.y = 0.0095; tablet.add(screen);
+  // hologram: beam + rings + orbiting cards
+  const holo = new THREE.Group(); holo.position.set(0, 1.1, 0.38); root.add(holo);
+  const R = 0.8, HH = 0.5;
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(R, 0.14, HH, 64, 1, true), beamMat); beam.position.y = HH / 2; holo.add(beam);
+  [[0.0, 0.16, 0.2, '#22e6ff', 32, 0.3], [HH * 0.55, R * 0.62, R * 0.64, '#ff2a8a', 48, 1.1], [HH, R, R + 0.028, '#22e6ff', 64, 2.2]].forEach(([y, a, bb, c, seg, rz]) => {
+    const m = new THREE.Mesh(new THREE.RingGeometry(a, bb, 160), new THREE.MeshBasicMaterial({ map: ringTex(seg, c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, color: new THREE.Color(1.8, 1.8, 1.8) }));
+    m.rotation.set(-Math.PI / 2, 0, rz); m.position.y = y; holo.add(m);
+  });
+  const n = ITEMS.length, spin = Math.PI / n; // a gap stays in front of the face
+  ITEMS.forEach((it, k) => {
+    const a = (k / n) * Math.PI * 2 + spin;
+    const front = Math.cos(a) * 0.5 + 0.5;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.31, 0.426), new THREE.MeshBasicMaterial({ map: card(atlas, it), transparent: true, opacity: 0.45 + front * 0.55, side: THREE.DoubleSide, toneMapped: false, depthWrite: false, color: new THREE.Color(1.15, 1.15, 1.15) }));
+    m.position.set(Math.sin(a) * R, HH + 0.22, Math.cos(a) * R);
+    holo.add(m); m.updateMatrixWorld(true);
+    const wp = new THREE.Vector3(); m.getWorldPosition(wp); m.lookAt(cam.position.x, wp.y, cam.position.z);
+    m.scale.setScalar(0.85 + front * 0.3);
+  });
+  // rising sparks inside the beam
+  const PN = 160, pos = new Float32Array(PN * 3); let s = 9; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < PN; i++) { const h = rnd(), ang = rnd() * 6.3, rad = 0.12 + h * R * 0.85 * (0.4 + rnd() * 0.6); pos.set([Math.cos(ang) * rad, h * HH, Math.sin(ang) * rad], i * 3); }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  holo.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: new THREE.Color(0.6, 2.4, 2.6), size: 0.02, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })));
+  const hl = new THREE.PointLight(0x37e8ff, 1.4, 4, 1.4); hl.position.set(0, 0.5, 0.3); holo.add(hl);
+  // floor rings under the hero
+  [[1.05, 1.1, PINK, 1.6], [1.45, 1.47, CYAN, 1.4], [0.55, 0.57, CYAN, 1.2]].forEach(([a, bb, c, k]) => { const m = new THREE.Mesh(new THREE.RingGeometry(a, bb, 128), glow(c, k)); m.rotation.x = -Math.PI / 2; m.position.y = 0.01; root.add(m); });
+}
+
+const [{ g: titleG, textW }] = await Promise.all([title(), hero(),
+  hunter('/game/public/models/mx_cls_samurai', HERO_X + (wide ? 1.35 : 1.2), -0.9, -0.6, 0.6),
+  hunter('/game/public/models/mx_cls_engineer', HERO_X - (wide ? 1.05 : 1.05), wide ? -1.5 : -1.1, 0.35, 1.6),
+]);
+// title on the left, slightly turned towards the hero
+if (wide) { titleG.position.set(-2.95, 1.86, 0.3); titleG.scale.setScalar(3.1 / textW * 1.0); }
+else { titleG.position.set(-2.5, 2.05, 0.2); titleG.scale.setScalar(2.55 / textW); }
+titleG.rotation.set(-0.04, 0.2, 0);
+scene.add(titleG);
+titleG.children[1].layers.set(2);
+scene.traverse((o) => { if (o.isLight) o.layers.enable(2); });
+
+const rt = new THREE.WebGLRenderTarget(W * PR, H * PR, { samples: 4, type: THREE.HalfFloatType });
+const composer = new EffectComposer(renderer, rt);
+composer.setPixelRatio(PR); composer.setSize(W, H);
+composer.addPass(new RenderPass(scene, cam));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(W * PR, H * PR), 0.55, 0.42, 1.0));
+composer.addPass(new OutputPass());
+composer.render();
+// title face drawn after bloom so it stays crisp; only its pink backing feeds the glow
+renderer.autoClear = false; renderer.clearDepth();
+const bg = scene.background; scene.background = null; cam.layers.set(2);
+renderer.render(scene, cam);
+scene.background = bg;
+
+const ov = document.createElement('div'); ov.className = 'ov';
+ov.innerHTML = `<div class="eyebrow">Season 0 <b>·</b> Genesis <b>·</b> Early access open</div>
+  <div class="low"><div class="tag">Hunt the Neon City</div>
+  <div class="chips"><span class="chip c2"><i></i>Open-world GameFi</span><span class="chip c1"><i></i>444 pixel Genesis NFTs</span><span class="chip c3"><i></i>Uniswap v4 Hook economy</span><span class="chip c4"><i></i>3D world · pixel soul</span></div></div>
+  <div class="foot">@Cyberhoodlabs <b>·</b> cyberhood.space</div>`;
+stage.append(ov);
+await document.fonts.ready;
+window.__ready = true;
+</script>
+</body>
+</html>

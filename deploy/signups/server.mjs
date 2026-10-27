@@ -16,7 +16,7 @@ const PORT = +(process.env.PORT || 8791);
 const DATA = process.env.DATA_FILE || '/var/lib/cyberhood/signups.jsonl';
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const ORIGINS = new Set((process.env.ALLOWED_ORIGINS || 'https://cyberhood.xyz,https://www.cyberhood.xyz').split(',').map((s) => s.trim()).filter(Boolean));
+const ORIGINS = new Set((process.env.ALLOWED_ORIGINS || 'https://cyberhood.space,https://www.cyberhood.space').split(',').map((s) => s.trim()).filter(Boolean));
 
 /* ---------- storage ---------- */
 const rows = new Map(); // address(lowercase) -> record

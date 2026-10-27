@@ -5,11 +5,11 @@ Server WebSocket nhỏ để chạy nhiều người chơi thật ở **dev / st
 
 ```bash
 npm install
-PORT=8787 ALLOWED_ORIGINS=https://play.cyberhood.xyz VERIFY_URL=https://api.cyberhood.xyz/v1/auth/verify npm start
+PORT=8787 ALLOWED_ORIGINS=https://play.cyberhood.space VERIFY_URL=https://api.cyberhood.space/v1/auth/verify npm start
 npm test
 ```
 
-Game kết nối khi build với `VITE_WS_URL=wss://rt.cyberhood.xyz` (xem `game/.env.example`).
+Game kết nối khi build với `VITE_WS_URL=wss://rt.cyberhood.space` (xem `game/.env.example`).
 
 ## Giao thức (JSON)
 

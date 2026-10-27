@@ -10,15 +10,15 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8766';
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const only = process.argv.slice(2);
 const JOBS = [
-  ['avatar', 1024, 1024, 'avatar'],
-  ['banner', 1500, 500, 'x_header'],
-  ['og', 1200, 630, 'og_image'],
+  ['avatar', 1024, 1024, 'avatar', 'scene.html'],
+  ['banner', 1500, 500, 'x_header', 'banner.html'],
+  ['og', 1200, 630, 'og_image', 'banner.html'],
 ];
-for (const [kind, w, h, name] of JOBS) {
+for (const [kind, w, h, name, page] of JOBS) {
   if (only.length && !only.includes(kind)) continue;
   const p = await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });
-  p.on('pageerror', (e) => console.log('ERR', e.message));
-  await p.goto(`${BASE}/brand/scene.html?kind=${kind}&pr=2`);
+  p.on('pageerror', (e) => console.log('ERR', e.message)); p.on('console', (m) => m.type() === 'error' && console.log('C', m.text().slice(0, 200)));
+  await p.goto(`${BASE}/brand/${page}?kind=${kind}&pr=2`);
   await p.waitForFunction(() => window.__ready, null, { timeout: 300000 });
   await p.evaluate(() => window.__ready);
   await p.locator('#stage').screenshot({ path: `${OUT}${name}@2x.png` });

@@ -36,12 +36,12 @@ Không cần cài gì trên máy Windows của bạn ngoài trình duyệt và P
    Xong là mở:  http://164.90.1.2        (website)
                 http://164.90.1.2:8080   (game)
 
-4) CÓ TÊN MIỀN (tuỳ chọn, ví dụ cyberhood.xyz)
+4) CÓ TÊN MIỀN (tuỳ chọn, ví dụ cyberhood.space)
    - Ở nơi mua tên miền, tạo 3 bản ghi A trỏ về IP droplet:  @   www   play
    - Đợi DNS cập nhật (vài phút đến vài giờ), rồi trên server:
        cd /root/cyberhood-droplet
-       sudo bash install.sh --domain cyberhood.xyz --email ban@gmail.com --discord https://discord.gg/xxxx
-   - Có HTTPS miễn phí:  https://cyberhood.xyz  ·  https://play.cyberhood.xyz
+       sudo bash install.sh --domain cyberhood.space --email ban@gmail.com --discord https://discord.gg/xxxx
+   - Có HTTPS miễn phí:  https://cyberhood.space  ·  https://play.cyberhood.space
 
 5) CẬP NHẬT BẢN MỚI
    Tải gói zip mới lên, giải nén đè (unzip -o), chạy lại đúng lệnh install.sh như lần trước.

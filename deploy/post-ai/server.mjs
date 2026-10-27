@@ -5,7 +5,7 @@
 //   OPENAI_API_KEY   required
 //   OPENAI_MODEL     default gpt-4o-mini
 //   PORT             default 8790
-//   ALLOWED_ORIGINS  comma list, default https://cyberhood.xyz,https://www.cyberhood.xyz
+//   ALLOWED_ORIGINS  comma list, default https://cyberhood.space,https://www.cyberhood.space
 //   OPENAI_BASE      default https://api.openai.com/v1 (tests point it at a stub)
 import http from 'node:http';
 
@@ -13,7 +13,7 @@ const KEY = process.env.OPENAI_API_KEY || '';
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const PORT = +(process.env.PORT || 8790);
 const BASE = (process.env.OPENAI_BASE || 'https://api.openai.com/v1').replace(/\/$/, '');
-const ORIGINS = new Set((process.env.ALLOWED_ORIGINS || 'https://cyberhood.xyz,https://www.cyberhood.xyz').split(',').map((s) => s.trim()).filter(Boolean));
+const ORIGINS = new Set((process.env.ALLOWED_ORIGINS || 'https://cyberhood.space,https://www.cyberhood.space').split(',').map((s) => s.trim()).filter(Boolean));
 if (!KEY) console.warn('post-ai: OPENAI_API_KEY is not set; every request falls back to the site templates');
 
 /* Topics are fixed here so the endpoint can't be used as a free general-purpose OpenAI proxy */

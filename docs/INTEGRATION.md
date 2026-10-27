@@ -20,7 +20,7 @@ Mã nằm ở `game/src/platform/`:
 ## 1. Nút "Chơi ngay" (cách A, khuyên dùng)
 
 ```
-https://play.cyberhood.xyz/#token=<JWT ngắn hạn>
+https://play.cyberhood.space/#token=<JWT ngắn hạn>
 ```
 
 Game đọc token rồi xoá nó khỏi thanh địa chỉ. Không có token thì game vẫn chạy, chỉ lưu tiến trình trên máy.
@@ -30,7 +30,7 @@ Game đọc token rồi xoá nó khỏi thanh địa chỉ. Không có token th�
 Phía website:
 
 ```js
-const GAME = "https://play.cyberhood.xyz";
+const GAME = "https://play.cyberhood.space";
 const frame = document.querySelector("iframe#game");
 window.addEventListener("message", async (e) => {
   if (e.origin !== GAME || e.source !== frame.contentWindow) return;
@@ -66,7 +66,7 @@ Quy tắc version: khi cần tính năng mới thì thêm loại tin nhắn mớ
 
 - Server tham chiếu ở `server/`, kèm giao thức, biến môi trường và test (`npm test`).
 - Production dùng Colyseus hoặc Nakama, giữ đúng các tin `hello` / `state` / `peers`.
-- Build game với `VITE_WS_URL=wss://rt.cyberhood.xyz`.
+- Build game với `VITE_WS_URL=wss://rt.cyberhood.space`.
 - Khi không có `VITE_WS_URL` và game chạy như artifact trên claude.ai, game dùng phòng realtime của host. Ai đang mở game và được chia sẻ quyền thì thấy nhau.
 
 Mỗi người chơi gửi khoảng 10 gói mỗi giây, mỗi gói vài chục byte (vị trí, hướng, dáng đi, tên, lớp nhân vật).
@@ -75,9 +75,9 @@ Cả hai phía đều làm sạch dữ liệu nhận được.
 ## 5. Deploy có version
 
 ```
-cdn.cyberhood.xyz/game/1.4.3/cyberhood.html   (thư mục bất biến)
-cdn.cyberhood.xyz/game/manifest.json          { "current": "1.4.3", "minSupported": "1.4.0", "cdn": "..." }
-cdn.cyberhood.xyz/game/game_config.json       giống docs/game_config.json, thêm khoá "flags"
+cdn.cyberhood.space/game/1.4.3/cyberhood.html   (thư mục bất biến)
+cdn.cyberhood.space/game/manifest.json          { "current": "1.4.3", "minSupported": "1.4.0", "cdn": "..." }
+cdn.cyberhood.space/game/game_config.json       giống docs/game_config.json, thêm khoá "flags"
 ```
 
 - **Deploy hoặc rollback:** sửa `current`.

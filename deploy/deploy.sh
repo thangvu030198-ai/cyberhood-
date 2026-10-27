@@ -6,7 +6,7 @@
 set -euo pipefail
 HOST="${1:?Cách dùng: deploy.sh user@IP_SERVER [--setup]}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DOMAIN_PLAY="${DOMAIN_PLAY:-play.cyberhood.xyz}"
+DOMAIN_PLAY="${DOMAIN_PLAY:-play.cyberhood.space}"
 VERSION="$(date +%Y%m%d-%H%M%S)"
 # Bí mật cục bộ (không nằm trong git): deploy/secrets.env, ví dụ OPENAI_API_KEY=sk-...
 if [[ -f "$ROOT/deploy/secrets.env" ]]; then set -a; . "$ROOT/deploy/secrets.env"; set +a; fi
@@ -23,7 +23,7 @@ if [[ "${2:-}" == "--setup" ]]; then
     sudo mv /tmp/cyberhood-rt.service /tmp/cyberhood-postai.service /etc/systemd/system/ &&
     sudo mkdir -p /opt/cyberhood-postai /etc/cyberhood && sudo chown $USER /opt/cyberhood-postai && sudo chmod 700 /etc/cyberhood &&
     sudo systemctl daemon-reload && sudo nginx -t && sudo systemctl reload nginx'
-  echo "Xong. Trỏ DNS rồi chạy trên server: sudo certbot --nginx -d cyberhood.xyz -d www.cyberhood.xyz -d $DOMAIN_PLAY"
+  echo "Xong. Trỏ DNS rồi chạy trên server: sudo certbot --nginx -d cyberhood.space -d www.cyberhood.space -d $DOMAIN_PLAY"
   exit 0
 fi
 

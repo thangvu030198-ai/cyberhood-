@@ -265,22 +265,6 @@ footer a:hover{color:var(--cyan)}
 .lb figcaption{margin-top:12px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center}
 
 /* Owner editor */
-.edit-fab{position:fixed;z-index:90;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px))}
-.editor{position:fixed;z-index:110;top:0;right:0;bottom:0;width:min(440px,100%);background:#0b0718;border-left:1px solid var(--line2);display:flex;flex-direction:column;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) 16px;box-shadow:-20px 0 60px rgba(0,0,0,.6)}
-.editor[hidden]{display:none}
-.editor header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}
-.editor header h2{font-family:var(--display);font-size:20px;text-transform:uppercase}
-.editor .etabs{display:flex;gap:6px;flex-wrap:wrap;padding-block:12px}
-.editor .etabs button{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:7px 10px;border:1px solid var(--line2)}
-.editor .etabs button[aria-pressed="true"]{background:var(--cyan);color:#04121a;border-color:var(--cyan)}
-.editor .ebody{flex:1;overflow-y:auto;display:grid;gap:14px;align-content:start;padding-right:4px}
-.editor footer{border:0;padding:12px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.reg{width:100%;border-collapse:collapse;font-size:12px}
-.reg th,.reg td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
-.reg th{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:400}
-.reg td{font-family:var(--mono);word-break:break-all}
-.colorrow{display:flex;gap:10px;align-items:center}
-.colorrow input[type=color]{width:44px;height:34px;padding:0;border:1px solid var(--line2);background:none}
 .toast{position:fixed;z-index:300;left:50%;bottom:max(24px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:10px 16px;background:#0b0718;border:1px solid var(--cyan);font-family:var(--mono);font-size:12px}
 .toast[hidden]{display:none}
 .rv{animation:rv .8s var(--ease) both}

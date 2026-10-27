@@ -19,6 +19,7 @@ cp -a "$ROOT/web" "$STAGE/web"
 mkdir -p "$STAGE/server" "$STAGE/post-ai"
 cp "$ROOT/server/server.mjs" "$ROOT/server/package.json" "$ROOT/server/package-lock.json" "$STAGE/server/"
 cp "$ROOT/deploy/post-ai/server.mjs" "$STAGE/post-ai/"
+mkdir -p "$STAGE/signups" && cp "$ROOT/deploy/signups/server.mjs" "$ROOT/deploy/signups/ethsig.mjs" "$STAGE/signups/"
 cp "$ROOT/deploy/droplet/install.sh" "$ROOT/deploy/droplet/HUONG_DAN.txt" "$STAGE/"
 if [[ -f "$ROOT/deploy/secrets.env" ]]; then cp "$ROOT/deploy/secrets.env" "$STAGE/secrets.env"; chmod 600 "$STAGE/secrets.env"; else echo "  (không có deploy/secrets.env: post-ai sẽ dùng văn mẫu)"; fi
 

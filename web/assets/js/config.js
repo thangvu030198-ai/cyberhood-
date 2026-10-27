@@ -2,7 +2,9 @@
 window.CH_CONFIG = {
   // gameUrl: 'https://play.cyberhood.xyz',
   // siteUrl: 'https://cyberhood.xyz',
-  xHandle: 'CyberhoodHQ',
+  xHandle: 'Cyberhoodlabs',
   // Máy viết bài X theo chủ đề (deploy/post-ai, key OpenAI nằm trên server). Bỏ trống = AI có sẵn / văn mẫu
   aiEndpoint: '/api/post',
+  // Đăng ký Early Access lưu trên server (deploy/signups), xem ở /admin
+  signupEndpoint: '/api/signup',
 };

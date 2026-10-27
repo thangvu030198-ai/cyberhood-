@@ -33,8 +33,10 @@ const DEF = {
   footer: 'We don’t drop tokens. We drop loot.',
   gameUrl: 'https://claude.ai/artifact/KxxQ7gNmSDB2hFEEUHdvVQ',
   siteUrl: 'https://claude.ai/artifact/KkhfuzczuPsUBR3kU8FraN',
-  xHandle: 'CyberhoodHQ',
+  xHandle: 'Cyberhoodlabs',
   discordUrl: '',
+  /** Self-hosted: where finished Hunter Passes are registered (deploy/signups). Empty = artifact database */
+  signupEndpoint: '',
   hashtags: 'CYBERHOOD, Web3Gaming, NFTGaming',
   aiEndpoint: '',
   accent: '#ff2a8a', accent2: '#22e6ff',
@@ -42,21 +44,7 @@ const DEF = {
 };
 // Self-hosted: assets/js/config.js sets window.CH_CONFIG (gameUrl, siteUrl, xHandle…) without editing this file
 const DEF2 = { ...DEF, ...(window.CH_CONFIG || {}) };
-let cfg = { ...DEF2, ...store.get('ch.cfg', {}) };
-const FIELDS = {
-  Content: [
-    ['heroEyebrow', 'Hero · small line'], ['heroTitle1', 'Hero · title line 1'], ['heroTitle2', 'Hero · title line 2 (glitch)'], ['heroSub', 'Hero · paragraph', 'area'],
-    ['ctaPlay', 'Button · play'], ['ctaEA', 'Button · early access'],
-    ['fact1v', 'Fact 1 value'], ['fact1k', 'Fact 1 label'], ['fact2v', 'Fact 2 value'], ['fact2k', 'Fact 2 label'], ['fact3v', 'Fact 3 value'], ['fact3k', 'Fact 3 label'],
-    ['eaTitle', 'Early access · title'], ['eaSub', 'Early access · text', 'area'], ['rewards', 'Rewards (one per line)', 'area'],
-    ['modesTitle', 'Game modes · title'], ['modesSub', 'Game modes · text', 'area'], ['seasonTitle', 'Season · title'], ['seasonSub', 'Season · text', 'area'], ['footer', 'Footer line'],
-  ],
-  Links: [
-    ['gameUrl', 'Demo game URL'], ['siteUrl', 'This site’s public URL (used in posts and referral links)'], ['xHandle', 'Project X handle (no @)'], ['discordUrl', 'Discord invite link (https://discord.gg/…)'], ['hashtags', 'Hashtags (comma separated)'],
-    ['aiEndpoint', 'Post AI endpoint (your server, keeps the OpenAI key secret). Empty = built-in AI'],
-  ],
-  Theme: [['accent', 'Accent (pink)', 'color'], ['accent2', 'Accent 2 (cyan)', 'color'], ['model', 'Hero character', 'select:vex|hacker'], ['scan', 'CRT scanlines', 'bool'], ['rain', 'Neon rain', 'bool'], ['ticker', 'LED ticker', 'bool']],
-};
+const cfg = { ...DEF2 };
 
 function applyCfg() {
   $$('[data-cfg]').forEach((el) => {
@@ -453,7 +441,7 @@ let genBusy = null;
 async function genPost() {
   const ta = $('#postTx');
   const h = handle(cfg.xHandle);
-  // p.game names the project once: the @handle when set ("@CyberhoodHQ"), else the plain name
+  // p.game names the project once: the @handle when set ("@Cyberhoodlabs"), else the plain name
   const p = { lang, topic, at: h ? '@' + h + ' ' : '', game: h ? '@' + h : 'CYBERHOOD' };
   tplIx = (tplIx + 1) % 3;
   // Fallback: the topic's own line; the generic templates only for the Season 0 topic
@@ -510,6 +498,13 @@ $('#finish').addEventListener('click', async () => {
   saveEa(); go(3);
 });
 async function saveSignup() {
+  if (cfg.signupEndpoint) {
+    // Own server: it re-checks the wallet signature itself and stores the registration
+    try {
+      const r = await fetch(cfg.signupEndpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ accountId: ea.accountId, address: ea.address, wallet: ea.wallet || '', chainId: ea.chainId || '', signature: ea.signature || '', message: ea.message || '', x: ea.x, postUrl: ea.postUrl, postText: (ea.postText || '').slice(0, 600), ref: ea.ref, refBy: ea.refBy || '' }) });
+      return r.ok ? 'cloud' : 'local';
+    } catch (e) { return 'local'; }
+  }
   const [db, user] = await Promise.all([cap('db'), cap('user')]);
   const id = user ? await user.id().catch(() => null) : null;
   if (!db || !id) return 'local';
@@ -528,59 +523,13 @@ function renderPass() {
 $('#refCopy').addEventListener('click', async () => { const i = $('#refIn'); i.select(); try { await navigator.clipboard.writeText(i.value); toast('Referral link copied'); } catch (e) { try { document.execCommand('copy'); toast('Referral link copied'); } catch (er) { toast('Select the link and copy it'); } } });
 $('#restart').addEventListener('click', () => { ea = {}; saveEa(); go(0); });
 
-/* ---------- Owner editor ---------- */
-let db = null, edTab = 'Content', draft = null;
-function field([key, label, type = 'text']) {
-  const v = draft[key]; const id = 'ed_' + key;
-  if (type === 'area') return `<div class="field"><label for="${id}">${label}</label><textarea id="${id}" data-k="${key}" rows="3" style="min-height:80px">${esc(v)}</textarea></div>`;
-  if (type === 'color') return `<div class="field"><label for="${id}">${label}</label><div class="colorrow"><input type="color" id="${id}" data-k="${key}" value="${esc(v)}"><span class="mono">${esc(v)}</span></div></div>`;
-  if (type === 'bool') return `<label class="colorrow"><input type="checkbox" data-k="${key}" ${v ? 'checked' : ''}> ${label}</label>`;
-  if (type.startsWith('select:')) return `<div class="field"><label for="${id}">${label}</label><select id="${id}" data-k="${key}">${type.slice(7).split('|').map((o) => `<option ${o === v ? 'selected' : ''}>${o}</option>`).join('')}</select></div>`;
-  return `<div class="field"><label for="${id}">${label}</label><input id="${id}" data-k="${key}" value="${esc(v)}"></div>`;
-}
-function renderEditor() {
-  $('#etabs').innerHTML = [...Object.keys(FIELDS), 'Signups'].map((t) => `<button type="button" data-t="${t}" aria-pressed="${t === edTab}">${t}</button>`).join('');
-  if (edTab === 'Signups') { $('#ebody').innerHTML = '<p class="count">Loading registrations…</p>'; loadSignups(); return; }
-  $('#ebody').innerHTML = FIELDS[edTab].map(field).join('') + (edTab === 'Links' ? '<p class="count">Post AI: with an endpoint, the page POSTs {x, address, lang, prompt} and expects {text}. Keep your OpenAI key on that server, never in this page.</p>' : '');
-}
-$('#etabs').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) { edTab = b.dataset.t; renderEditor(); } });
-$('#ebody').addEventListener('input', (e) => {
-  const el = e.target.closest('[data-k]'); if (!el) return;
-  draft[el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value;
-  if (el.type === 'color') el.nextElementSibling.textContent = el.value;
-  cfg = { ...draft }; applyCfg(); $('#edState').textContent = 'Unsaved changes';
-});
-$('#editFab').addEventListener('click', () => { draft = { ...cfg }; $('#editor').hidden = false; renderEditor(); });
-$('#edClose').addEventListener('click', () => { $('#editor').hidden = true; });
-$('#edReset').addEventListener('click', () => { draft = { ...DEF }; cfg = { ...DEF }; applyCfg(); renderEditor(); $('#edState').textContent = 'Defaults loaded · press Save'; });
-$('#edSave').addEventListener('click', async () => {
-  const out = {}; Object.keys(DEF).forEach((k) => { out[k] = draft[k] ?? DEF[k]; });
-  try { await db.doc('site/config').set(out); $('#edState').textContent = 'Saved · live for every visitor'; toast('Site updated'); }
-  catch (e) { $('#edState').textContent = 'Save failed: ' + (e && e.message || e); }
-});
-async function loadSignups() {
-  try {
-    const snap = await db.collection('signups').get();
-    const rows = snap.docs.map((d) => d.data()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    const csv = ['accountId,address,verified,wallet,x,postUrl,ref,refBy,createdAt'].concat(rows.map((r) => [r.accountId, r.address, r.verified, r.wallet, r.x, r.postUrl, r.ref, r.refBy, r.createdAt].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
-    $('#ebody').innerHTML = `<p class="count">${rows.length} registration${rows.length === 1 ? '' : 's'}</p>` + (rows.length ? `<table class="reg"><thead><tr><th>Account</th><th>Wallet</th><th>X / post</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${esc(r.accountId)}<br>${esc((r.createdAt || '').slice(0, 10))}</td><td>${esc(short(r.address))} ${r.verified ? '✓' : ''}<br>${esc(r.wallet)}</td><td>@${esc(r.x)}<br>${/^https:\/\/x\.com\//.test(r.postUrl) ? `<a href="${esc(r.postUrl)}" target="_blank" rel="noopener" style="color:var(--cyan)">post ↗</a>` : ''}</td></tr>`).join('')}</tbody></table><div class="field"><label for="csv">CSV export</label><textarea id="csv" readonly>${esc(csv)}</textarea></div>` : '');
-  } catch (e) { $('#ebody').innerHTML = `<p class="msg err">Could not load registrations: ${esc(e && e.message || e)}</p>`; }
-}
 
 /* ---------- Boot ---------- */
 applyCfg(); chip();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startHolo); else startHolo();
 (async () => {
-  db = await cap('db');
-  if (db) {
-    db.doc('site/config').onSnapshot((s) => {
-      const d = s.exists ? s.data() : null; if (!d) return;
-      if (!$('#editor').hidden) return;
-      cfg = { ...DEF2, ...d }; store.set('ch.cfg', cfg); applyCfg();
-    }, () => {});
-  }
+  const db = await cap('db');
   const user = await cap('user');
-  if (user && db && await user.isOwner().catch(() => false)) $('#editFab').hidden = false;
   if (user && db && !ea.accountId) {
     const id = await user.id().catch(() => null);
     if (id) { try { const s = await db.doc('signups/' + id).get(); if (s.exists) { ea = { ...s.data(), saved: 'cloud' }; saveEa(); } } catch (e) {} }

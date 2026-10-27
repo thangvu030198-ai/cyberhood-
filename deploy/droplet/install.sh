@@ -10,7 +10,7 @@
 # Gói gồm: web/ (website) · play/ (game đã build) · server/ (realtime) · post-ai/ (viết bài X) · secrets.env (key OpenAI)
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-DOMAIN="" EMAIL="" XH="CyberhoodHQ" DISCORD=""
+DOMAIN="" EMAIL="" XH="Cyberhoodlabs" DISCORD=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --domain) DOMAIN="${2:-}"; shift 2 ;;
@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ $EUID -eq 0 ]] || { echo "Hãy chạy bằng: sudo bash install.sh"; exit 1; }
-for d in web play server post-ai; do [[ -d "$DIR/$d" ]] || { echo "Thiếu thư mục $d trong gói"; exit 1; }; done
+for d in web play server post-ai signups; do [[ -d "$DIR/$d" ]] || { echo "Thiếu thư mục $d trong gói"; exit 1; }; done
 export DEBIAN_FRONTEND=noninteractive
 
 echo "== 1/7 Cài nginx, Node.js 20"
@@ -80,6 +80,18 @@ server {
     proxy_read_timeout 20s;
     client_max_body_size 4k;
   }
+  # Đăng ký Early Access + trang quản trị có mật khẩu
+  location /api/signup {
+    proxy_pass http://127.0.0.1:8791;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    client_max_body_size 16k;
+  }
+  location /admin {
+    proxy_pass http://127.0.0.1:8791;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+  }
 }
 
 # ---------- Game ----------
@@ -136,6 +148,7 @@ window.CH_CONFIG = {
   gameUrl: '$GAME',
   siteUrl: '$SITE',
   aiEndpoint: '/api/post',
+  signupEndpoint: '/api/signup',
   xHandle: '${XH//[^A-Za-z0-9_]/}',
   discordUrl: '${DISCORD//\'/}',
 };
@@ -191,10 +204,39 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 UNIT
 
+echo "== 6b/7 Lưu đăng ký Early Access (signups, cổng 8791) + trang /admin"
+mkdir -p /opt/cyberhood-signups /var/lib/cyberhood
+cp "$DIR/signups/server.mjs" "$DIR/signups/ethsig.mjs" /opt/cyberhood-signups/
+chown -R www-data:www-data /opt/cyberhood-signups /var/lib/cyberhood
+chmod 700 /var/lib/cyberhood
+# Mật khẩu /admin: tạo một lần, giữ nguyên khi chạy lại (đổi: sửa /etc/cyberhood/signups.env rồi restart)
+if ! grep -q '^ADMIN_PASSWORD=.' /etc/cyberhood/signups.env 2>/dev/null; then
+  printf 'ADMIN_USER=admin\nADMIN_PASSWORD=%s\n' "$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | cut -c1-20)" > /etc/cyberhood/signups.env
+fi
+chmod 600 /etc/cyberhood/signups.env
+cat > /etc/systemd/system/cyberhood-signups.service <<UNIT
+[Unit]
+Description=CYBERHOOD early-access signups + admin
+After=network.target
+[Service]
+WorkingDirectory=/opt/cyberhood-signups
+ExecStart=$(command -v node) server.mjs
+EnvironmentFile=/etc/cyberhood/signups.env
+Environment=PORT=8791
+Environment=DATA_FILE=/var/lib/cyberhood/signups.jsonl
+Environment=ALLOWED_ORIGINS=$SITES
+Restart=always
+RestartSec=2
+User=www-data
+NoNewPrivileges=true
+[Install]
+WantedBy=multi-user.target
+UNIT
+
 echo "== 7/7 Bật dịch vụ (tự chạy lại khi server khởi động)"
 systemctl daemon-reload
-systemctl enable --now cyberhood-rt cyberhood-postai
-systemctl restart cyberhood-rt cyberhood-postai
+systemctl enable --now cyberhood-rt cyberhood-postai cyberhood-signups
+systemctl restart cyberhood-rt cyberhood-postai cyberhood-signups
 if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
   ufw allow 'Nginx Full' >/dev/null; [[ -z "$DOMAIN" ]] && ufw allow 8080/tcp >/dev/null
 fi
@@ -206,6 +248,11 @@ echo " Game    : $GAME"
 echo " Litepaper: $SITE/docs.html"
 printf ' Realtime: '; systemctl is-active cyberhood-rt
 printf ' Post AI : '; curl -fsS http://127.0.0.1:8790/api/post/health || echo "chưa chạy (xem: journalctl -u cyberhood-postai -n 50)"
+echo
+printf ' Signups : '; curl -fsS http://127.0.0.1:8791/api/signup/health || echo "chưa chạy (xem: journalctl -u cyberhood-signups -n 50)"
+echo
+echo " Quản trị đăng ký: $SITE/admin   ·   tài khoản: admin   ·   mật khẩu: $(sed -n 's/^ADMIN_PASSWORD=//p' /etc/cyberhood/signups.env)"
+[[ "$SITE" == http://* ]] && echo "   (đang chạy http: nên gắn tên miền + --email để có HTTPS trước khi đăng nhập /admin qua mạng công cộng)"
 echo
 [[ -z "$DOMAIN" ]] && echo " Nhớ mở cổng 80 và 8080 trong Firewall của DigitalOcean (Networking → Firewalls) nếu bạn có dùng."
 echo " Nhật ký: journalctl -u cyberhood-rt -f   ·   journalctl -u cyberhood-postai -f"

@@ -26,3 +26,19 @@ Sửa `web/assets/js/config.js` để đặt `gameUrl` (ví dụ `https://play.c
 - `npm run build` = bản cho server (file `.glb` thường, thư viện tách riêng để cache).
 - `npm run build:artifact` = bản chạy trong artifact claude.ai (một file JS, model `.glb.wasm`).
 - Nên bật thêm Cloudflare (miễn phí) trước server để cache model gần người chơi; nhớ bật WebSockets.
+
+## Viết bài X bằng AI theo chủ đề (post-ai)
+
+Ở bước "Post the signal" của Early Access, người chơi chọn chủ đề (Season 0, Neon City, Siege, Raid, Kart, Duel, Genesis, Uniswap v4 hook…) và website gọi `POST /api/post`. Nginx chuyển tới dịch vụ `cyberhood-postai` (cổng 8790) — dịch vụ này giữ key OpenAI, nên key **không bao giờ** nằm trong website.
+
+1. Tạo file `deploy/secrets.env` trên máy bạn (file này bị git bỏ qua, không đưa lên GitHub):
+   ```
+   OPENAI_API_KEY=sk-...
+   OPENAI_MODEL=gpt-4o-mini
+   ```
+2. Lần đầu: `./deploy/deploy.sh user@IP --setup` (cài thêm service post-ai và thư mục `/etc/cyberhood`).
+3. Mỗi lần deploy: `./deploy/deploy.sh user@IP` — script tự đọc `secrets.env`, ghi key vào `/etc/cyberhood/post-ai.env` (chmod 600, chỉ root đọc), rồi bật và khởi động lại `cyberhood-postai`.
+4. Kiểm tra trên server: `curl -s http://127.0.0.1:8790/api/post/health` → `{"ok":true,"key":true}`.
+
+Bảo vệ sẵn có: chỉ nhận yêu cầu từ tên miền website (`ALLOWED_ORIGINS`), 6 lần/phút và 40 lần/ngày mỗi IP, chủ đề cố định (không cho gửi prompt tuỳ ý), bài tối đa 280 ký tự, không hứa lợi nhuận. Không có key hoặc OpenAI lỗi → website tự dùng văn mẫu của chủ đề đó.
+Đổi key: sửa `deploy/secrets.env` rồi deploy lại. Đổi model: `OPENAI_MODEL` trong cùng file.

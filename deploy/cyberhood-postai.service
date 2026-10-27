@@ -1,0 +1,18 @@
+[Unit]
+Description=CYBERHOOD post writer (OpenAI key stays on the server)
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/cyberhood-postai
+ExecStart=/usr/bin/node server.mjs
+# OPENAI_API_KEY lives only in this root-owned file (chmod 600), written by deploy.sh
+EnvironmentFile=/etc/cyberhood/post-ai.env
+Environment=PORT=8790
+Environment=ALLOWED_ORIGINS=https://cyberhood.xyz,https://www.cyberhood.xyz
+Restart=always
+RestartSec=2
+User=www-data
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

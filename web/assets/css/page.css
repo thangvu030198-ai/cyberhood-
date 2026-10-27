@@ -355,3 +355,9 @@ footer .flinks a{padding:10px 0}
 #sheet .art .lk{right:58px}
 @media (min-width:760px){#sheet .art .lk{right:10px}}
 .dlg{overflow-x:clip}
+/* Post topics (early-access step 3) */
+.flabel{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.topics{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.topics button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:9px 12px;min-height:36px;border:1px solid var(--line2);color:#d7d0f0;transition:background .2s,color .2s,border-color .2s}
+.topics button:hover{border-color:var(--cyan);color:var(--cyan)}
+.topics button[aria-pressed="true"]{background:var(--pink);border-color:var(--pink);color:#fff}

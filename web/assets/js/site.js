@@ -408,6 +408,40 @@ const TPL = {
   ],
 };
 let tplIx = Math.floor(Math.random() * 3);
+/* Post topics: the AI writes about the one the Hunter picks; each has a hand-written fallback */
+const TOPICS = [
+  ['season', 'Season 0', 'Season 0 early access and the Hunter Pass tied to the player wallet',
+    (p) => `Got my Hunter Pass for ${p.at}CYBERHOOD Season 0 before the gates open. See you in Neon City 🌆`,
+    (p) => `Đã có Hunter Pass ${p.at}CYBERHOOD Season 0 trước giờ mở cổng. Hẹn gặp ở Neon City 🌆`],
+  ['hub', 'Neon City', 'Neon City, the 3D co-op hub where Hunters meet, trade and watch drops on giant LED screens',
+    (p) => `Neon City in ${p.at}CYBERHOOD is unreal: rain, LED towers and every rare drop lighting up the street ⚡`,
+    (p) => `Neon City trong ${p.at}CYBERHOOD đẹp thật sự: mưa neon, tháp LED, đồ hiếm rơi là sáng cả phố ⚡`],
+  ['contracts', 'Contracts', 'side-scrolling contract stages with a boss at the end of every map',
+    (p) => `Six side-scrolling maps in ${p.at}CYBERHOOD and every boss has its own trick. Hooked already 🎮`,
+    (p) => `Sáu map màn ngang trong ${p.at}CYBERHOOD, mỗi trùm một mẹo riêng. Nghiện rồi 🎮`],
+  ['siege', 'Siege 100v100', 'the 100 v 100 siege of the IXO Ice Citadel: break three shield generators, ram the gate, hold the core',
+    (p) => `100 v 100 at the IXO Ice Citadel in ${p.at}CYBERHOOD. Shields down, gate next 🧊⚔️`,
+    (p) => `Công thành 100 v 100 ở Thành Băng IXO trong ${p.at}CYBERHOOD. Phá khiên xong, tới cổng thành 🧊⚔️`],
+  ['raid', 'Leviathan raid', 'the 4-10 player raid on the Electric Leviathan, breaking its scales from the rooftops',
+    (p) => `Squad up for the Electric Leviathan in ${p.at}CYBERHOOD. Rooftops, lightning and scales to break 🐉`,
+    (p) => `Lập đội săn Leviathan Điện trong ${p.at}CYBERHOOD. Trên mái nhà, giữa sấm sét, phá vảy nó 🐉`],
+  ['kart', 'Neon Kart', 'Neon Kart racing: drift until the sparks turn orange, release for turbo, fire items',
+    (p) => `Drift till the sparks go orange, then turbo. Neon Kart in ${p.at}CYBERHOOD is my new favorite 🏎️`,
+    (p) => `Drift tới khi tia lửa chuyển cam rồi tăng tốc. Neon Kart của ${p.at}CYBERHOOD cuốn thật 🏎️`],
+  ['duel', 'Arena duel', '1 v 1 arena duels up eight rival ranks with jab, hook, roundhouse and sweep combos',
+    (p) => `Eight rivals, one ring. Climbing the arena ladder in ${p.at}CYBERHOOD one roundhouse at a time 🥊`,
+    (p) => `Tám đối thủ, một võ đài. Leo hạng đối kháng ${p.at}CYBERHOOD bằng từng cú đá vòng cầu 🥊`],
+  ['genesis', 'Genesis loot', 'Genesis pixel-art weapons, armor and relics earned by playing, 444 items in Season 0',
+    (p) => `444 Genesis items in ${p.at}CYBERHOOD Season 0 and you earn them by playing. Hunting a Mythic 🗡️`,
+    (p) => `444 món Genesis trong ${p.at}CYBERHOOD Season 0, kiếm bằng cách chơi. Đi săn đồ Mythic thôi 🗡️`],
+  ['hook', 'Uniswap v4 hook', 'the on-chain economy built on a Uniswap v4 hook where rewards follow play activity, not holdings',
+    (p) => `${p.at}CYBERHOOD runs its economy on a Uniswap v4 hook and rewards follow play, not bags. Read the litepaper 📜`,
+    (p) => `${p.at}CYBERHOOD chạy kinh tế trên Uniswap v4 hook, thưởng theo người chơi chứ không theo ví to. Đọc litepaper nhé 📜`],
+];
+let topic = 'season';
+const topicOf = (id) => TOPICS.find((t) => t[0] === id) || TOPICS[0];
+$('#topicTabs').innerHTML = TOPICS.map(([id, label]) => `<button type="button" data-t="${id}" aria-pressed="${id === topic}">${label}</button>`).join('');
+$('#topicTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (!b || b.dataset.t === topic) return; topic = b.dataset.t; $$('#topicTabs button').forEach((x) => x.setAttribute('aria-pressed', x === b)); genPost(); });
 const xLen = (s) => [...s.replace(/https?:\/\/\S+/g, 'x'.repeat(23))].length;
 function finishPost(body) {
   const tail = `\n\n${tags()}\n${refLink()}`;
@@ -422,22 +456,23 @@ Rules:
 - At most 200 characters. First person, excited gamer voice, at most 2 emoji.
 ${p.at ? `- Mention ${p.at.trim()} exactly once.\n` : ''}- Do not include hashtags or links (they are added after).
 - Never promise money, profit, prices, token amounts or airdrops.
-- Vary the angle: ${['the raid boss', 'the siege', 'kart racing', 'the co-op hub', 'the loot'][Math.floor(Math.random() * 5)]}.
+- Topic: ${topicOf(p.topic)[2]}.
 Reply with only the post text.`;
 let genBusy = null;
 async function genPost() {
   const ta = $('#postTx');
-  const p = { lang, at: handle(cfg.xHandle) ? '@' + handle(cfg.xHandle) + ' ' : '' };
+  const p = { lang, topic, at: handle(cfg.xHandle) ? '@' + handle(cfg.xHandle) + ' ' : '' };
   tplIx = (tplIx + 1) % 3;
-  const fallback = finishPost(TPL[lang][tplIx](p));
+  // Fallback: the topic's own line; the generic templates only for the Season 0 topic
+  const fallback = finishPost(topic === 'season' && tplIx ? TPL[lang][tplIx](p) : topicOf(topic)[lang === 'vi' ? 4 : 3](p));
   if (genBusy) genBusy.abort();
   const ctl = new AbortController(); genBusy = ctl;
   ta.value = 'Writing your post…'; $('#genBtn').disabled = true; ta.readOnly = true;
   let text = '';
   try {
     if (cfg.aiEndpoint) {
-      const r = await fetch(cfg.aiEndpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ x: ea.x, address: ea.address, lang, handle: handle(cfg.xHandle), prompt: PROMPT(p) }), signal: ctl.signal });
-      const j = await r.json(); text = j.text || j.post || '';
+      const r = await fetch(cfg.aiEndpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang, topic, handle: handle(cfg.xHandle) }), signal: ctl.signal });
+      const j = r.ok ? await r.json() : {}; text = j.text || j.post || '';
     } else {
       const sample = await Promise.race([cap('sample'), new Promise((r) => setTimeout(() => r(null), 4000))]);
       if (sample) { const r = await sample(PROMPT(p), { signal: ctl.signal, modelTier: 'quick', cache: false }); text = r && r.text || ''; }

@@ -34,6 +34,7 @@ const DEF = {
   gameUrl: 'https://claude.ai/artifact/KxxQ7gNmSDB2hFEEUHdvVQ',
   siteUrl: 'https://claude.ai/artifact/KkhfuzczuPsUBR3kU8FraN',
   xHandle: '',
+  discordUrl: '',
   hashtags: 'CYBERHOOD, Web3Gaming, NFTGaming',
   aiEndpoint: '',
   accent: '#ff2a8a', accent2: '#22e6ff',
@@ -51,7 +52,7 @@ const FIELDS = {
     ['modesTitle', 'Game modes · title'], ['modesSub', 'Game modes · text', 'area'], ['seasonTitle', 'Season · title'], ['seasonSub', 'Season · text', 'area'], ['footer', 'Footer line'],
   ],
   Links: [
-    ['gameUrl', 'Demo game URL'], ['siteUrl', 'This site’s public URL (used in posts and referral links)'], ['xHandle', 'Project X handle (no @)'], ['hashtags', 'Hashtags (comma separated)'],
+    ['gameUrl', 'Demo game URL'], ['siteUrl', 'This site’s public URL (used in posts and referral links)'], ['xHandle', 'Project X handle (no @)'], ['discordUrl', 'Discord invite link (https://discord.gg/…)'], ['hashtags', 'Hashtags (comma separated)'],
     ['aiEndpoint', 'Post AI endpoint (your server, keeps the OpenAI key secret). Empty = built-in AI'],
   ],
   Theme: [['accent', 'Accent (pink)', 'color'], ['accent2', 'Accent 2 (cyan)', 'color'], ['model', 'Hero character', 'select:vex|hacker'], ['scan', 'CRT scanlines', 'bool'], ['rain', 'Neon rain', 'bool'], ['ticker', 'LED ticker', 'bool']],
@@ -72,6 +73,10 @@ function applyCfg() {
   });
   const h = handle(cfg.xHandle);
   $('#footX').hidden = !h; if (h) $('#footX').href = 'https://x.com/' + h;
+  $('#topX').hidden = !h; if (h) $('#topX').href = 'https://x.com/' + h;
+  // Discord: only real invite links (discord.gg / discord.com/invite)
+  const dc = /^https:\/\/(discord\.gg|(www\.)?discord\.com\/invite)\/[\w-]+\/?$/.test(String(cfg.discordUrl || '').trim()) ? String(cfg.discordUrl).trim() : '';
+  ['#topDc', '#footDc', '#passDc'].forEach((id) => { const el = $(id); if (el) { el.hidden = !dc; if (dc) el.href = dc; } });
   $('#followBtn').hidden = !h; if (h) { $('#followBtn').href = 'https://x.com/intent/follow?screen_name=' + h; $('#followH').textContent = '@' + h; }
   $('#launch').href = cfg.gameUrl;
   if (holoModel && holoModel !== cfg.model) startHolo();

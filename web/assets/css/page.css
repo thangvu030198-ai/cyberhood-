@@ -361,3 +361,10 @@ footer .flinks a{padding:10px 0}
 .topics button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:9px 12px;min-height:36px;border:1px solid var(--line2);color:#d7d0f0;transition:background .2s,color .2s,border-color .2s}
 .topics button:hover{border-color:var(--cyan);color:var(--cyan)}
 .topics button[aria-pressed="true"]{background:var(--pink);border-color:var(--pink);color:#fff}
+/* Social links in the top bar */
+.soc{display:inline-grid;place-items:center;width:40px;height:40px;color:var(--muted);border:1px solid var(--line);transition:color .2s,border-color .2s}
+.soc:hover{color:var(--cyan);border-color:var(--cyan)}
+.soc[hidden]{display:none}
+@media (max-width:560px){.soc{width:36px;height:36px}}
+.top .acts .btn{white-space:nowrap}
+@media (max-width:420px){.top .acts{gap:6px}.top .acts .btn.small{padding:9px 10px}.soc{width:34px;height:34px}.logo svg{display:none}}

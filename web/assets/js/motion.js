@@ -82,11 +82,13 @@
         if (lede) head.from(lede, { autoAlpha: 0, y: 16, duration: 0.6 }, 0.45);
       });
 
-      /* ---------- Cinematic reel: tilted screen stands up as it scrolls in ---------- */
+      /* ---------- Cinematic reel: tilted screen stands up once it enters, always ending fully open ---------- */
       const reel = document.querySelector('.reel');
       if (reel) {
-        gsap.fromTo(reel, { rotateX: 24 * k, scale: 0.86, y: 60 * k, autoAlpha: 0.4, transformOrigin: '50% 100%' },
-          { rotateX: 0, scale: 1, y: 0, autoAlpha: 1, ease: 'none', scrollTrigger: { trigger: reel, start: 'top 95%', end: 'top 30%', scrub: lenis ? true : 0.3 } });
+        // One-shot (not scrubbed): a tall reel on a big screen never reached the scrub end and stayed tilted and dim
+        gsap.fromTo(reel, { rotateX: 22 * k, scale: 0.9, y: 50 * k, autoAlpha: 0.35, transformOrigin: '50% 100%' },
+          { rotateX: 0, scale: 1, y: 0, autoAlpha: 1, duration: 1.1, ease: 'expo.out', clearProps: 'transform,opacity,visibility',
+            scrollTrigger: { trigger: reel, start: 'top 85%', once: true } });
         gsap.to('.reel video', { yPercent: -6, scale: 1.08, ease: 'none', scrollTrigger: { trigger: reel, start: 'top bottom', end: 'bottom top', scrub: true } });
       }
 

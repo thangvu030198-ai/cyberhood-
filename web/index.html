@@ -17,6 +17,7 @@
   <a class="logo" href="#top" aria-label="CYBERHOOD home"><svg><use href="#i-brand"/></svg><span><span class="c">CYBER</span><span class="p">HOOD</span></span></a>
   <nav class="nav" aria-label="Sections"><a href="#early">Early access</a><a href="#modes">Game modes</a><a href="#season">Season 0</a><a href="#market">Marketplace</a><a href="#hook">Hook</a><a href="docs.html">Litepaper</a><a href="#faq">FAQ</a></nav>
   <div class="acts">
+    <a class="soc" id="topX" href="#" target="_blank" rel="noopener" aria-label="CYBERHOOD on X" hidden><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.3L5.3 21H2.2l7.2-8.3L1.8 3h6.4l4.4 5.8L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5z"/></svg></a><a class="soc" id="topDc" href="#" target="_blank" rel="noopener" aria-label="Join the CYBERHOOD Discord" hidden><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18.2 18.2 0 0 0-5.6 0L8.6 3a19.5 19.5 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.8 19.8 0 0 0 6 3l1.3-2a12.8 12.8 0 0 1-2-1l.5-.4a14 14 0 0 0 12.2 0l.5.4a12.7 12.7 0 0 1-2 1l1.3 2a19.7 19.7 0 0 0 6-3c.5-5.2-.8-9.7-3.6-13.7zM8.3 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4zm7.4 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4z"/></svg></a>
     <button class="chip" type="button" id="walletChip" hidden><i></i><span id="walletChipT"></span></button>
     <button class="btn ghost small" type="button" data-flow="ea" id="topEA">Connect wallet</button>
     <button class="btn primary small" type="button" data-flow="play"><span data-cfg="ctaPlay">Play Demo</span></button>
@@ -124,7 +125,7 @@
   </div>
 </div></section>
 
-<footer><div class="wrap"><span data-cfg="footer"></span><span class="flinks"><a href="#early">Early access</a><a href="#market">Marketplace</a><a href="docs.html">Litepaper</a><a id="footX" href="#" target="_blank" rel="noopener" hidden>X</a></span><span>CYBERHOOD © 2026</span></div></footer>
+<footer><div class="wrap"><span data-cfg="footer"></span><span class="flinks"><a href="#early">Early access</a><a href="#market">Marketplace</a><a href="docs.html">Litepaper</a><a id="footX" href="#" target="_blank" rel="noopener" hidden>X</a><a id="footDc" href="#" target="_blank" rel="noopener" hidden>Discord</a></span><span>CYBERHOOD © 2026</span></div></footer>
 
 <!-- Early access / Play Demo flow -->
 <div class="ov" id="flow" hidden role="dialog" aria-modal="true" aria-labelledby="flowT">
@@ -167,7 +168,7 @@
       <div class="pass" id="pass"></div>
       <div class="msg" id="saveMsg" hidden></div>
       <div class="field"><label for="refIn">Your referral link</label><div class="row"><input id="refIn" readonly><button class="btn ghost small" type="button" id="refCopy">Copy</button></div></div>
-      <div class="acts"><button class="btn ghost small" type="button" id="restart">Use another wallet</button><a class="btn primary" id="launch" href="#" target="_blank" rel="noopener">▶ Launch demo</a></div>
+      <div class="acts"><button class="btn ghost small" type="button" id="restart">Use another wallet</button><a class="btn cyan small" id="passDc" href="#" target="_blank" rel="noopener" hidden>Join the Discord ↗</a><a class="btn primary" id="launch" href="#" target="_blank" rel="noopener">▶ Launch demo</a></div>
     </div>
   </div>
 </div>

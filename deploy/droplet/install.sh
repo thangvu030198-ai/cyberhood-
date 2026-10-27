@@ -4,16 +4,19 @@
 #   sudo bash install.sh                                   # chưa có tên miền: web http://IP  ·  game http://IP:8080
 #   sudo bash install.sh --domain cyberhood.xyz            # có tên miền (đã trỏ DNS): web + www + play.<domain>
 #   sudo bash install.sh --domain cyberhood.xyz --email you@mail.com   # thêm HTTPS miễn phí (Let's Encrypt)
+#   Thêm --x TenX --discord https://discord.gg/xxxx để hiện link X và Discord trên website
 #
 # Chạy lại bao nhiêu lần cũng được (cập nhật bản mới: giải nén gói mới rồi chạy lại).
 # Gói gồm: web/ (website) · play/ (game đã build) · server/ (realtime) · post-ai/ (viết bài X) · secrets.env (key OpenAI)
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-DOMAIN="" EMAIL=""
+DOMAIN="" EMAIL="" XH="" DISCORD=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --domain) DOMAIN="${2:-}"; shift 2 ;;
     --email) EMAIL="${2:-}"; shift 2 ;;
+    --x) XH="${2#@}"; shift 2 ;;
+    --discord) DISCORD="${2:-}"; shift 2 ;;
     *) echo "Tham số lạ: $1"; exit 1 ;;
   esac
 done
@@ -133,6 +136,8 @@ window.CH_CONFIG = {
   gameUrl: '$GAME',
   siteUrl: '$SITE',
   aiEndpoint: '/api/post',
+  xHandle: '${XH//[^A-Za-z0-9_]/}',
+  discordUrl: '${DISCORD//\'/}',
 };
 CFG
 chown www-data:www-data /var/www/cyberhood/web/assets/js/config.js
